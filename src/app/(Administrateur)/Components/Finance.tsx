@@ -1,0 +1,766 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  CreditCard,
+  ArrowUpRight,
+  ArrowDownRight,
+  Users,
+  ShoppingCart,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  BarChart3,
+  PieChart,
+  Calendar,
+  Download,
+} from "lucide-react";
+import { motion } from "framer-motion";
+
+interface FinanceStats {
+  total_revenue_gross: number;
+  total_revenue_net: number;
+  total_revenue_net_pending: number;
+  total_withdrawal_fees: number;
+  total_system_revenue: number;
+  total_system_revenue_pending: number;
+  total_provider_earnings: number;
+  total_provider_earnings_pending: number;
+  total_refunds: number;
+  total_withdrawals: number;
+  pending_provider_balance: number;
+  provider_balances: {
+    available: number;
+    pending: number;
+    withdrawn: number;
+    total_earned: number;
+  };
+  orders: {
+    total: number;
+    completed: number;
+    pending: number;
+    cancelled: number;
+    by_status: {
+      pending: number;
+      in_progress: number;
+      in_review: number;
+      completed: number;
+      cancelled: number;
+    };
+  };
+  monthly_stats: {
+    month: string;
+    revenue: number;
+    platform_share: number;
+    provider_share: number;
+    orders_count: number;
+  }[];
+}
+
+const Finance = ({ isDark }: { isDark?: boolean }) => {
+  const [stats, setStats] = useState<FinanceStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [withdrawalFeePercentage, setWithdrawalFeePercentage] = useState(2.5);
+
+  useEffect(() => {
+    fetchFinanceStats();
+    fetchWithdrawalFee();
+  }, []);
+
+  const fetchFinanceStats = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/admin/finance-stats?isAdmin=true");
+      const data = await response.json();
+
+      if (data.success) {
+        setStats(data.data.stats);
+      } else {
+        setError(data.error || "Erreur lors du chargement des statistiques");
+      }
+    } catch (err) {
+      console.error("Error fetching finance stats:", err);
+      setError("Impossible de charger les statistiques financières");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWithdrawalFee = async () => {
+    try {
+      const response = await fetch("/api/admin/platform-settings?isAdmin=true");
+      const data = await response.json();
+
+      if (data.success && data.data.settings) {
+        setWithdrawalFeePercentage(data.data.settings.withdrawal_fee_percentage || 2.5);
+      }
+    } catch (err) {
+      console.error("Error fetching withdrawal fee:", err);
+      // Garder la valeur par défaut de 2.5 en cas d'erreur
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className={`${isDark ? "text-gray-300" : "text-gray-600"}`}>
+            Chargement des statistiques financières...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div
+          className={`${
+            isDark ? "bg-red-900/20 border-red-800" : "bg-red-50 border-red-200"
+          } border rounded-xl p-6 max-w-md`}
+        >
+          <AlertCircle
+            className={`w-12 h-12 ${
+              isDark ? "text-red-400" : "text-red-600"
+            } mx-auto mb-4`}
+          />
+          <p
+            className={`text-center ${
+              isDark ? "text-red-300" : "text-red-800"
+            }`}
+          >
+            {error || "Erreur lors du chargement"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "EUR",
+    }).format(amount);
+  };
+
+  return (
+    <div className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"} p-6`}>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1
+              className={`text-4xl font-bold mb-2 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Finances du Système
+            </h1>
+            <p className={isDark ? "text-gray-400" : "text-gray-600"}>
+              Vue d'ensemble complète des revenus et transactions
+            </p>
+          </div>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+          >
+            <Download className="w-5 h-5" />
+            Exporter
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Main Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Revenus Bruts Totaux */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <DollarSign className="w-6 h-6" />
+            </div>
+            <ArrowUpRight className="w-6 h-6 opacity-80" />
+          </div>
+          <div className="text-3xl font-bold mb-1">
+            {formatCurrency(stats.total_revenue_gross)}
+          </div>
+          <p className="text-green-100 text-sm">Revenus Bruts Totaux</p>
+          <p className="text-xs text-green-200 mt-2">
+            Montant total des commandes payées
+          </p>
+        </motion.div>
+
+        {/* Revenus Système CONFIRMÉS */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <TrendingUp className="w-6 h-6 opacity-80" />
+          </div>
+          <div className="text-3xl font-bold mb-1">
+            {formatCurrency(stats.total_system_revenue)}
+          </div>
+          <p className="text-green-100 text-sm">Revenus Système Confirmés</p>
+          <p className="text-xs text-green-200 mt-2">
+            Clients ont accepté les services
+          </p>
+        </motion.div>
+
+        {/* Total Prestataires */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <Users className="w-6 h-6" />
+            </div>
+            <ArrowDownRight className="w-6 h-6 opacity-80" />
+          </div>
+          <div className="text-3xl font-bold mb-1">
+            {formatCurrency(stats.total_provider_earnings)}
+          </div>
+          <p className="text-blue-100 text-sm">Part Prestataires (95%)</p>
+          <p className="text-xs text-blue-200 mt-2">
+            Montant total pour les prestataires
+          </p>
+        </motion.div>
+
+        {/* Solde Restant */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <CreditCard className="w-6 h-6" />
+            </div>
+            <Clock className="w-6 h-6 opacity-80" />
+          </div>
+          <div className="text-3xl font-bold mb-1">
+            {formatCurrency(stats.pending_provider_balance)}
+          </div>
+          <p className="text-orange-100 text-sm">Solde Restant Dû</p>
+          <p className="text-xs text-orange-200 mt-2">
+            Montant restant à payer aux prestataires
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Revenus Système Détaillés */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+        className={`${
+          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        } rounded-2xl p-6 shadow-lg border mb-8`}
+      >
+        <h3
+          className={`text-xl font-bold mb-6 flex items-center gap-2 ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
+          <DollarSign className="w-6 h-6 text-purple-600" />
+          Revenus Système Détaillés
+        </h3>
+
+        {/* Revenus CONFIRMÉS */}
+        <div className="mb-6">
+          <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+            ✅ Revenus Confirmés (Clients ont accepté)
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Commission sur commandes (5%) */}
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Commission Commandes
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    5% confirmé
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-green-600">
+                {formatCurrency(stats.total_revenue_net)}
+              </span>
+            </div>
+
+            {/* Frais de retrait (2.5%) */}
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Frais de Retrait
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    {withdrawalFeePercentage}% des retraits
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-green-600">
+                {formatCurrency(stats.total_withdrawal_fees)}
+              </span>
+            </div>
+
+            {/* Total Système CONFIRMÉ */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border-2 border-green-300 dark:border-green-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Total Confirmé
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Argent acquis
+                  </p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-green-600">
+                {formatCurrency(stats.total_system_revenue)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Revenus EN ATTENTE */}
+        <div className="mb-6">
+          <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+            ⏳ Revenus en Attente (Services non acceptés)
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Commission en Attente
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    5% non confirmé
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-orange-600">
+                {formatCurrency(stats.total_revenue_net_pending)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Prestataires en Attente
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    95% non confirmé
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-orange-600">
+                {formatCurrency(stats.total_provider_earnings_pending)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Remboursements */}
+        {stats.total_refunds > 0 && (
+          <div>
+            <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+              ↩️ Remboursements
+            </h4>
+            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
+                  <TrendingDown className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Total Remboursé
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Commandes annulées
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-red-600">
+                {formatCurrency(stats.total_refunds)}
+              </span>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Detailed Stats Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Soldes Prestataires Détaillés */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className={`${
+            isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          } rounded-2xl p-6 shadow-lg border`}
+        >
+          <h3
+            className={`text-xl font-bold mb-6 flex items-center gap-2 ${
+              isDark ? "text-white" : "text-gray-900"
+            }`}
+          >
+            <Wallet className="w-6 h-6 text-purple-600" />
+            Soldes Prestataires Détaillés
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Disponible
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Prêt à être retiré
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-green-600">
+                {formatCurrency(stats.provider_balances.available)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    En attente
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Commandes en cours
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-orange-600">
+                {formatCurrency(stats.provider_balances.pending)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                  <ArrowDownRight className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Retiré
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Total des retraits
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-blue-600">
+                {formatCurrency(stats.provider_balances.withdrawn)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Total Gagné
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Cumul total
+                  </p>
+                </div>
+              </div>
+              <span className="text-xl font-bold text-purple-600">
+                {formatCurrency(stats.provider_balances.total_earned)}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Statistiques Commandes */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className={`${
+            isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          } rounded-2xl p-6 shadow-lg border`}
+        >
+          <h3
+            className={`text-xl font-bold mb-6 flex items-center gap-2 ${
+              isDark ? "text-white" : "text-gray-900"
+            }`}
+          >
+            <ShoppingCart className="w-6 h-6 text-purple-600" />
+            Statistiques Commandes
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                </div>
+                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                  Total
+                </span>
+              </div>
+              <span
+                className={`text-xl font-bold ${
+                  isDark ? "text-white" : "text-gray-900"
+                }`}
+              >
+                {stats.orders.total}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                  Complétées
+                </span>
+              </div>
+              <span className="text-xl font-bold text-green-600">
+                {stats.orders.completed}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                  En cours
+                </span>
+              </div>
+              <span className="text-xl font-bold text-orange-600">
+                {stats.orders.pending}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                  Annulées
+                </span>
+              </div>
+              <span className="text-xl font-bold text-red-600">
+                {stats.orders.cancelled}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Monthly Revenue Chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className={`${
+          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        } rounded-2xl p-6 shadow-lg border mb-8`}
+      >
+        <h3
+          className={`text-xl font-bold mb-6 flex items-center gap-2 ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
+          <Calendar className="w-6 h-6 text-purple-600" />
+          Revenus Mensuels (12 derniers mois)
+        </h3>
+        <div className="space-y-3">
+          {stats.monthly_stats.map((month, index) => {
+            const maxRevenue = Math.max(
+              ...stats.monthly_stats.map((m) => m.revenue)
+            );
+            const percentage = (month.revenue / maxRevenue) * 100;
+
+            return (
+              <div key={index}>
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className={`text-sm font-medium ${
+                      isDark ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    {month.month}
+                  </span>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-purple-600 font-semibold">
+                      Plateforme: {formatCurrency(month.platform_share)}
+                    </span>
+                    <span className="text-blue-600 font-semibold">
+                      Providers: {formatCurrency(month.provider_share)}
+                    </span>
+                    <span
+                      className={`font-bold ${
+                        isDark ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      {formatCurrency(month.revenue)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-1 h-8">
+                  <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                    <div className="h-full flex">
+                      {/* Part Plateforme (5%) */}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage * 0.05}%` }}
+                        transition={{ duration: 0.8, delay: index * 0.05 }}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center"
+                      >
+                        {percentage * 0.05 > 2 && (
+                          <span className="text-xs font-semibold text-white">
+                            5%
+                          </span>
+                        )}
+                      </motion.div>
+                      {/* Part Prestataires (95%) */}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentage * 0.95}%` }}
+                        transition={{ duration: 0.8, delay: index * 0.05 }}
+                        className="bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center"
+                      >
+                        {percentage * 0.95 > 5 && (
+                          <span className="text-xs font-semibold text-white">
+                            95%
+                          </span>
+                        )}
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end mt-1">
+                  <span className="text-xs text-gray-500">
+                    {month.orders_count} commande{month.orders_count > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* Summary */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+        className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-xl"
+      >
+        <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <PieChart className="w-7 h-7" />
+          Répartition Globale
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="text-center">
+            <div className="text-4xl font-bold mb-2">
+              {formatCurrency(stats.total_revenue_gross)}
+            </div>
+            <p className="text-purple-100">Revenus Bruts Totaux</p>
+            <p className="text-xs text-purple-200 mt-1">100% des commandes</p>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold mb-2">
+              {formatCurrency(stats.total_provider_earnings)}
+            </div>
+            <p className="text-purple-100">Part Prestataires</p>
+            <p className="text-xs text-purple-200 mt-1">95% des commandes</p>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold mb-2">
+              {formatCurrency(stats.total_revenue_net)}
+            </div>
+            <p className="text-purple-100">Commission Commandes</p>
+            <p className="text-xs text-purple-200 mt-1">5% des commandes</p>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-bold mb-2">
+              {formatCurrency(stats.total_withdrawal_fees)}
+            </div>
+            <p className="text-purple-100">Frais de Retrait</p>
+            <p className="text-xs text-purple-200 mt-1">{withdrawalFeePercentage}% des retraits</p>
+          </div>
+        </div>
+
+        {/* Total Système avec mise en évidence */}
+        <div className="mt-8 pt-6 border-t border-white/20">
+          <div className="text-center">
+            <p className="text-purple-100 text-sm mb-2">REVENUS TOTAL SYSTÈME</p>
+            <div className="text-5xl font-bold mb-2">
+              {formatCurrency(stats.total_system_revenue)}
+            </div>
+            <p className="text-purple-200 text-sm">
+              Commission 5% + Frais retrait {withdrawalFeePercentage}% = {formatCurrency(stats.total_revenue_net)} + {formatCurrency(stats.total_withdrawal_fees)}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Finance;

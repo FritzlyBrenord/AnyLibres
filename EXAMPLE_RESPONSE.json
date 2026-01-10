@@ -1,0 +1,109 @@
+{
+  "success": true,
+  "message": "Auto-release terminé",
+  "summary": {
+    "total_earnings": 1,
+    "released": 0,
+    "skipped": 1,
+    "failed": 0
+  },
+  "active_rules": [
+    {
+      "id": "xxx-vip-rule-id",
+      "name": "VIP Premium",
+      "delay_hours": 0,
+      "delay_days": "0.0",
+      "applies_to": "vip",
+      "condition": {
+        "provider_rating": 4.8
+      },
+      "priority": 20,
+      "is_active": true
+    },
+    {
+      "id": "xxx-high-amount-id",
+      "name": "Montants Élevés",
+      "delay_hours": 168,
+      "delay_days": "7.0",
+      "applies_to": "amount_threshold",
+      "condition": {
+        "min_amount": 500000
+      },
+      "priority": 15,
+      "is_active": true
+    },
+    {
+      "id": "xxx-new-providers-id",
+      "name": "Nouveaux Providers",
+      "delay_hours": 720,
+      "delay_days": "30.0",
+      "applies_to": "new_providers",
+      "condition": {
+        "provider_age_days": 30
+      },
+      "priority": 10,
+      "is_active": true
+    },
+    {
+      "id": "xxx-small-amounts-id",
+      "name": "Petits Montants",
+      "delay_hours": 24,
+      "delay_days": "1.0",
+      "applies_to": "amount_threshold",
+      "condition": {
+        "max_amount": 10000
+      },
+      "priority": 5,
+      "is_active": true
+    },
+    {
+      "id": "xxx-standard-id",
+      "name": "Standard",
+      "delay_hours": 336,
+      "delay_days": "14.0",
+      "applies_to": "all",
+      "condition": null,
+      "priority": 0,
+      "is_active": true
+    }
+  ],
+  "earnings_details": [
+    {
+      "earning_id": "abc-123-earning-id",
+      "provider_id": "provider-uuid-123",
+      "amount_cents": 25000,
+      "amount_usd": "250.00",
+      "earning_created_at": "2026-01-08T10:30:00Z",
+      "provider_info": {
+        "age_days": 45,
+        "rating": 4.2,
+        "location": "France"
+      },
+      "rule_applied": {
+        "rule_id": "xxx-standard-id",
+        "rule_name": "Standard",
+        "delay_hours": 336,
+        "delay_days": "14.0",
+        "applies_to": "all",
+        "priority": 0
+      },
+      "release_info": {
+        "release_at": "2026-01-22T10:30:00Z",
+        "is_ready": false,
+        "hours_remaining": 312.5,
+        "days_remaining": "13.0"
+      },
+      "status": "waiting"
+    }
+  ],
+  "metadata": {
+    "total_active_rules": 5,
+    "execution_time": "2026-01-09T14:25:00Z",
+    "default_rule": {
+      "name": "Défaut (14 jours)",
+      "delay_hours": 336,
+      "delay_days": 14,
+      "applies_to": "all"
+    }
+  }
+}
