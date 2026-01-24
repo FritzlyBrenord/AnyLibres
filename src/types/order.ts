@@ -91,8 +91,8 @@ export interface Order {
   total_cents: number;
   fees_cents: number;
   currency: string;
-  status: 'pending' | 'confirmed' | 'in_progress' | 'delivered' | 'revision_requested' | 'completed' | 'cancelled' | 'refunded';
-  payment_status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded' | 'cancelled';
+  status: 'pending' | 'paid' | 'confirmed' | 'in_progress' | 'delivered' | 'revision_requested' | 'completed' | 'cancelled' | 'refunded' | 'disputed';
+  payment_status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded' | 'cancelled' | 'disputed';
   payment_method?: 'card' | 'paypal' | 'bank';
   payment_details?: any;
   payment_intent_id?: string;

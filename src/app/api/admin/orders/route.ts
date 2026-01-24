@@ -27,7 +27,24 @@ export async function GET(req: NextRequest) {
                     unit_price_cents,
                     quantity,
                     subtotal_cents
-                )
+                ),
+                order_deliveries (
+                    id,
+                    delivery_number,
+                    message,
+                    file_url,
+                    external_link,
+                    delivered_at
+                ),
+                order_revisions (
+                    id,
+                    revision_number,
+                    reason,
+                    details,
+                    status,
+                    requested_at
+                ),
+                dispute:disputes!order_id (*)
             `)
             .order('created_at', { ascending: false });
 

@@ -34,6 +34,8 @@ import {
   CreditCard,
   BanknoteIcon,
 } from "lucide-react";
+import { useCurrency } from "@/hooks/useCurrency";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
 interface ProviderProfileProps {
   providerId?: string;
@@ -108,6 +110,7 @@ export default function ProfilesProvider({
   onBack,
 }: ProviderProfileProps) {
   const router = useRouter();
+  const { defaultCurrency, convertFromUSD, formatAmount } = useCurrency();
   const [provider, setProvider] = useState<ProviderProfile | null>(null);
   const [stats, setStats] = useState<ProviderStats | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalHistory[]>([]);
@@ -690,7 +693,7 @@ export default function ProfilesProvider({
                               isDark ? "text-emerald-400" : "text-emerald-600"
                             }`}
                           >
-                            {provider.hourly_rate} € / heure
+                            {formatAmount(convertFromUSD(provider.hourly_rate))} / heure
                           </p>
                         </div>
                       </div>
@@ -716,7 +719,7 @@ export default function ProfilesProvider({
                               isDark ? "text-cyan-400" : "text-cyan-600"
                             }`}
                           >
-                            {provider.starting_price} €
+                            {formatAmount(convertFromUSD(provider.starting_price))}
                           </p>
                         </div>
                       </div>
@@ -833,7 +836,7 @@ export default function ProfilesProvider({
                             isDark ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {(stats.completed_orders_revenue + stats.pending_orders_revenue).toFixed(2)} €
+                          <CurrencyConverter amount={stats.completed_orders_revenue + stats.pending_orders_revenue} />
                         </span>
                       </div>
                       <p
@@ -871,7 +874,7 @@ export default function ProfilesProvider({
                             isDark ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {stats.pending_orders_revenue.toFixed(2)} €
+                          <CurrencyConverter amount={stats.pending_orders_revenue} />
                         </span>
                       </div>
                       <p
@@ -909,7 +912,7 @@ export default function ProfilesProvider({
                             isDark ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {stats.total_earned.toFixed(2)} €
+                          <CurrencyConverter amount={stats.total_earned} />
                         </span>
                       </div>
                       <p
@@ -924,7 +927,7 @@ export default function ProfilesProvider({
                           isDark ? "text-white/40" : "text-slate-500"
                         }`}
                       >
-                        Disponible: {stats.available_balance.toFixed(2)} €
+                        Disponible: <CurrencyConverter amount={stats.available_balance} />
                       </p>
                     </div>
 
@@ -947,7 +950,7 @@ export default function ProfilesProvider({
                             isDark ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {stats.withdrawn_total.toFixed(2)} €
+                          <CurrencyConverter amount={stats.withdrawn_total} />
                         </span>
                       </div>
                       <p
@@ -1105,8 +1108,7 @@ export default function ProfilesProvider({
                                     isDark ? "text-emerald-400" : "text-emerald-600"
                                   }`}
                                 >
-                                  {(withdrawal.net_amount_cents / 100).toFixed(2)}{" "}
-                                  {withdrawal.currency}
+                                  <CurrencyConverter amount={withdrawal.net_amount_cents / 100} />
                                 </span>
                                 {withdrawal.fee_cents > 0 && (
                                   <p
@@ -1114,7 +1116,7 @@ export default function ProfilesProvider({
                                       isDark ? "text-white/50" : "text-slate-500"
                                     }`}
                                   >
-                                    Montant demandé: {(withdrawal.amount_cents / 100).toFixed(2)} € · Frais: {(withdrawal.fee_cents / 100).toFixed(2)} €
+                                    Montant demandé: <CurrencyConverter amount={withdrawal.amount_cents / 100} /> · Frais: <CurrencyConverter amount={withdrawal.fee_cents / 100} />
                                   </p>
                                 )}
                               </div>
@@ -1198,7 +1200,7 @@ export default function ProfilesProvider({
                         isDark ? "bg-amber-900/20 border border-amber-500/30" : "bg-amber-50 border border-amber-200"
                       }`}>
                         <p className={`text-sm ${isDark ? "text-amber-400" : "text-amber-800"}`}>
-                          ℹ️ Un montant de {stats.withdrawn_total.toFixed(2)} € a été retiré, mais l&apos;historique détaillé n&apos;est pas disponible.
+                          ℹ️ Un montant de <CurrencyConverter amount={stats.withdrawn_total} /> a été retiré, mais l&apos;historique détaillé n&apos;est pas disponible.
                         </p>
                       </div>
                     )}

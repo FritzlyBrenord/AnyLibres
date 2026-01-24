@@ -19,8 +19,14 @@ import {
   PieChart,
   Calendar,
   Download,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/hooks/useCurrency";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
+import { AdminBalanceSection } from "./AdminBalanceSection";
 
 interface FinanceStats {
   total_revenue_gross: number;
@@ -63,6 +69,10 @@ interface FinanceStats {
 }
 
 const Finance = ({ isDark }: { isDark?: boolean }) => {
+  const { t, language } = useLanguageContext();
+  const { convertFromUSD, formatAmount } = useCurrency();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -82,11 +92,18 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
       if (data.success) {
         setStats(data.data.stats);
       } else {
-        setError(data.error || "Erreur lors du chargement des statistiques");
+        setError(
+          data.error ||
+            tAny.admin?.finance?.error ||
+            "Erreur lors du chargement des statistiques",
+        );
       }
     } catch (err) {
       console.error("Error fetching finance stats:", err);
-      setError("Impossible de charger les statistiques financières");
+      setError(
+        tAny.admin?.finance?.error ||
+          "Impossible de charger les statistiques financières",
+      );
     } finally {
       setLoading(false);
     }
@@ -98,7 +115,9 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
       const data = await response.json();
 
       if (data.success && data.data.settings) {
-        setWithdrawalFeePercentage(data.data.settings.withdrawal_fee_percentage || 2.5);
+        setWithdrawalFeePercentage(
+          data.data.settings.withdrawal_fee_percentage || 2.5,
+        );
       }
     } catch (err) {
       console.error("Error fetching withdrawal fee:", err);
@@ -112,7 +131,8 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className={`${isDark ? "text-gray-300" : "text-gray-600"}`}>
-            Chargement des statistiques financières...
+            {tAny.admin?.finance?.loading ||
+              "Chargement des statistiques financières..."}
           </p>
         </div>
       </div>
@@ -137,22 +157,99 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
               isDark ? "text-red-300" : "text-red-800"
             }`}
           >
-            {error || "Erreur lors du chargement"}
+            {error || tAny.admin?.finance?.error || "Erreur lors du chargement"}
           </p>
         </div>
       </div>
     );
   }
 
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
+    return formatAmount(convertFromUSD(amount));
+  };
+
+  // Composant Section avec chevron
+  const CollapsibleSection = ({
+    title,
+    icon: Icon,
+    iconColor,
+    children,
+    defaultOpen = false,
+  }: {
+    title: string;
+    icon: React.ElementType;
+    iconColor: string;
+    children: React.ReactNode;
+    defaultOpen?: boolean;
+  }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+      <div
+        className={`border rounded-2xl overflow-hidden mb-6 ${
+          isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-200 bg-white"
+        } shadow-lg shadow-purple-500/5`}
+      >
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full p-6 flex items-center justify-between transition-all ${
+            isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                isDark ? "bg-gray-700" : "bg-gray-100"
+              }`}
+            >
+              <Icon className={`w-5 h-5 ${iconColor}`} />
+            </div>
+            <h3
+              className={`text-xl font-bold ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              {title}
+            </h3>
+          </div>
+          <div
+            className={`p-2 rounded-lg transition-colors ${
+              isDark ? "hover:bg-gray-600" : "hover:bg-gray-200"
+            }`}
+          >
+            {isOpen ? (
+              <ChevronUp
+                className={`w-5 h-5 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+              />
+            ) : (
+              <ChevronDown
+                className={`w-5 h-5 ${isDark ? "text-gray-400" : "text-gray-500"}`}
+              />
+            )}
+          </div>
+        </button>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="p-6 pt-0">{children}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"} p-6`}>
+    <div
+      className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"} p-6`}
+    >
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -166,17 +263,16 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                 isDark ? "text-white" : "text-gray-900"
               }`}
             >
-              Finances du Système
+              {tAny.admin?.finance?.title || "Finances du Système"}
             </h1>
             <p className={isDark ? "text-gray-400" : "text-gray-600"}>
-              Vue d'ensemble complète des revenus et transactions
+              {tAny.admin?.finance?.subtitle ||
+                "Vue d'ensemble complète des revenus et transactions"}
             </p>
           </div>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
-          >
+          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg">
             <Download className="w-5 h-5" />
-            Exporter
+            {tAny.admin?.finance?.export || "Exporter"}
           </button>
         </div>
       </motion.div>
@@ -199,9 +295,13 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           <div className="text-3xl font-bold mb-1">
             {formatCurrency(stats.total_revenue_gross)}
           </div>
-          <p className="text-green-100 text-sm">Revenus Bruts Totaux</p>
+          <p className="text-green-100 text-sm">
+            {tAny.admin?.finance?.cards?.grossRevenue?.title ||
+              "Revenus Bruts Totaux"}
+          </p>
           <p className="text-xs text-green-200 mt-2">
-            Montant total des commandes payées
+            {tAny.admin?.finance?.cards?.grossRevenue?.subtitle ||
+              "Montant total des commandes payées"}
           </p>
         </motion.div>
 
@@ -221,9 +321,13 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           <div className="text-3xl font-bold mb-1">
             {formatCurrency(stats.total_system_revenue)}
           </div>
-          <p className="text-green-100 text-sm">Revenus Système Confirmés</p>
+          <p className="text-green-100 text-sm">
+            {tAny.admin?.finance?.cards?.confirmedRevenue?.title ||
+              "Revenus Système Confirmés"}
+          </p>
           <p className="text-xs text-green-200 mt-2">
-            Clients ont accepté les services
+            {tAny.admin?.finance?.cards?.confirmedRevenue?.subtitle ||
+              "Clients ont accepté les services"}
           </p>
         </motion.div>
 
@@ -243,9 +347,13 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           <div className="text-3xl font-bold mb-1">
             {formatCurrency(stats.total_provider_earnings)}
           </div>
-          <p className="text-blue-100 text-sm">Part Prestataires (95%)</p>
+          <p className="text-blue-100 text-sm">
+            {tAny.admin?.finance?.cards?.providerShare?.title ||
+              "Part Prestataires (95%)"}
+          </p>
           <p className="text-xs text-blue-200 mt-2">
-            Montant total pour les prestataires
+            {tAny.admin?.finance?.cards?.providerShare?.subtitle ||
+              "Montant total pour les prestataires"}
           </p>
         </motion.div>
 
@@ -265,9 +373,13 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           <div className="text-3xl font-bold mb-1">
             {formatCurrency(stats.pending_provider_balance)}
           </div>
-          <p className="text-orange-100 text-sm">Solde Restant Dû</p>
+          <p className="text-orange-100 text-sm">
+            {tAny.admin?.finance?.cards?.pendingBalance?.title ||
+              "Solde Restant Dû"}
+          </p>
           <p className="text-xs text-orange-200 mt-2">
-            Montant restant à payer aux prestataires
+            {tAny.admin?.finance?.cards?.pendingBalance?.subtitle ||
+              "Montant restant à payer aux prestataires"}
           </p>
         </motion.div>
       </div>
@@ -277,257 +389,279 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45 }}
-        className={`${
-          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-        } rounded-2xl p-6 shadow-lg border mb-8`}
       >
-        <h3
-          className={`text-xl font-bold mb-6 flex items-center gap-2 ${
-            isDark ? "text-white" : "text-gray-900"
-          }`}
+        <CollapsibleSection
+          title={tAny.admin?.finance?.systemRevenue?.title || "Revenus Système Détaillés"}
+          icon={DollarSign}
+          iconColor="text-purple-600"
+          defaultOpen={true}
         >
-          <DollarSign className="w-6 h-6 text-purple-600" />
-          Revenus Système Détaillés
-        </h3>
-
-        {/* Revenus CONFIRMÉS */}
-        <div className="mb-6">
-          <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-            ✅ Revenus Confirmés (Clients ont accepté)
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Commission sur commandes (5%) */}
-            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
-                  <ShoppingCart className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Commission Commandes
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    5% confirmé
-                  </p>
-                </div>
-              </div>
-              <span className="text-xl font-bold text-green-600">
-                {formatCurrency(stats.total_revenue_net)}
-              </span>
-            </div>
-
-            {/* Frais de retrait (2.5%) */}
-            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Frais de Retrait
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    {withdrawalFeePercentage}% des retraits
-                  </p>
-                </div>
-              </div>
-              <span className="text-xl font-bold text-green-600">
-                {formatCurrency(stats.total_withdrawal_fees)}
-              </span>
-            </div>
-
-            {/* Total Système CONFIRMÉ */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border-2 border-green-300 dark:border-green-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Total Confirmé
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Argent acquis
-                  </p>
-                </div>
-              </div>
-              <span className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.total_system_revenue)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Revenus EN ATTENTE */}
-        <div className="mb-6">
-          <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-            ⏳ Revenus en Attente (Services non acceptés)
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Commission en Attente
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    5% non confirmé
-                  </p>
-                </div>
-              </div>
-              <span className="text-xl font-bold text-orange-600">
-                {formatCurrency(stats.total_revenue_net_pending)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Prestataires en Attente
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    95% non confirmé
-                  </p>
-                </div>
-              </div>
-              <span className="text-xl font-bold text-orange-600">
-                {formatCurrency(stats.total_provider_earnings_pending)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Remboursements */}
-        {stats.total_refunds > 0 && (
-          <div>
-            <h4 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              ↩️ Remboursements
+          {/* Revenus CONFIRMÉS */}
+          <div className="mb-6">
+            <h4
+              className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
+            >
+              ✅{" "}
+              {tAny.admin?.finance?.systemRevenue?.confirmed ||
+                "Revenus Confirmés (Clients ont accepté)"}
             </h4>
-            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
-                  <TrendingDown className="w-5 h-5 text-red-600" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Commission sur commandes (5%) */}
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.commission ||
+                        "Commission Commandes"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.systemRevenue?.commissionConfirmed ||
+                        "5% confirmé"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Total Remboursé
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Commandes annulées
-                  </p>
-                </div>
+                <span className="text-xl font-bold text-green-600">
+                  {formatCurrency(stats.total_revenue_net)}
+                </span>
               </div>
-              <span className="text-xl font-bold text-red-600">
-                {formatCurrency(stats.total_refunds)}
-              </span>
+
+              {/* Frais de retrait (2.5%) */}
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.withdrawalFees ||
+                        "Frais de Retrait"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {withdrawalFeePercentage}%{" "}
+                      {tAny.admin?.finance?.systemRevenue?.withdrawalFeesDesc ||
+                        "des retraits"}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xl font-bold text-green-600">
+                  {formatCurrency(stats.total_withdrawal_fees)}
+                </span>
+              </div>
+
+              {/* Total Système CONFIRMÉ */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border-2 border-green-300 dark:border-green-700">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {tAny.admin?.finance?.systemRevenue?.totalConfirmed ||
+                        "Total Confirmé"}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.moneyEarned ||
+                        "Argent acquis"}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-green-600">
+                  {formatCurrency(stats.total_system_revenue)}
+                </span>
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Revenus EN ATTENTE */}
+          <div className="mb-6">
+            <h4
+              className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
+            >
+              ⏳{" "}
+              {tAny.admin?.finance?.systemRevenue?.pending ||
+                "Revenus en Attente (Services non acceptés)"}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.commissionPending ||
+                        "Commission en Attente"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.systemRevenue
+                        ?.commissionNotConfirmed || "5% non confirmé"}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xl font-bold text-orange-600">
+                  {formatCurrency(stats.total_revenue_net_pending)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.providersPending ||
+                        "Prestataires en Attente"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.systemRevenue
+                        ?.providersNotConfirmed || "95% non confirmé"}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xl font-bold text-orange-600">
+                  {formatCurrency(stats.total_provider_earnings_pending)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Remboursements */}
+          {stats.total_refunds > 0 && (
+            <div>
+              <h4
+                className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
+              >
+                ↩️{" "}
+                {tAny.admin?.finance?.systemRevenue?.refunds || "Remboursements"}
+              </h4>
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
+                    <TrendingDown className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.systemRevenue?.totalRefunded ||
+                        "Total Remboursé"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.systemRevenue?.cancelledOrders ||
+                        "Commandes annulées"}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xl font-bold text-red-600">
+                  {formatCurrency(stats.total_refunds)}
+                </span>
+              </div>
+            </div>
+          )}
+        </CollapsibleSection>
       </motion.div>
 
-      {/* Detailed Stats Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Soldes Prestataires Détaillés */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className={`${
-            isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-          } rounded-2xl p-6 shadow-lg border`}
         >
-          <h3
-            className={`text-xl font-bold mb-6 flex items-center gap-2 ${
-              isDark ? "text-white" : "text-gray-900"
-            }`}
+          <CollapsibleSection
+            title={tAny.admin?.finance?.providerBalances?.title || "Soldes Prestataires Détaillés"}
+            icon={Wallet}
+            iconColor="text-purple-600"
+            defaultOpen={false}
           >
-            <Wallet className="w-6 h-6 text-purple-600" />
-            Soldes Prestataires Détaillés
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.providerBalances?.available ||
+                        "Disponible"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.providerBalances?.availableDesc ||
+                        "Prêt à être retiré"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Disponible
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Prêt à être retiré
-                  </p>
-                </div>
+                <span className="text-xl font-bold text-green-600">
+                  {formatCurrency(stats.provider_balances.available)}
+                </span>
               </div>
-              <span className="text-xl font-bold text-green-600">
-                {formatCurrency(stats.provider_balances.available)}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-orange-600" />
+              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.providerBalances?.pending ||
+                        "En attente"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.providerBalances?.pendingDesc ||
+                        "Commandes en cours"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    En attente
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Commandes en cours
-                  </p>
-                </div>
+                <span className="text-xl font-bold text-orange-600">
+                  {formatCurrency(stats.provider_balances.pending)}
+                </span>
               </div>
-              <span className="text-xl font-bold text-orange-600">
-                {formatCurrency(stats.provider_balances.pending)}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
-                  <ArrowDownRight className="w-5 h-5 text-blue-600" />
+              <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                    <ArrowDownRight className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.providerBalances?.withdrawn ||
+                        "Retiré"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.providerBalances?.withdrawnDesc ||
+                        "Total des retraits"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Retiré
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Total des retraits
-                  </p>
-                </div>
+                <span className="text-xl font-bold text-blue-600">
+                  {formatCurrency(stats.provider_balances.withdrawn)}
+                </span>
               </div>
-              <span className="text-xl font-bold text-blue-600">
-                {formatCurrency(stats.provider_balances.withdrawn)}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
+              <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {tAny.admin?.finance?.providerBalances?.totalEarned ||
+                        "Total Gagné"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {tAny.admin?.finance?.providerBalances?.totalEarnedDesc ||
+                        "Cumul total"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Total Gagné
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Cumul total
-                  </p>
-                </div>
+                <span className="text-xl font-bold text-purple-600">
+                  {formatCurrency(stats.provider_balances.total_earned)}
+                </span>
               </div>
-              <span className="text-xl font-bold text-purple-600">
-                {formatCurrency(stats.provider_balances.total_earned)}
-              </span>
             </div>
-          </div>
+          </CollapsibleSection>
         </motion.div>
 
         {/* Statistiques Commandes */}
@@ -535,173 +669,177 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className={`${
-            isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-          } rounded-2xl p-6 shadow-lg border`}
         >
-          <h3
-            className={`text-xl font-bold mb-6 flex items-center gap-2 ${
-              isDark ? "text-white" : "text-gray-900"
-            }`}
+          <CollapsibleSection
+            title={tAny.admin?.finance?.orderStats?.title || "Statistiques Commandes"}
+            icon={ShoppingCart}
+            iconColor="text-purple-600"
+            defaultOpen={false}
           >
-            <ShoppingCart className="w-6 h-6 text-purple-600" />
-            Statistiques Commandes
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                    {tAny.admin?.finance?.orderStats?.total || "Total"}
+                  </span>
                 </div>
-                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                  Total
+                <span
+                  className={`text-xl font-bold ${
+                    isDark ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  {stats.orders.total}
                 </span>
               </div>
-              <span
-                className={`text-xl font-bold ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
-                {stats.orders.total}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                    {tAny.admin?.finance?.orderStats?.completed || "Complétées"}
+                  </span>
                 </div>
-                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                  Complétées
+                <span className="text-xl font-bold text-green-600">
+                  {stats.orders.completed}
                 </span>
               </div>
-              <span className="text-xl font-bold text-green-600">
-                {stats.orders.completed}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-orange-600" />
+              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                    {tAny.admin?.finance?.orderStats?.pending || "En cours"}
+                  </span>
                 </div>
-                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                  En cours
+                <span className="text-xl font-bold text-orange-600">
+                  {stats.orders.pending}
                 </span>
               </div>
-              <span className="text-xl font-bold text-orange-600">
-                {stats.orders.pending}
-              </span>
-            </div>
 
-            <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-red-600" />
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                    {tAny.admin?.finance?.orderStats?.cancelled || "Annulées"}
+                  </span>
                 </div>
-                <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                  Annulées
+                <span className="text-xl font-bold text-red-600">
+                  {stats.orders.cancelled}
                 </span>
               </div>
-              <span className="text-xl font-bold text-red-600">
-                {stats.orders.cancelled}
-              </span>
             </div>
-          </div>
+          </CollapsibleSection>
         </motion.div>
       </div>
+
+      {/* Section Solde Admin avec Dons et Retraits */}
+      <AdminBalanceSection isDark={isDark} systemRevenue={stats.total_system_revenue} />
 
       {/* Monthly Revenue Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
-        className={`${
-          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-        } rounded-2xl p-6 shadow-lg border mb-8`}
       >
-        <h3
-          className={`text-xl font-bold mb-6 flex items-center gap-2 ${
-            isDark ? "text-white" : "text-gray-900"
-          }`}
+        <CollapsibleSection
+          title={tAny.admin?.finance?.monthlyRevenue?.title || "Revenus Mensuels (12 derniers mois)"}
+          icon={Calendar}
+          iconColor="text-purple-600"
+          defaultOpen={false}
         >
-          <Calendar className="w-6 h-6 text-purple-600" />
-          Revenus Mensuels (12 derniers mois)
-        </h3>
-        <div className="space-y-3">
-          {stats.monthly_stats.map((month, index) => {
-            const maxRevenue = Math.max(
-              ...stats.monthly_stats.map((m) => m.revenue)
-            );
-            const percentage = (month.revenue / maxRevenue) * 100;
+          <div className="space-y-3">
+            {stats.monthly_stats.map((month, index) => {
+              const maxRevenue = Math.max(
+                ...stats.monthly_stats.map((m) => m.revenue),
+              );
+              const percentage = (month.revenue / maxRevenue) * 100;
 
-            return (
-              <div key={index}>
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isDark ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    {month.month}
-                  </span>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-purple-600 font-semibold">
-                      Plateforme: {formatCurrency(month.platform_share)}
-                    </span>
-                    <span className="text-blue-600 font-semibold">
-                      Providers: {formatCurrency(month.provider_share)}
-                    </span>
+              return (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
                     <span
-                      className={`font-bold ${
-                        isDark ? "text-white" : "text-gray-900"
+                      className={`text-sm font-medium ${
+                        isDark ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
-                      {formatCurrency(month.revenue)}
+                      {month.month}
+                    </span>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-purple-600 font-semibold">
+                        {tAny.admin?.finance?.monthlyRevenue?.platform ||
+                          "Plateforme"}
+                        : {formatCurrency(month.platform_share)}
+                      </span>
+                      <span className="text-blue-600 font-semibold">
+                        {tAny.admin?.finance?.monthlyRevenue?.providers ||
+                          "Providers"}
+                        : {formatCurrency(month.provider_share)}
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          isDark ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        {formatCurrency(month.revenue)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 h-8">
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <div className="h-full flex">
+                        {/* Part Plateforme (5%) */}
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage * 0.05}%` }}
+                          transition={{ duration: 0.8, delay: index * 0.05 }}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center"
+                        >
+                          {percentage * 0.05 > 2 && (
+                            <span className="text-xs font-semibold text-white">
+                              5%
+                            </span>
+                          )}
+                        </motion.div>
+                        {/* Part Prestataires (95%) */}
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage * 0.95}%` }}
+                          transition={{ duration: 0.8, delay: index * 0.05 }}
+                          className="bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center"
+                        >
+                          {percentage * 0.95 > 5 && (
+                            <span className="text-xs font-semibold text-white">
+                              95%
+                            </span>
+                          )}
+                        </motion.div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end mt-1">
+                    <span className="text-xs text-gray-500">
+                      {month.orders_count}{" "}
+                      {month.orders_count > 1
+                        ? tAny.admin?.finance?.monthlyRevenue?.orders ||
+                          "commandes"
+                        : tAny.admin?.finance?.monthlyRevenue?.order ||
+                          "commande"}
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-1 h-8">
-                  <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                    <div className="h-full flex">
-                      {/* Part Plateforme (5%) */}
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage * 0.05}%` }}
-                        transition={{ duration: 0.8, delay: index * 0.05 }}
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center"
-                      >
-                        {percentage * 0.05 > 2 && (
-                          <span className="text-xs font-semibold text-white">
-                            5%
-                          </span>
-                        )}
-                      </motion.div>
-                      {/* Part Prestataires (95%) */}
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage * 0.95}%` }}
-                        transition={{ duration: 0.8, delay: index * 0.05 }}
-                        className="bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center"
-                      >
-                        {percentage * 0.95 > 5 && (
-                          <span className="text-xs font-semibold text-white">
-                            95%
-                          </span>
-                        )}
-                      </motion.div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end mt-1">
-                  <span className="text-xs text-gray-500">
-                    {month.orders_count} commande{month.orders_count > 1 ? "s" : ""}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
       </motion.div>
 
       {/* Summary */}
@@ -709,55 +847,52 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-xl"
       >
-        <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <PieChart className="w-7 h-7" />
-          Répartition Globale
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-2">
-              {formatCurrency(stats.total_revenue_gross)}
+        <CollapsibleSection
+          title={tAny.admin?.finance?.globalDistribution?.title || "Répartition Globale"}
+          icon={PieChart}
+          iconColor="text-white"
+          defaultOpen={false}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl text-white">
+            <div className="text-center">
+              <p className="text-purple-100 text-sm mb-1">
+                {tAny.admin?.finance?.globalDistribution?.confirmed ||
+                  "Revenus Confirmés"}
+              </p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(stats.total_system_revenue)}
+              </p>
             </div>
-            <p className="text-purple-100">Revenus Bruts Totaux</p>
-            <p className="text-xs text-purple-200 mt-1">100% des commandes</p>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-2">
-              {formatCurrency(stats.total_provider_earnings)}
+            <div className="text-center">
+              <p className="text-purple-100 text-sm mb-1">
+                {tAny.admin?.finance?.globalDistribution?.pending ||
+                  "Revenus en Attente"}
+              </p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(stats.total_system_revenue_pending)}
+              </p>
             </div>
-            <p className="text-purple-100">Part Prestataires</p>
-            <p className="text-xs text-purple-200 mt-1">95% des commandes</p>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-2">
-              {formatCurrency(stats.total_revenue_net)}
+            <div className="text-center">
+              <p className="text-purple-100 text-sm mb-1">
+                {tAny.admin?.finance?.globalDistribution?.refunds ||
+                  "Remboursements"}
+              </p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(stats.total_refunds)}
+              </p>
             </div>
-            <p className="text-purple-100">Commission Commandes</p>
-            <p className="text-xs text-purple-200 mt-1">5% des commandes</p>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-2">
-              {formatCurrency(stats.total_withdrawal_fees)}
+            <div className="text-center">
+              <p className="text-purple-100 text-sm mb-1">
+                {tAny.admin?.finance?.globalDistribution?.gross ||
+                  "Volume Brut"}
+              </p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(stats.total_revenue_gross)}
+              </p>
             </div>
-            <p className="text-purple-100">Frais de Retrait</p>
-            <p className="text-xs text-purple-200 mt-1">{withdrawalFeePercentage}% des retraits</p>
           </div>
-        </div>
-
-        {/* Total Système avec mise en évidence */}
-        <div className="mt-8 pt-6 border-t border-white/20">
-          <div className="text-center">
-            <p className="text-purple-100 text-sm mb-2">REVENUS TOTAL SYSTÈME</p>
-            <div className="text-5xl font-bold mb-2">
-              {formatCurrency(stats.total_system_revenue)}
-            </div>
-            <p className="text-purple-200 text-sm">
-              Commission 5% + Frais retrait {withdrawalFeePercentage}% = {formatCurrency(stats.total_revenue_net)} + {formatCurrency(stats.total_withdrawal_fees)}
-            </p>
-          </div>
-        </div>
+        </CollapsibleSection>
       </motion.div>
     </div>
   );

@@ -56,12 +56,26 @@ interface ServiceFormData {
   location_type: string[];
 }
 
-export default function EditServicePage() {
+// Props pour utilisation en modal ou standalone
+interface EditServicePageProps {
+  serviceId?: string; // ID passé en prop (pour modal)
+  onClose?: () => void; // Callback pour fermer le modal après sauvegarde
+  isModal?: boolean; // Indique si on est dans un modal
+  isAdmin?: boolean; // Indique si c'est un admin (utilise API admin)
+}
+
+export default function EditServicePage({
+  serviceId: propServiceId,
+  onClose,
+  isModal = false,
+  isAdmin = false,
+}: EditServicePageProps = {}) {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
 
-  const serviceId = params.id as string;
+  // Utiliser l'ID en prop si fourni, sinon utiliser les params de route
+  const serviceId = propServiceId || (params?.id as string);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -333,7 +347,12 @@ export default function EditServicePage() {
 
       console.log("Sending update data:", serviceData); // Debug
 
-      const response = await fetch(`/api/services/${serviceId}`, {
+      // Utiliser l'API admin si isAdmin, sinon l'API normale
+      const apiUrl = isAdmin
+        ? `/api/admin/services/${serviceId}`
+        : `/api/services/${serviceId}`;
+
+      const response = await fetch(apiUrl, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -359,7 +378,12 @@ export default function EditServicePage() {
 
       if (data.success) {
         alert("Service mis à jour avec succès!");
-        router.push("/Provider/TableauDeBord/Service");
+        // Si on est dans un modal, appeler onClose, sinon naviguer
+        if (isModal && onClose) {
+          onClose();
+        } else {
+          router.push("/Provider/TableauDeBord/Service");
+        }
       } else {
         throw new Error(
           data.error || "Erreur lors de la modification du service"
@@ -486,60 +510,101 @@ export default function EditServicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Sticky */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push("/Provider/TableauDeBord/Service")}
-                className="flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Retour
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Modifier le service
-                </h1>
-                <p className="text-gray-600">
-                  Modifiez les informations de votre service
-                </p>
+    <div className={isModal ? "bg-gray-50" : "min-h-screen bg-gray-50"}>
+      {/* Header Sticky - Caché si dans un modal (le modal a son propre header) */}
+      {!isModal && (
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.push("/Provider/TableauDeBord/Service")}
+                  className="flex items-center text-gray-600 hover:text-gray-900"
+                >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
+                  Retour
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Modifier le service
+                  </h1>
+                  <p className="text-gray-600">
+                    Modifiez les informations de votre service
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => handleSubmit("draft")}
+                  disabled={saving}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? "Sauvegarde..." : "Sauvegarder brouillon"}
+                </button>
+                <button
+                  onClick={() => handleSubmit("published")}
+                  disabled={saving}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {saving ? "Publication..." : "Mettre à jour"}
+                </button>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/Provider/TableauDeBord/Service/view/${serviceId}`
+                    )
+                  }
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Voir
+                </button>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+          </div>
+        </div>
+      )}
+
+      {/* Header pour Mode Inline (admin) */}
+      {isModal && (
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center justify-between">
+            {/* Bouton Retour à la vue */}
+            <button
+              onClick={onClose}
+              className="flex items-center text-gray-600 hover:text-gray-900 text-sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Retour à la vue</span>
+              <span className="sm:hidden">Retour</span>
+            </button>
+
+            {/* Boutons d'action */}
+            <div className="flex items-center space-x-2 md:space-x-3">
               <button
                 onClick={() => handleSubmit("draft")}
                 disabled={saving}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center"
+                className="px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center text-xs md:text-sm"
               >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? "Sauvegarde..." : "Sauvegarder brouillon"}
+                <Save className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">{saving ? "Sauvegarde..." : "Brouillon"}</span>
+                <span className="sm:hidden">{saving ? "..." : "Brouillon"}</span>
               </button>
               <button
                 onClick={() => handleSubmit("published")}
                 disabled={saving}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center text-xs md:text-sm"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                {saving ? "Publication..." : "Mettre à jour"}
-              </button>
-              <button
-                onClick={() =>
-                  router.push(
-                    `/Provider/TableauDeBord/Service/view/${serviceId}`
-                  )
-                }
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Voir
+                <Upload className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">{saving ? "Publication..." : "Mettre à jour"}</span>
+                <span className="sm:hidden">{saving ? "..." : "Publier"}</span>
               </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

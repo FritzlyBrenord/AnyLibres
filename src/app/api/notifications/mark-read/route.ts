@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { inAppNotificationService } from '@/lib/notifications/inAppNotificationService';
 
 export async function POST(req: NextRequest) {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data: { user }, error } = await supabase.auth.getUser();
 

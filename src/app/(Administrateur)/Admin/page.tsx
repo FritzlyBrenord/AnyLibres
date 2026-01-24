@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { useLanguageContext } from "../../../contexts/LanguageContext";
 import {
   Rocket,
   Shield,
@@ -23,6 +24,8 @@ import {
 } from "lucide-react";
 
 export default function AdminPage() {
+  const { t } = useLanguageContext();
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Hero Section Premium */}
@@ -42,33 +45,32 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <span className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-400 rounded-full text-sm font-medium">
-                    VERSION PREMIUM
+                    {t.admin?.common?.version || 'VERSION PREMIUM'}
                   </span>
                 </div>
               </div>
 
               <h1 className="text-4xl lg:text-5xl font-bold mb-4">
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                  Tableau de Bord Exclusif
+                  {t.admin?.dashboard?.hero?.title || 'Tableau de Bord Exclusif'}
                 </span>
               </h1>
 
               <p className="text-xl text-gray-300 mb-8">
-                Gérez votre plateforme Anylibre avec des outils professionnels
-                et des insights avancés
+                {t.admin?.dashboard?.hero?.subtitle || 'Gérez votre plateforme Anylibre avec des outils professionnels et des insights avancés'}
               </p>
 
               <div className="flex flex-wrap gap-4">
                 <button className="px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105">
                   <div className="flex items-center gap-2">
                     <Zap className="w-5 h-5" />
-                    Démarrer un Audit
+                    {t.admin?.dashboard?.hero?.cta?.audit || 'Démarrer un Audit'}
                   </div>
                 </button>
                 <button className="px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:shadow-2xl hover:shadow-gray-500/30 transition-all duration-300 hover:scale-105">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5" />
-                    Voir les Analytics
+                    {t.admin?.dashboard?.hero?.cta?.analytics || 'Voir les Analytics'}
                   </div>
                 </button>
               </div>
@@ -123,7 +125,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
           {
-            title: "Revenus Totaux",
+            title: t.admin?.dashboard?.stats?.revenue || "Revenus Totaux",
             value: "$124,890",
             change: "+23.5%",
             icon: <DollarSign className="w-6 h-6" />,
@@ -131,7 +133,7 @@ export default function AdminPage() {
             details: "Mois en cours",
           },
           {
-            title: "Utilisateurs Actifs",
+            title: t.admin?.dashboard?.stats?.users || "Utilisateurs Actifs",
             value: "2,456",
             change: "+12.3%",
             icon: <Users className="w-6 h-6" />,
@@ -139,7 +141,7 @@ export default function AdminPage() {
             details: "324 nouveaux",
           },
           {
-            title: "Commandes Traitées",
+            title: t.admin?.dashboard?.stats?.projects || "Commandes Traitées",
             value: "892",
             change: "+8.7%",
             icon: <Package className="w-6 h-6" />,
@@ -147,7 +149,7 @@ export default function AdminPage() {
             details: "56 en attente",
           },
           {
-            title: "Performance",
+            title: t.admin?.dashboard?.stats?.performance || "Performance",
             value: "94%",
             change: "+5.2%",
             icon: <TrendingUp className="w-6 h-6" />,
@@ -199,10 +201,10 @@ export default function AdminPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-white mb-2">
-                Actions Rapides
+                {t.admin?.dashboard?.quickActions?.title || "Actions Rapides"}
               </h3>
               <p className="text-gray-400">
-                Accédez rapidement aux fonctionnalités principales
+                {t.admin?.dashboard?.quickActions?.subtitle || "Accédez rapidement aux fonctionnalités principales"}
               </p>
             </div>
             <Sparkles className="w-6 h-6 text-yellow-500" />
@@ -210,16 +212,16 @@ export default function AdminPage() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: <Users />, label: "Utilisateurs", color: "bg-blue-500" },
-              { icon: <Package />, label: "Commandes", color: "bg-purple-500" },
+              { icon: <Users />, label: t.admin?.dashboard?.quickActions?.actions?.users || "Utilisateurs", color: "bg-blue-500" },
+              { icon: <Package />, label: t.admin?.dashboard?.quickActions?.actions?.orders || "Commandes", color: "bg-purple-500" },
               {
                 icon: <DollarSign />,
-                label: "Paiements",
+                label: t.admin?.dashboard?.quickActions?.actions?.payments || "Paiements",
                 color: "bg-green-500",
               },
               {
                 icon: <BarChart3 />,
-                label: "Rapports",
+                label: t.admin?.dashboard?.quickActions?.actions?.reports || "Rapports",
                 color: "bg-orange-500",
               },
             ].map((action, idx) => (
@@ -252,14 +254,14 @@ export default function AdminPage() {
           <div className="flex items-center gap-3 mb-6">
             <Award className="w-6 h-6 text-yellow-500" />
             <div>
-              <h3 className="text-lg font-bold text-white">Statut VIP</h3>
-              <p className="text-sm text-gray-400">Niveau Administrateur</p>
+              <h3 className="text-lg font-bold text-white">{t.admin?.dashboard?.vip?.title || "Statut VIP"}</h3>
+              <p className="text-sm text-gray-400">{t.admin?.dashboard?.vip?.level || "Niveau Administrateur"}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Complétude</span>
+              <span className="text-gray-400">{t.admin?.dashboard?.vip?.completion || "Complétude"}</span>
               <span className="text-white font-bold">94%</span>
             </div>
             <div className="w-full bg-gray-700 rounded-full h-2">
@@ -271,12 +273,12 @@ export default function AdminPage() {
 
             <div className="pt-4 border-t border-gray-700">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400">Permissions</span>
-                <span className="text-green-500 font-bold">Illimitées</span>
+                <span className="text-gray-400">{t.admin?.dashboard?.vip?.permissions || "Permissions"}</span>
+                <span className="text-green-500 font-bold">{t.admin?.dashboard?.vip?.unlimited || "Illimitées"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Accès</span>
-                <span className="text-blue-500 font-bold">Complet</span>
+                <span className="text-gray-400">{t.admin?.dashboard?.vip?.access || "Accès"}</span>
+                <span className="text-blue-500 font-bold">{t.admin?.dashboard?.vip?.full || "Complet"}</span>
               </div>
             </div>
           </div>
@@ -297,31 +299,31 @@ export default function AdminPage() {
           </div>
           <div className="flex-1">
             <h3 className="text-xl font-bold text-white mb-2">
-              🎯 Phase de Développement Premium
+              {t.admin?.dashboard?.devNote?.title || "🎯 Phase de Développement Premium"}
             </h3>
             <p className="text-gray-300 mb-3">
-              Cette interface admin est maintenant complète avec :
+              {t.admin?.dashboard?.devNote?.subtitle || "Cette interface admin est maintenant complète avec :"}
             </p>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
               <li className="flex items-center gap-2 text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                Design premium avec thème clair/sombre
+                {t.admin?.dashboard?.devNote?.items?.design || "Design premium avec thème clair/sombre"}
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                Navigation fluide et animations
+                {t.admin?.dashboard?.devNote?.items?.nav || "Navigation fluide et animations"}
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                Données de test complètes
+                {t.admin?.dashboard?.devNote?.items?.data || "Données de test complètes"}
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                Interface 100% responsive
+                {t.admin?.dashboard?.devNote?.items?.responsive || "Interface 100% responsive"}
               </li>
             </ul>
             <p className="text-blue-400 font-medium">
-              Prêt pour le développement des modules métier !
+              {t.admin?.dashboard?.devNote?.footer || "Prêt pour le développement des modules métier !"}
             </p>
           </div>
         </div>

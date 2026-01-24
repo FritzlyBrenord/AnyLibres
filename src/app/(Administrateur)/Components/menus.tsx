@@ -63,6 +63,13 @@ export const mainMenus: MenuItem[] = [
     gradient: "from-orange-500 to-red-500",
   },
   {
+    id: "disputes",
+    label: "Litiges",
+    icon: <AlertTriangle className="w-5 h-5" />,
+    description: "Gestion des conflits",
+    gradient: "from-red-500 to-pink-600",
+  },
+  {
     id: "finance",
     label: "Finance",
     icon: <CreditCard className="w-5 h-5" />,
@@ -91,6 +98,13 @@ export const mainMenus: MenuItem[] = [
     icon: <FileText className="w-5 h-5" />,
     description: "Données premium",
     gradient: "from-amber-500 to-yellow-500",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    icon: <Bell className="w-5 h-5" />,
+    description: "Envoyer des notifications",
+    gradient: "from-purple-500 to-pink-500",
   },
 ];
 
@@ -131,6 +145,7 @@ export type MenuId =
   | "dashboard"
   | "services"
   | "orders"
+  | "disputes"
   | "finance"
   | "users"
   | "analytics"
@@ -138,7 +153,8 @@ export type MenuId =
   | "settings"
   | "security"
   | "messages"
-  | "calendar";
+  | "calendar"
+  | "notifications";
 
 // Données de test pour les graphiques et statistiques
 export const mockStats = {

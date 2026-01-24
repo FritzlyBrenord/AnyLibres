@@ -30,6 +30,7 @@ import {
   Video,
   Music,
   Link,
+  XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { compressImage } from "@/utils/lib/imageCompression";
@@ -107,6 +108,14 @@ interface OrderDetails {
       description: { fr: string; en: string };
       required: boolean;
     }>;
+  };
+  dispute?: {
+    id: string;
+    reason: string;
+    details: string;
+    status: string;
+    created_at: string;
+    resolved_at?: string;
   };
 }
 
@@ -699,46 +708,72 @@ export default function ProviderOrderDetailPage() {
               </p>
             </div>
 
-            {/* Actions rapides */}
-            <div className="flex gap-3">
-              {order.status === "paid" && (
-                <button
-                  onClick={handleStartOrder}
-                  disabled={processing}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                >
-                  {processing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Play className="w-4 h-4" />
-                  )}
-                  Démarrer la commande
-                </button>
-              )}
-              {(order.status === "in_progress" ||
-                order.status === "revision_requested" ||
-                order.status === "delivery_delayed") && (
-                <button
-                  onClick={() =>
-                    setDeliveryModal({
-                      isOpen: true,
-                      isRevision: order.status === "revision_requested",
-                      uploadProgress: 0,
-                      uploadStatus: "",
-                    })
-                  }
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
-                >
-                  <Send className="w-4 h-4" />
-                  {order.status === "revision_requested"
-                    ? "Livrer la révision"
-                    : "Livrer le travail"}
-                </button>
-              )}
-            </div>
+            {/* Actions rapides - Cachées si commande remboursée ou annulée */}
+            {order.status !== "refunded" && order.status !== "cancelled" && (
+              <div className="flex gap-3">
+                {order.status === "paid" && (
+                  <button
+                    onClick={handleStartOrder}
+                    disabled={processing}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                  >
+                    {processing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                    Démarrer la commande
+                  </button>
+                )}
+                {(order.status === "in_progress" ||
+                  order.status === "revision_requested" ||
+                  order.status === "delivery_delayed") && (
+                  <button
+                    onClick={() =>
+                      setDeliveryModal({
+                        isOpen: true,
+                        isRevision: order.status === "revision_requested",
+                        uploadProgress: 0,
+                        uploadStatus: "",
+                      })
+                    }
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <Send className="w-4 h-4" />
+                    {order.status === "revision_requested"
+                      ? "Livrer la révision"
+                      : "Livrer le travail"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Bannière d'alerte pour commande remboursée */}
+      {order.status === "refunded" && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <div className="bg-gradient-to-r from-gray-600 to-slate-700 text-white rounded-2xl shadow-2xl p-6 border-2 border-gray-400">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold mb-2">
+                  💰 Commande remboursée
+                </h3>
+                <p className="text-white/90 mb-2">
+                  Cette commande a été remboursée au client. Aucune action n'est possible.
+                </p>
+                <p className="text-white/70 text-sm">
+                  Le montant a été déduit de votre solde et crédité au client.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bannière d'alerte pour révisions */}
       {hasRevisionRequested && (
@@ -770,6 +805,90 @@ export default function ProviderOrderDetailPage() {
                 >
                   Voir les révisions
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Bannière de Litige pour le Prestataire */}
+      {order.status === "disputed" && order.dispute && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <div className={`rounded-2xl shadow-2xl overflow-hidden border-2 ${
+            order.dispute.details?.includes("📅 Demande de Médiation :")
+              ? "bg-gradient-to-r from-blue-600 to-indigo-700 border-blue-400"
+              : "bg-gradient-to-r from-red-600 to-rose-700 border-red-400"
+          } text-white p-6`}>
+            <div className="flex items-start gap-5">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center flex-shrink-0">
+                {order.dispute.details?.includes("📅 Demande de Médiation :") ? (
+                  <Calendar className="w-8 h-8" />
+                ) : (
+                  <AlertTriangle className="w-8 h-8 animate-pulse" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-bold">
+                    {order.dispute.details?.includes("📅 Demande de Médiation :")
+                      ? "📅 Médiation en attente"
+                      : "⚠️ Commande en Litige"}
+                  </h3>
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider">
+                    Arbitrage Anylibre
+                  </span>
+                </div>
+
+                {order.dispute.details?.includes("📅 Demande de Médiation :") ? (
+                   <>
+                     <p className="text-blue-50/90 mb-4 max-w-2xl">
+                       Le client a demandé une réunion de médiation pour discuter de la commande. 
+                       Un administrateur va organiser la conversation.
+                     </p>
+                     
+                     {/* Extraction de la date/heure si possible (simplifié pour l'instant via affichage direct) */}
+                     <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                        <div className="bg-white/10 p-4 rounded-xl border border-white/20">
+                           <p className="text-xs text-blue-200 uppercase font-bold mb-1">Disponibilités client</p>
+                           <p className="font-semibold text-lg">
+                              {order.dispute.details.split("📅 Demande de Médiation :")[1]?.trim() || "Consultez le chat"}
+                           </p>
+                        </div>
+                        <div className="bg-white/10 p-4 rounded-xl border border-white/20">
+                           <p className="text-xs text-blue-200 uppercase font-bold mb-1">Motif du client</p>
+                           <p className="font-semibold">{order.dispute.reason}</p>
+                        </div>
+                     </div>
+
+                     <div className="bg-white/10 p-4 rounded-xl border border-white/20 italic text-sm mb-4">
+                        <p className="text-blue-100 font-bold mb-1 uppercase text-[10px]">Détails de la demande :</p>
+                        {order.dispute.details.split("📅 Demande de Médiation :")[0]?.trim()}
+                     </div>
+
+                     {/* Mediation Access Button */}
+                     <button
+                       onClick={() => router.push(`/litige/${order.dispute.id}`)}
+                       className="w-full sm:w-auto px-6 py-3 bg-white text-blue-700 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg flex items-center justify-center gap-2"
+                     >
+                       <MessageSquare className="w-5 h-5" />
+                       Rejoindre la Médiation
+                     </button>
+                   </>
+                ) : (
+                   <>
+                     <p className="text-red-50/90 mb-4 max-w-2xl">
+                       Un litige a été ouvert sur cette commande. Les fonds sont temporairement bloqués par la plateforme.
+                     </p>
+                     <div className="flex items-center gap-3 p-4 bg-black/20 rounded-xl border border-white/10">
+                        <Loader2 className="w-5 h-5 animate-spin text-red-200" />
+                        <p className="text-sm font-medium">
+                          Un administrateur Anylibre analyse actuellement le dossier. Vous serez notifié dès qu'une action est requise de votre part.
+                        </p>
+                     </div>
+                     <p className="mt-4 text-xs text-red-200 italic">
+                       Note : Les détails de la réclamation client ne sont visibles que par l'administrateur pendant la phase d'analyse initiale.
+                     </p>
+                   </>
+                )}
               </div>
             </div>
           </div>

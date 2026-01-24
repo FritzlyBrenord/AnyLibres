@@ -88,8 +88,9 @@ export async function GET(request: Request) {
     const activeOrders = orders.filter(o =>
       o.status === 'pending' ||
       o.status === 'in_progress' ||
-      o.status === 'in_review'
+      o.status === 'revision_requested'
     );
+    const disputedOrders = orders.filter(o => o.status === 'disputed');
     const cancelledOrders = orders.filter(o => o.status === 'cancelled');
 
     // Récupérer les revenus réels depuis provider_earnings
@@ -106,6 +107,7 @@ export async function GET(request: Request) {
     // Calculer les revenus basés sur provider_earnings (montant net après frais)
     let completedOrdersRevenue = 0;
     let pendingOrdersRevenue = 0;
+    let disputedOrdersRevenue = 0;
 
     // Créer un map des earnings par order_id
     const earningsMap = new Map((earningsData || []).map(e => [e.order_id, e]));
@@ -131,14 +133,26 @@ export async function GET(request: Request) {
       }
     });
 
+    disputedOrders.forEach(order => {
+      const earning = earningsMap.get(order.id);
+      if (earning) {
+        disputedOrdersRevenue += earning.net_amount_cents || 0;
+      } else {
+        disputedOrdersRevenue += (order.total_cents * 0.95) || 0;
+      }
+    });
+
     completedOrdersRevenue = completedOrdersRevenue / 100;
     pendingOrdersRevenue = pendingOrdersRevenue / 100;
+    disputedOrdersRevenue = disputedOrdersRevenue / 100;
 
     console.log('[API PROVIDER-STATS] Revenue calculation:', {
       completedOrdersRevenue,
       pendingOrdersRevenue,
+      disputedOrdersRevenue,
       completedOrdersCount: completedOrders.length,
-      activeOrdersCount: activeOrders.length
+      activeOrdersCount: activeOrders.length,
+      disputedOrdersCount: disputedOrders.length
     });
 
     // Calculer le total retiré depuis provider_withdrawals (utiliser net_amount_cents, pas amount_cents)
@@ -178,10 +192,12 @@ export async function GET(request: Request) {
       withdrawn_total: withdrawnTotal,
       completed_orders: completedOrders.length,
       active_orders: activeOrders.length,
+      disputed_orders: disputedOrders.length,
       cancelled_orders: cancelledOrders.length,
       total_orders: orders.length,
       completed_orders_revenue: completedOrdersRevenue,
       pending_orders_revenue: pendingOrdersRevenue,
+      disputed_orders_revenue: disputedOrdersRevenue,
     };
 
     console.log('[API PROVIDER-STATS] Final stats:', stats);

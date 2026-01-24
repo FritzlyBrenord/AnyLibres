@@ -13,6 +13,8 @@ import {
   Eye,
   Calendar,
 } from 'lucide-react';
+import { useLanguageContext } from '@/contexts/LanguageContext';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface Withdrawal {
   id: string;
@@ -35,10 +37,16 @@ interface WithdrawalManagementProps {
 }
 
 export default function WithdrawalManagement({ isDark }: WithdrawalManagementProps) {
+  const { t } = useLanguageContext();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
+
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed' | 'failed'>('all');
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -97,16 +105,19 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
     setStats(stats);
   };
 
-  const formatCurrency = (cents: number, currency: string = 'EUR') => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currency,
-    }).format(cents / 100);
+  const { language } = useLanguageContext();
+  const { convertFromUSD, formatAmount } = useCurrency();
+
+  const formatCurrency = (cents: number, currency: string = 'USD') => {
+    // Les retraits sont stockés en cents USD.
+    // On convertit d'abord en USD (unité), puis vers la devise par défaut.
+    return formatAmount(convertFromUSD(cents / 100));
   };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('fr-FR', {
+    const locale = language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US';
+    return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -130,9 +141,14 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
     return (
       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
         <Icon className="w-3 h-3" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {tAny.admin?.withdrawalManagement?.status?.[status] || status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
+  };
+
+  const handleViewDetails = (withdrawal: Withdrawal) => {
+    setSelectedWithdrawal(withdrawal);
+    setShowDetailsModal(true);
   };
 
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
@@ -152,13 +168,13 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
         <div className={`rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="p-6">
             <h2 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Gestion des Retraits
+              {tAny.admin?.withdrawalManagement?.title || 'Gestion des Retraits'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>En attente</span>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.pending || 'En attente'}</span>
                   <Clock className="w-4 h-4 text-amber-500" />
                 </div>
                 <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -171,7 +187,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
 
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Complétés</span>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.completed || 'Complétés'}</span>
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 </div>
                 <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -184,7 +200,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
 
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Échoués</span>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.failed || 'Échoués'}</span>
                   <XCircle className="w-4 h-4 text-red-500" />
                 </div>
                 <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -203,7 +219,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Rechercher par nom ou email..."
+              placeholder={tAny.admin?.withdrawalManagement?.search || "Rechercher par nom ou email..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
@@ -227,7 +243,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {filter === 'all' ? 'Tous' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                {filter === 'all' ? (tAny.admin?.withdrawalManagement?.filters?.all || 'Tous') : (tAny.admin?.withdrawalManagement?.filters?.[filter] || filter.charAt(0).toUpperCase() + filter.slice(1))}
               </button>
             ))}
           </div>
@@ -253,22 +269,22 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
               <thead className={isDark ? 'bg-gray-900/50' : 'bg-gray-50'}>
                 <tr>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Prestataire
+                    {tAny.admin?.withdrawalManagement?.table?.provider || 'Prestataire'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Montant
+                    {tAny.admin?.withdrawalManagement?.table?.amount || 'Montant'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Méthode
+                    {tAny.admin?.withdrawalManagement?.table?.method || 'Méthode'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Statut
+                    {tAny.admin?.withdrawalManagement?.table?.status || 'Statut'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Date demande
+                    {tAny.admin?.withdrawalManagement?.table?.requestDate || 'Date demande'}
                   </th>
                   <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Actions
+                    {tAny.admin?.withdrawalManagement?.table?.actions || 'Actions'}
                   </th>
                 </tr>
               </thead>
@@ -283,7 +299,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
                       <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>
-                        Aucun retrait trouvé
+                        {tAny.admin?.withdrawalManagement?.table?.noResults || 'Aucun retrait trouvé'}
                       </p>
                     </td>
                   </tr>
@@ -320,6 +336,7 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <button
+                          onClick={() => handleViewDetails(withdrawal)}
                           className={`p-2 rounded-lg transition-colors ${
                             isDark
                               ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
@@ -338,6 +355,193 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
           </div>
         </div>
       </div>
+
+      {/* Modal de détails du retrait */}
+      {showDetailsModal && selectedWithdrawal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+            isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+          }`}>
+            {/* Header */}
+            <div className={`sticky top-0 px-6 py-4 border-b ${
+              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {tAny.admin?.withdrawalManagement?.modal?.title || 'Détails du retrait'}
+                </h3>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isDark
+                      ? 'hover:bg-gray-700 text-gray-400'
+                      : 'hover:bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Informations du prestataire */}
+              <div>
+                <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {tAny.admin?.withdrawalManagement?.modal?.providerInfo || 'Informations du prestataire'}
+                </h4>
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Nom</p>
+                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedWithdrawal.provider_name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
+                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedWithdrawal.provider_email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Détails du retrait */}
+              <div>
+                <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {tAny.admin?.withdrawalManagement?.modal?.withdrawalDetails || 'Détails du retrait'}
+                </h4>
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Montant</p>
+                      <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {formatCurrency(selectedWithdrawal.amount_cents, selectedWithdrawal.currency)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Statut</p>
+                      <div className="mt-1">
+                        {getStatusBadge(selectedWithdrawal.status)}
+                      </div>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Méthode de paiement</p>
+                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedWithdrawal.payment_method || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Devise</p>
+                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {selectedWithdrawal.currency}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Détails de paiement */}
+              {selectedWithdrawal.payment_details && (
+                <div>
+                  <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Détails de paiement
+                  </h4>
+                  <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                    <pre className={`text-sm overflow-x-auto ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {JSON.stringify(selectedWithdrawal.payment_details, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div>
+                <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Historique
+                </h4>
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Demandé le
+                        </span>
+                      </div>
+                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {formatDate(selectedWithdrawal.requested_at)}
+                      </span>
+                    </div>
+
+                    {selectedWithdrawal.processed_at && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Traité le
+                          </span>
+                        </div>
+                        <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {formatDate(selectedWithdrawal.processed_at)}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedWithdrawal.completed_at && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Complété le
+                          </span>
+                        </div>
+                        <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {formatDate(selectedWithdrawal.completed_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedWithdrawal.notes && (
+                <div>
+                  <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Notes
+                  </h4>
+                  <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                    <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {selectedWithdrawal.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className={`sticky bottom-0 px-6 py-4 border-t ${
+              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isDark
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {tAny.admin?.withdrawalManagement?.modal?.close || 'Fermer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

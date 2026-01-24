@@ -34,9 +34,9 @@ export async function GET(
     }
 
     // Vérifier si c'est un accès admin (vérifier dans les headers ou query params)
-    const isAdmin = request.headers.get('x-is-admin') === 'true' || 
-                    new URL(request.url).searchParams.get('isAdmin') === 'true';
-    
+    const isAdmin = request.headers.get('x-is-admin') === 'true' ||
+      new URL(request.url).searchParams.get('isAdmin') === 'true';
+
     let userId: string | null = null;
     let isAuthorized = false;
 
@@ -54,11 +54,11 @@ export async function GET(
           { status: 401 }
         );
       }
-      
+
       userId = user.id;
-      
-      // Vérifier les permissions normales
-      isAuthorized = order.client_id === userId;
+
+      // Vérifier les permissions normales - autoriser client ET prestataire
+      isAuthorized = order.client_id === userId || order.provider_id === userId;
     }
 
     if (!isAuthorized) {

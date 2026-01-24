@@ -12,7 +12,10 @@ import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
 import { MessagesMenu } from "@/components/layout/MessagesMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
-import { QuickSearchBar, QuickSearchBarMobile } from "@/components/search/QuickSearchBar";
+import {
+  QuickSearchBar,
+  QuickSearchBarMobile,
+} from "@/components/search/QuickSearchBar";
 
 interface HeaderProps {
   variant?: "transparent" | "solid";
@@ -141,7 +144,7 @@ export function Header({
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo - Masqué quand la recherche mobile est ouverte */}
           <div className={cn(showMobileSearch ? "hidden" : "block")}>
-              <Logo className={isSolid ? "text-slate-900" : "text-white"} />
+            <Logo className={isSolid ? "text-slate-900" : "text-white"} />
           </div>
 
           {/* Search Bar - Desktop avec suggestions rapides */}

@@ -29,17 +29,81 @@ import {
   AlertCircle,
   Menu,
   X,
+  UserCheck,
+  Briefcase,
+  Loader2,
 } from "lucide-react";
-import { mockStats, recentActivities, topServices } from "./menus";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/hooks/useCurrency";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
 interface DashboardProps {
   isDark: boolean;
 }
 
+interface DashboardStats {
+  revenue: {
+    total: number;
+    change: number;
+    trend: string;
+    history: number[];
+  };
+  users: {
+    total: number;
+    new: number;
+    active: number;
+    trend: string;
+    change: number;
+  };
+  orders: {
+    total: number;
+    pending: number;
+    completed: number;
+    revenue: number;
+    change: number;
+  };
+  performance: {
+    score: number;
+    level: string;
+    metrics: {
+      responseTime: number;
+      satisfaction: number;
+      growth: number;
+    };
+  };
+}
+
+interface Activity {
+  id: string;
+  user: string;
+  action: string;
+  time: string;
+  icon: string;
+  color: string;
+  status: string;
+}
+
+interface Service {
+  id: number;
+  name: string;
+  revenue: number;
+  orders: number;
+  rating: number;
+  status: string;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
+  const { t } = useLanguageContext();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTimeframe, setActiveTimeframe] = useState("7j");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // États pour les données API
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { convertFromUSD, formatAmount } = useCurrency();
 
   const timeframes = [
     { label: "24h", value: "24h" },
@@ -48,11 +112,58 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
     { label: "90j", value: "90j" },
   ];
 
-  const filteredServices = topServices.filter(
+  const filteredServices = services.filter(
     (service) =>
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.id.toString().includes(searchQuery)
   );
+
+  // Charger les données depuis les API
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Charger toutes les données en parallèle
+        const [statsRes, activitiesRes, servicesRes] = await Promise.all([
+          fetch("/api/admin/dashboard-stats?isAdmin=true"),
+          fetch("/api/admin/recent-activities?isAdmin=true&limit=5"),
+          fetch("/api/admin/top-services?isAdmin=true&limit=5"),
+        ]);
+
+        const [statsData, activitiesData, servicesData] = await Promise.all([
+          statsRes.json(),
+          activitiesRes.json(),
+          servicesRes.json(),
+        ]);
+
+        console.log('[DASHBOARD] Stats data:', statsData);
+        console.log('[DASHBOARD] Activities data:', activitiesData);
+        console.log('[DASHBOARD] Services data:', servicesData);
+
+        if (statsData.success) {
+          setStats(statsData.data.stats);
+        }
+
+        if (activitiesData.success) {
+          setActivities(activitiesData.data.activities);
+        }
+
+        if (servicesData.success) {
+          console.log('[DASHBOARD] Setting services:', servicesData.data.services);
+          setServices(servicesData.data.services);
+        } else {
+          console.error('[DASHBOARD] Services API error:', servicesData.error);
+        }
+      } catch (error) {
+        console.error("Erreur chargement dashboard:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   // Close sidebar on resize
   useEffect(() => {
@@ -65,6 +176,33 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Fonction pour obtenir l'icône d'une activité
+  const getActivityIcon = (iconName: string) => {
+    const icons: { [key: string]: React.ReactNode } = {
+      award: <Award className="w-4 h-4 lg:w-5 lg:h-5" />,
+      package: <Package className="w-4 h-4 lg:w-5 lg:h-5" />,
+      "user-check": <UserCheck className="w-4 h-4 lg:w-5 lg:h-5" />,
+      briefcase: <Briefcase className="w-4 h-4 lg:w-5 lg:h-5" />,
+      zap: <Zap className="w-4 h-4 lg:w-5 lg:h-5" />,
+      target: <Target className="w-4 h-4 lg:w-5 lg:h-5" />,
+    };
+    return icons[iconName] || <Activity className="w-4 h-4 lg:w-5 lg:h-5" />;
+  };
+
+  // Afficher un loader pendant le chargement
+  if (isLoading || !stats) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className={isDark ? "text-gray-400" : "text-gray-600"}>
+            {t.admin?.dashboard?.loading || "Chargement du dashboard..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -95,7 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                 isDark ? "text-white" : "text-gray-900"
               }`}
             >
-              Dashboard
+              {t.admin?.sidebar?.menus?.dashboard || "Dashboard"}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -150,12 +288,12 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               : "bg-blue-100 text-blue-700"
                           }`}
                         >
-                          Premium
+                          {t.admin?.header?.premium || "Premium"}
                         </span>
                         <div className="flex items-center gap-1">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                           <span className="text-xs text-gray-500">
-                            En ligne
+                            {t.admin?.dashboard?.online || "En ligne"}
                           </span>
                         </div>
                       </div>
@@ -164,18 +302,14 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                           isDark ? "text-white" : "text-gray-900"
                         }`}
                       >
-                        Bienvenue Admin 👋
+                        {t.admin?.dashboard?.welcome || "Bienvenue Admin 👋"}
                       </h1>
                       <p
                         className={`text-base lg:text-lg ${
                           isDark ? "text-gray-400" : "text-gray-600"
                         }`}
                       >
-                        Gérez votre plateforme{" "}
-                        <span className="font-semibold text-blue-500">
-                          Anylibre
-                        </span>{" "}
-                        avec des insights en temps réel
+                        {t.admin?.dashboard?.welcomeSubtitle || "Gérez votre plateforme Anylibre avec des insights en temps réel"}
                       </p>
                     </div>
                   </div>
@@ -185,31 +319,31 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                   {[
                     {
                       icon: <Users className="w-4 h-4 lg:w-5 lg:h-5" />,
-                      label: "Utilisateurs totaux",
-                      value: mockStats.users.total,
+                      label: t.admin?.dashboard?.stats?.totalUsers || "Utilisateurs totaux",
+                      value: stats.users.total,
                       change: "+12.3%",
                       color: "text-blue-500",
                       bgColor: isDark ? "bg-blue-900/20" : "bg-blue-50",
                     },
                     {
                       icon: <Activity className="w-4 h-4 lg:w-5 lg:h-5" />,
-                      label: "Performance",
-                      value: `${mockStats.performance.score}%`,
+                      label: t.admin?.dashboard?.stats?.performance || "Performance",
+                      value: `${stats.performance.score}%`,
                       change: "+5.2%",
                       color: "text-emerald-500",
                       bgColor: isDark ? "bg-emerald-900/20" : "bg-emerald-50",
                     },
                     {
                       icon: <Package className="w-4 h-4 lg:w-5 lg:h-5" />,
-                      label: "Commandes",
-                      value: mockStats.orders.total,
+                      label: t.admin?.dashboard?.stats?.orders || "Commandes",
+                      value: stats.orders.total,
                       change: "+8.7%",
                       color: "text-purple-500",
                       bgColor: isDark ? "bg-purple-900/20" : "bg-purple-50",
                     },
                     {
                       icon: <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />,
-                      label: "Session moyenne",
+                      label: t.admin?.dashboard?.stats?.averageSession || "Session moyenne",
                       value: "24m",
                       change: "+3.1%",
                       color: "text-amber-500",
@@ -265,7 +399,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                     <div className="flex items-center justify-center gap-2">
                       <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6" />
                       <span className="text-sm lg:text-base">
-                        Analytics détaillés
+                        {t.admin?.dashboard?.detailedAnalytics || "Analytics détaillés"}
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -277,7 +411,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                         : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
                     }`}
                   >
-                    Générer rapport
+                    {t.admin?.dashboard?.generateReport || "Générer rapport"}
                   </button>
                 </div>
               </div>
@@ -297,43 +431,43 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
               {[
                 {
-                  title: "Revenus totaux",
-                  value: `$${mockStats.revenue.total.toLocaleString()}`,
+                  title: t.admin?.dashboard?.stats?.totalRevenue || "Revenus totaux",
+                  value: <CurrencyConverter amount={stats.revenue.total} />,
                   change: "+23.5%",
                   trend: "up",
                   icon: <DollarSign className="w-5 h-5 lg:w-6 lg:h-6" />,
                   gradient: "from-emerald-500 to-teal-500",
-                  detail: "Objectif dépassé de 15%",
+                  detail: t.admin?.dashboard?.stats?.targetExceeded || "Objectif dépassé de 15%",
                   progress: 85,
                 },
                 {
-                  title: "Utilisateurs actifs",
-                  value: mockStats.users.active.toLocaleString(),
+                  title: t.admin?.dashboard?.stats?.activeUsers || "Utilisateurs actifs",
+                  value: stats.users.active.toLocaleString(),
                   change: "+12.3%",
                   trend: "up",
                   icon: <Users className="w-5 h-5 lg:w-6 lg:h-6" />,
                   gradient: "from-blue-500 to-cyan-500",
-                  detail: `${mockStats.users.new} nouveaux aujourd'hui`,
+                  detail: `${stats.users.new} ${t.admin?.dashboard?.stats?.newToday || "nouveaux aujourd'hui"}`,
                   progress: 72,
                 },
                 {
-                  title: "Commandes",
-                  value: mockStats.orders.total,
+                  title: t.admin?.sidebar?.menus?.orders || "Commandes",
+                  value: stats.orders.total,
                   change: "+8.7%",
                   trend: "up",
                   icon: <Package className="w-5 h-5 lg:w-6 lg:h-6" />,
                   gradient: "from-purple-500 to-pink-500",
-                  detail: `${mockStats.orders.pending} en attente`,
+                  detail: `${stats.orders.pending} ${t.admin?.dashboard?.stats?.pending || "en attente"}`,
                   progress: 64,
                 },
                 {
-                  title: "Taux de conversion",
-                  value: `${mockStats.performance.score}%`,
+                  title: t.admin?.dashboard?.stats?.conversionRate || "Taux de conversion",
+                  value: `${stats.performance.score}%`,
                   change: "+5.2%",
                   trend: "up",
                   icon: <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6" />,
                   gradient: "from-orange-500 to-yellow-500",
-                  detail: "Meilleure performance",
+                  detail: t.admin?.dashboard?.stats?.bestPerformance || "Meilleure performance",
                   progress: 92,
                 },
               ].map((stat, idx) => (
@@ -408,7 +542,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="text-xs text-gray-500">
-                          Progression
+                          {t.admin?.dashboard?.progression || "Progression"}
                         </span>
                         <span className="text-xs font-medium">
                           {stat.progress}%
@@ -435,14 +569,14 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    Performance des revenus
+                    {t.admin?.dashboard?.revenue?.title || "Performance des revenus"}
                   </h3>
                   <p
                     className={`text-sm mt-1 ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Analyse détaillée de l'évolution des revenus
+                    {t.admin?.dashboard?.revenue?.subtitle || "Analyse détaillée de l'évolution des revenus"}
                   </p>
                 </div>
 
@@ -494,75 +628,175 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                 </div>
               </div>
 
-              {/* Chart Visualization */}
-              <div className="relative h-48 lg:h-56 xl:h-64">
-                <div className="absolute inset-0 flex items-end gap-1.5 lg:gap-2">
-                  {mockStats.revenue.history.map((value, idx) => {
-                    const height = (value / 140000) * 100;
-                    const isToday =
-                      idx === mockStats.revenue.history.length - 1;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex-1 relative group"
-                        style={{ height: `${height}%` }}
-                      >
-                        <div
-                          className={`absolute bottom-0 left-0 right-0 rounded-t-lg transition-all duration-300 group-hover:opacity-90 ${
-                            isToday
-                              ? "bg-gradient-to-t from-blue-500 to-cyan-400"
-                              : "bg-gradient-to-t from-blue-400/80 to-cyan-300/80"
-                          }`}
-                        ></div>
-                        <div
-                          className={`absolute -top-8 left-1/2 transform -translate-x-1/2 px-2 py-1.5 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap ${
-                            isDark
-                              ? "bg-gray-800 text-white shadow-lg"
-                              : "bg-white text-gray-900 shadow-lg"
-                          }`}
-                        >
-                          <div className="font-semibold">
-                            ${(value / 1000).toFixed(0)}K
+              {/* Chart Visualization - Nouveau graphique */}
+              <div className="relative h-64 lg:h-72">
+                {(() => {
+                  // Normaliser l'historique des revenus en nombres (supporte strings '6.1K', '6,100', '5m', etc.)
+                  const parseRevenue = (v: number | string) => {
+                    if (typeof v === "number") return v;
+                    if (typeof v === "string") {
+                      // Remove currency symbols, spaces and thousands separators
+                      let s = v
+                        .replace(/\s+/g, "")
+                        .replace(/\$/g, "")
+                        .replace(/,/g, "")
+                        .toLowerCase();
+                      // Keep only digits, dot and k/m suffix
+                      s = s.replace(/[^0-9\.km]/g, "");
+                      if (!s) return 0;
+                      if (s.endsWith("k")) {
+                        const n = parseFloat(s.replace(/k$/, ""));
+                        return isNaN(n) ? 0 : n * 1000;
+                      }
+                      if (s.endsWith("m")) {
+                        const n = parseFloat(s.replace(/m$/, ""));
+                        return isNaN(n) ? 0 : n * 1000000;
+                      }
+                      const n = parseFloat(s);
+                      return isNaN(n) ? 0 : n;
+                    }
+                    return 0;
+                  };
+
+                  const numericHistory = stats.revenue.history.map((v) =>
+                    parseRevenue(v as any)
+                  );
+                  const maxValue = Math.max(...numericHistory, 1);
+                  const days = [
+                    t.admin?.dashboard?.days?.monday || "Lun",
+                    t.admin?.dashboard?.days?.tuesday || "Mar",
+                    t.admin?.dashboard?.days?.wednesday || "Mer",
+                    t.admin?.dashboard?.days?.thursday || "Jeu",
+                    t.admin?.dashboard?.days?.friday || "Ven",
+                    t.admin?.dashboard?.days?.saturday || "Sam",
+                    t.admin?.dashboard?.days?.sunday || "Dim",
+                  ];
+
+                  const formatVal = (v: number) =>
+                    v >= 1000000
+                      ? (v / 1000000).toFixed(1) + "M"
+                      : v >= 1000
+                      ? (v / 1000).toFixed(1) + "K"
+                      : String(Math.round(v));
+
+                  return (
+                    <div className="h-full flex flex-col">
+                      {/* Grille horizontale */}
+                      <div className="flex-1 relative">
+                        {[100, 75, 50, 25, 0].map((line, idx) => (
+                          <div
+                            key={line}
+                            className="absolute w-full flex items-center"
+                            style={{ top: `${100 - line}%` }}
+                          >
+                            <span
+                              className={`text-xs mr-2 w-12 text-right ${
+                                isDark ? "text-gray-500" : "text-gray-400"
+                              }`}
+                            >
+                              {formatAmount(convertFromUSD((line / 100) * maxValue))}
+                            </span>
+                            <div
+                              className={`flex-1 border-t ${
+                                line === 0
+                                  ? isDark
+                                    ? "border-gray-600"
+                                    : "border-gray-400"
+                                  : isDark
+                                  ? "border-gray-800"
+                                  : "border-gray-200"
+                              }`}
+                            />
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            Jour {idx + 1}
-                          </div>
+                        ))}
+
+                        {/* Barres */}
+                        {/* Barres */}
+                        <div className="absolute inset-0 flex items-end justify-between pl-14 pr-4 pb-2 gap-3">
+                          {numericHistory.map((value, idx) => {
+                            const percentage =
+                              maxValue > 0
+                                ? Math.round((value / maxValue) * 100)
+                                : 0;
+
+                            const isToday = idx === numericHistory.length - 1;
+
+                            return (
+                              <div
+                                key={idx}
+                                className="relative flex-1 max-w-[48px] h-full flex items-end group"
+                              >
+                                {/* Barre */}
+                                <div
+                                  className={`absolute bottom-0 w-full rounded-t-md transition-all duration-300 cursor-pointer
+            ${
+              isToday
+                ? "bg-gradient-to-t from-blue-600 to-cyan-500 shadow-md"
+                : isDark
+                ? "bg-blue-500/70 hover:bg-blue-500"
+                : "bg-blue-400 hover:bg-blue-500"
+            }
+          `}
+                                  style={{
+                                    height: `${percentage}%`,
+                                    minHeight: value > 0 ? "6px" : "2px",
+                                  }}
+                                >
+                                  {/* Tooltip */}
+                                  <div
+                                    className={`absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap
+              ${
+                isDark
+                  ? "bg-gray-900 text-white border border-gray-700 shadow-lg"
+                  : "bg-white text-gray-900 border border-gray-200 shadow-lg"
+              }
+            `}
+                                  >
+                                    <div className="text-sm font-semibold">
+                                      {formatAmount(convertFromUSD(value))}
+                                    </div>
+                                    <div className="text-xs opacity-70 text-center">
+                                      {days[idx] || `${t.admin?.dashboard?.day || "Jour"} ${idx + 1}`}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
 
-                {/* Grid lines */}
-                <div className="absolute inset-0 flex flex-col justify-between">
-                  {[0, 25, 50, 75, 100].map((line) => (
-                    <div
-                      key={line}
-                      className={`border-t ${
-                        isDark ? "border-gray-800" : "border-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`absolute left-0 -top-2.5 text-xs ${
-                          isDark ? "text-gray-600" : "text-gray-400"
-                        }`}
-                      >
-                        ${((line / 100) * 140).toFixed(0)}K
-                      </span>
+                      {/* Labels des jours */}
+                      <div className="flex items-center justify-around pl-14 pr-4 pt-3">
+                        {numericHistory.map((_, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex-1 max-w-[60px] text-center text-xs font-medium ${
+                              idx === stats.revenue.history.length - 1
+                                ? "text-blue-600"
+                                : isDark
+                                ? "text-gray-400"
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {days[idx] || `J${idx + 1}`}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
 
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mt-8 gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
-                    <span className="text-sm">Revenus actuels</span>
+                    <span className="text-sm">{t.admin?.dashboard?.currentRevenue || "Revenus actuels"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                    <span className="text-sm">Prévision</span>
+                    <span className="text-sm">{t.admin?.dashboard?.forecast || "Prévision"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -574,14 +808,16 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                     <Target className="w-4 h-4" />
                     <div>
                       <div className="text-sm font-medium">
-                        Objectif mensuel
+                        {t.admin?.dashboard?.revenue?.monthlyTarget || "Objectif mensuel"}
                       </div>
-                      <div className="text-lg font-bold">$150K</div>
+                      <div className="text-lg font-bold">
+                        {formatAmount(convertFromUSD(150000))}
+                      </div>
                     </div>
                   </div>
                   <div className="text-sm text-gray-500">
                     <Clock className="w-4 h-4 inline mr-1" />
-                    Mise à jour il y a 5 min
+                    {t.admin?.dashboard?.revenue?.updatedAgo || "Mise à jour il y a 5 min"}
                   </div>
                 </div>
               </div>
@@ -605,14 +841,14 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    Activités récentes
+                    {t.admin?.dashboard?.activities?.title || "Activités récentes"}
                   </h3>
                   <p
                     className={`text-sm mt-1 ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Dernières actions sur la plateforme
+                    {t.admin?.dashboard?.activities?.subtitle || "Dernières actions sur la plateforme"}
                   </p>
                 </div>
                 <button
@@ -622,12 +858,12 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  Voir tout
+                  {t.admin?.dashboard?.activities?.viewAll || "Voir tout"}
                 </button>
               </div>
 
               <div className="space-y-4">
-                {recentActivities.map((activity) => (
+                {activities.map((activity) => (
                   <div
                     key={activity.id}
                     className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${
@@ -639,9 +875,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                         isDark ? "bg-gray-800" : "bg-gray-100"
                       }`}
                     >
-                      {React.cloneElement(activity.icon, {
-                        className: "w-4 h-4 lg:w-5 lg:h-5",
-                      })}
+                      {getActivityIcon(activity.icon)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -671,70 +905,6 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                 ))}
               </div>
             </div>
-
-            {/* Quick Stats */}
-            <div
-              className={`rounded-2xl p-5 lg:p-6 border ${
-                isDark
-                  ? "bg-gray-900/50 border-gray-800"
-                  : "bg-white border-gray-200"
-              } shadow-lg`}
-            >
-              <h3
-                className={`text-xl lg:text-2xl font-bold mb-6 ${
-                  isDark ? "text-white" : "text-gray-900"
-                }`}
-              >
-                Aperçu rapide
-              </h3>
-              <div className="space-y-4">
-                {[
-                  {
-                    label: "Taux de satisfaction",
-                    value: "94.2%",
-                    color: "text-emerald-500",
-                    icon: <Star className="w-4 h-4" />,
-                  },
-                  {
-                    label: "Temps de réponse moyen",
-                    value: "2.4min",
-                    color: "text-blue-500",
-                    icon: <Clock className="w-4 h-4" />,
-                  },
-                  {
-                    label: "Nouvelles commandes",
-                    value: "24",
-                    color: "text-purple-500",
-                    icon: <Package className="w-4 h-4" />,
-                  },
-                  {
-                    label: "Problèmes résolus",
-                    value: "98%",
-                    color: "text-green-500",
-                    icon: <CheckCircle className="w-4 h-4" />,
-                  },
-                ].map((stat, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          isDark ? "bg-gray-800" : "bg-gray-100"
-                        }`}
-                      >
-                        <div className={stat.color}>{stat.icon}</div>
-                      </div>
-                      <span className="text-sm font-medium">{stat.label}</span>
-                    </div>
-                    <span className={`text-lg font-bold ${stat.color}`}>
-                      {stat.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -754,14 +924,14 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Services les plus performants
+                  {t.admin?.dashboard?.services?.title || "Services les plus performants"}
                 </h3>
                 <p
                   className={`text-sm mt-1 ${
                     isDark ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
-                  Classement par revenus générés
+                  {t.admin?.dashboard?.services?.subtitle || "Classement par revenus générés"}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
@@ -773,7 +943,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" />
                   <input
                     type="text"
-                    placeholder="Rechercher un service..."
+                    placeholder={t.admin?.dashboard?.services?.searchPlaceholder || "Rechercher un service..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border ${
@@ -790,7 +960,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  Filtrer
+                  {t.admin?.dashboard?.services?.filter || "Filtrer"}
                 </button>
                 <button
                   className={`p-2.5 rounded-xl ${
@@ -810,12 +980,12 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   {[
-                    "Service",
-                    "Revenus",
-                    "Commandes",
-                    "Satisfaction",
-                    "Statut",
-                    "Actions",
+                    t.admin?.dashboard?.services?.headers?.service || "Service",
+                    t.admin?.dashboard?.services?.headers?.revenue || "Revenus",
+                    t.admin?.dashboard?.services?.headers?.orders || "Commandes",
+                    t.admin?.dashboard?.services?.headers?.satisfaction || "Satisfaction",
+                    t.admin?.dashboard?.services?.headers?.status || "Statut",
+                    t.admin?.dashboard?.services?.headers?.actions || "Actions",
                   ].map((header) => (
                     <th
                       key={header}
@@ -829,6 +999,16 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                 </tr>
               </thead>
               <tbody>
+                {filteredServices.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center">
+                      <div className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                        {services.length === 0 ? "Aucun service trouvé" : "Aucun résultat pour cette recherche"}
+                        <div className="text-xs mt-2">Total services: {services.length}, Filtrés: {filteredServices.length}</div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {filteredServices.map((service) => (
                   <tr
                     key={service.id}
@@ -877,7 +1057,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                           isDark ? "text-white" : "text-gray-900"
                         }`}
                       >
-                        ${service.revenue.toLocaleString()}
+                        <CurrencyConverter amount={service.revenue} />
                       </p>
                     </td>
                     <td className="py-4 px-6">
@@ -900,7 +1080,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               : "bg-amber-100 text-amber-700"
                           }`}
                         >
-                          {service.orders > 50 ? "Élevé" : "Moyen"}
+                          {service.orders > 50 ? (t.admin?.dashboard?.services?.level?.high || "Élevé") : (t.admin?.dashboard?.services?.level?.medium || "Moyen")}
                         </div>
                       </div>
                     </td>
@@ -948,7 +1128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               : "bg-gray-500"
                           }`}
                         ></div>
-                        {service.status === "active" ? "Actif" : "Inactif"}
+                        {service.status === "active" ? (t.admin?.dashboard?.services?.status?.active || "Actif") : (t.admin?.dashboard?.services?.status?.inactive || "Inactif")}
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -959,7 +1139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               ? "hover:bg-gray-800 text-gray-400 hover:text-gray-300"
                               : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                           }`}
-                          title="Voir les détails"
+                          title={t.admin?.dashboard?.services?.actions?.viewDetails || "Voir les détails"}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -969,7 +1149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               ? "hover:bg-gray-800 text-gray-400 hover:text-gray-300"
                               : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                           }`}
-                          title="Partager"
+                          title={t.admin?.dashboard?.services?.actions?.share || "Partager"}
                         >
                           <Share2 className="w-4 h-4" />
                         </button>
@@ -979,7 +1159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                               ? "hover:bg-gray-800 text-gray-400 hover:text-gray-300"
                               : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                           }`}
-                          title="Plus d'options"
+                          title={t.admin?.dashboard?.services?.actions?.moreOptions || "Plus d'options"}
                         >
                           <MoreVertical className="w-4 h-4" />
                         </button>
@@ -998,8 +1178,8 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Affichage de 1 à {filteredServices.length} sur{" "}
-              {topServices.length} résultats
+              {t.admin?.dashboard?.pagination?.showing || "Affichage de"} 1 {t.admin?.dashboard?.pagination?.to || "à"} {filteredServices.length} {t.admin?.dashboard?.pagination?.of || "sur"} {services.length}{" "}
+              {t.admin?.dashboard?.pagination?.results || "résultats"}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -1009,7 +1189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                     : "hover:bg-gray-100 text-gray-600"
                 }`}
               >
-                Précédent
+                {t.admin?.dashboard?.pagination?.previous || "Précédent"}
               </button>
               {[1, 2, 3].map((page) => (
                 <button
@@ -1034,7 +1214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ isDark }) => {
                     : "hover:bg-gray-100 text-gray-600"
                 }`}
               >
-                Suivant
+                {t.admin?.dashboard?.pagination?.next || "Suivant"}
               </button>
             </div>
           </div>

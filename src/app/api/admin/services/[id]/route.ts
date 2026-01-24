@@ -1,6 +1,37 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params;
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+        }
+
+        // Récupérer le service (admin peut voir tous les services)
+        const { data: service, error: serviceError } = await supabase
+            .from('services')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (serviceError || !service) {
+            return NextResponse.json({ error: 'Service introuvable' }, { status: 404 });
+        }
+
+        return NextResponse.json({ service });
+    } catch (error) {
+        console.error('Error in ADMIN GET /api/services/[id]:', error);
+        return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    }
+}
+
 export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -28,7 +59,11 @@ export async function PATCH(
             return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
 
-        return NextResponse.json({ service });
+        return NextResponse.json({
+            success: true,
+            service,
+            message: 'Service mis à jour avec succès'
+        });
     } catch (error) {
         console.error('Error in ADMIN PATCH /api/services/[id]:', error);
         return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });

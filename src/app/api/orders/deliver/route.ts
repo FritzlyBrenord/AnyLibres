@@ -60,28 +60,50 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ Profil trouvé:', profile.id);
 
-    // Étape 3: Récupérer le provider associé
-    console.log('🏢 Étape 3: Récupération du provider...');
-    const { data: provider, error: providerError } = await supabase
-      .from('providers')
-      .select('id')
-      .eq('profile_id', profile.id)
+    // Étape 3: Récupérer le provider associé (ou vérifier si c'est un admin)
+    console.log('🏢 Étape 3: Récupération du provider ou vérification admin...');
+    let providerId = null;
+    let isAdmin = false;
+    
+    // Vérifier si c'est un admin
+    const { data: adminCheck } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
       .single();
+    
+    if (adminCheck?.role === 'admin') {
+      console.log('✅ Utilisateur est un administrateur');
+      isAdmin = true;
+    } else {
+      // C'est un provider
+      const { data: provider, error: providerError } = await supabase
+        .from('providers')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .single();
 
-    if (providerError || !provider) {
-      console.error('❌ Échec récupération provider:', providerError);
-      return NextResponse.json({ error: 'Provider non trouvé' }, { status: 404 });
+      if (providerError || !provider) {
+        console.error('❌ Échec récupération provider:', providerError);
+        return NextResponse.json({ error: 'Provider non trouvé' }, { status: 404 });
+      }
+      providerId = provider.id;
+      console.log('✅ Provider trouvé:', provider.id);
     }
-    console.log('✅ Provider trouvé:', provider.id);
 
-    // Étape 4: Vérifier que la commande existe et appartient à ce provider
+    // Étape 4: Vérifier que la commande existe et appartient à ce provider (ou que admin peut livrer)
     console.log('📋 Étape 4: Vérification de la commande...');
-    const { data: order, error: orderError } = await supabase
+    let orderQuery = supabase
       .from('orders')
       .select('*')
-      .eq('id', order_id)
-      .eq('provider_id', provider.id) // Vérifier que la commande appartient au provider
-      .single();
+      .eq('id', order_id);
+    
+    // Si ce n'est pas un admin, vérifier que la commande appartient au provider
+    if (!isAdmin) {
+      orderQuery = orderQuery.eq('provider_id', providerId);
+    }
+    
+    const { data: order, error: orderError } = await orderQuery.single();
 
     if (orderError || !order) {
       console.error('❌ Commande non trouvée ou non autorisée:', orderError);
@@ -198,8 +220,22 @@ export async function POST(request: NextRequest) {
     console.log('   Numéro:', delivery.delivery_number);
     console.log('═══════════════════════════════════════════════════════');
 
-    // Étape 10: Envoyer notification email au client
-    console.log('📧 Étape 10: Envoi de notification email...');
+    // Étape 10: Mettre à jour le statut de la commande en "delivered"
+    console.log('🔄 Étape 10: Mise à jour du statut de la commande...');
+    const { error: updateError } = await adminSupabase
+      .from('orders')
+      .update({ status: 'delivered' })
+      .eq('id', order_id);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour statut:', updateError);
+      // Ne pas bloquer si la mise à jour échoue, la livraison est créée
+    } else {
+      console.log('✅ Statut de la commande mise à jour en "delivered"');
+    }
+
+    // Étape 11: Envoyer notification email au client
+    console.log('📧 Étape 11: Envoi de notification email...');
     try {
       // Récupérer les informations du client (utiliser admin client pour éviter les triggers)
       console.log('   - Récupération du profil client...');

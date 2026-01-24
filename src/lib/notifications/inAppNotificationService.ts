@@ -51,7 +51,7 @@ export class InAppNotificationService {
      * Récupérer les notifications de l'utilisateur courant
      */
     async getUserNotifications(userId: string, limit = 50, offset = 0) {
-        const supabase = createClient();
+        const supabase = await createClient();
 
         const { data, error, count } = await supabase
             .from('notifications')
@@ -84,15 +84,37 @@ export class InAppNotificationService {
      * Marquer une notification comme lue
      */
     async markAsRead(notificationId: string) {
-        const supabase = createClient();
+        const supabase = await createClient();
 
-        const { error } = await supabase
+        // On essaie de mettre à jour dans les deux tables car on ne sait pas d'où vient l'ID
+        // (Sauf si on avait passé la source, mais l'interface ne le prévoit pas encore)
+
+        // 1. Essayer table notifications
+        const { error: standardError } = await supabase
             .from('notifications')
             .update({ read: true })
             .eq('id', notificationId);
 
-        if (error) {
-            return { success: false, error };
+        // 2. Essayer table admin_notification_recipients (l'ID passé est l'ID de la NOTIFICATION admin, pas du recipient record ?)
+        // ATTENTION : Dans le route.ts (fetch), j'ai mappé `id: r.admin_notifications.id`.
+        // Donc l'ID reçu ici est l'ID de la `admin_notification`.
+        // Mais dans `admin_notification_recipients`, on doit chercher par `notification_id` ET `user_id`.
+
+        // Il nous faut le user_id pour être sûr (on peut le récupérer via auth.getUser dans le route handler qui appelle cette fonction, mais ici on ne l'a pas en paramètre explicite sauf si on l'ajoute).
+        // Le service `markAsRead` prend juste `notificationId`.
+
+        // Solution : Fetcher le user courant ici
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: "User not found" };
+
+        const { error: adminError } = await supabase
+            .from('admin_notification_recipients')
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .eq('notification_id', notificationId) // L'ID reçu est celui de la notif admin
+            .eq('user_id', user.id);
+
+        if (standardError && adminError) {
+            return { success: false, error: standardError || adminError };
         }
 
         return { success: true };
@@ -102,16 +124,29 @@ export class InAppNotificationService {
      * Marquer toutes les notifications comme lues pour l'utilisateur
      */
     async markAllAsRead(userId: string) {
-        const supabase = createClient();
+        const supabase = await createClient();
 
-        const { error } = await supabase
+        // 1. Marquer les notifications standard
+        const { error: standardError } = await supabase
             .from('notifications')
             .update({ read: true })
             .eq('user_id', userId)
             .eq('read', false);
 
-        if (error) {
-            return { success: false, error };
+        if (standardError) {
+            console.error("Error marking standard notifications as read:", standardError);
+        }
+
+        // 2. Marquer les notifications admin
+        const { error: adminError } = await supabase
+            .from('admin_notification_recipients')
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .eq('user_id', userId)
+            .eq('is_read', false);
+
+        if (adminError) {
+            console.error("Error marking admin notifications as read:", adminError);
+            return { success: false, error: adminError };
         }
 
         return { success: true };

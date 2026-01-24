@@ -114,6 +114,7 @@ export async function middleware(request) {
     '/reviews',
     '/settings',
     '/become-provider',
+    '/Provider',
   ];
 
   const isProtectedPath = protectedPaths.some(p => path === p || path.startsWith(p + '/'));

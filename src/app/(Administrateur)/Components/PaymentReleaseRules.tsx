@@ -22,6 +22,8 @@ import {
   Award,
   Globe,
 } from 'lucide-react';
+import { useLanguageContext } from '@/contexts/LanguageContext';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ReleaseRule {
   id: string;
@@ -45,6 +47,11 @@ interface PaymentReleaseRulesProps {
 }
 
 export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps) {
+  const { t } = useLanguageContext();
+  const { defaultCurrency, convertFromUSD, formatAmount } = useCurrency();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
+
   const [rules, setRules] = useState<ReleaseRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,7 +115,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   const defaultRules: ReleaseRule[] = [
     {
       id: '1',
-      name: 'Standard',
+      name: tAny.admin?.paymentReleaseRules?.defaultRules?.standard || 'Standard',
       delay_hours: 336, // 14 jours
       applies_to: 'all',
       is_active: true,
@@ -116,7 +123,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
     },
     {
       id: '2',
-      name: 'Nouveaux Providers',
+      name: tAny.admin?.paymentReleaseRules?.defaultRules?.newProviders || 'Nouveaux Providers',
       delay_hours: 720, // 30 jours
       applies_to: 'new_providers',
       condition: { provider_age_days: 30 },
@@ -125,7 +132,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
     },
     {
       id: '3',
-      name: 'VIP / Premium',
+      name: tAny.admin?.paymentReleaseRules?.defaultRules?.vip || 'VIP / Premium',
       delay_hours: 0, // Immédiat
       applies_to: 'vip',
       condition: { provider_rating: 4.8 },
@@ -134,7 +141,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
     },
     {
       id: '4',
-      name: 'Montants Élevés (>5000€)',
+      name: tAny.admin?.paymentReleaseRules?.defaultRules?.highAmounts || 'Montants Élevés (>5000€)',
       delay_hours: 168, // 7 jours
       applies_to: 'amount_threshold',
       condition: { min_amount: 500000 }, // en cents
@@ -143,7 +150,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
     },
     {
       id: '5',
-      name: 'Petits Montants (<100€)',
+      name: tAny.admin?.paymentReleaseRules?.defaultRules?.smallAmounts || 'Petits Montants (<100€)',
       delay_hours: 24, // 1 jour
       applies_to: 'amount_threshold',
       condition: { max_amount: 10000 }, // en cents
@@ -186,14 +193,14 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
 
       const data = await response.json();
       if (data.success) {
-        alert('✅ Règles sauvegardées avec succès!');
+        alert(tAny.admin?.paymentReleaseRules?.alerts?.saveSuccess || '✅ Règles sauvegardées avec succès!');
         await fetchRules(); // Recharger les règles depuis le serveur
       } else {
-        alert('❌ Erreur: ' + (data.error || 'Erreur inconnue'));
+        alert((tAny.admin?.paymentReleaseRules?.alerts?.error || '❌ Erreur: ') + (data.error || (tAny.admin?.paymentReleaseRules?.alerts?.unknownError || 'Erreur inconnue')));
       }
     } catch (error) {
       console.error('Error saving rules:', error);
-      alert('❌ Erreur lors de la sauvegarde');
+      alert(tAny.admin?.paymentReleaseRules?.alerts?.saveError || '❌ Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
@@ -214,7 +221,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
       });
 
       if (!response.ok) {
-        alert('❌ Erreur lors de la mise à jour');
+        alert(tAny.admin?.paymentReleaseRules?.alerts?.updateError || '❌ Erreur lors de la mise à jour');
         await fetchRules(); // Recharger en cas d'erreur
       }
     } catch (error) {
@@ -224,7 +231,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const deleteRule = async (ruleId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette règle?')) {
+    if (!confirm(tAny.admin?.paymentReleaseRules?.alerts?.confirmDelete || 'Êtes-vous sûr de vouloir supprimer cette règle?')) {
       return;
     }
 
@@ -240,14 +247,14 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
       });
 
       if (response.ok) {
-        alert('✅ Règle supprimée avec succès!');
+        alert(tAny.admin?.paymentReleaseRules?.alerts?.deleteSuccess || '✅ Règle supprimée avec succès!');
       } else {
-        alert('❌ Erreur lors de la suppression');
+        alert(tAny.admin?.paymentReleaseRules?.alerts?.deleteError || '❌ Erreur lors de la suppression');
         await fetchRules();
       }
     } catch (error) {
       console.error('Error deleting rule:', error);
-      alert('❌ Erreur lors de la suppression');
+      alert(tAny.admin?.paymentReleaseRules?.alerts?.deleteError || '❌ Erreur lors de la suppression');
       await fetchRules();
     }
   };
@@ -255,7 +262,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   const addNewRule = (preset?: { name: string; hours: number }) => {
     const newRule: ReleaseRule = {
       id: `new-${Date.now()}`,
-      name: preset?.name || 'Nouvelle Règle',
+      name: preset?.name || (tAny.admin?.paymentReleaseRules?.modal?.newRuleDefault || 'Nouvelle Règle'),
       delay_hours: preset?.hours || 336,
       applies_to: 'all',
       is_active: true,
@@ -328,15 +335,17 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
       });
 
       if (response.ok) {
-        alert(isEditing ? '✅ Règle modifiée avec succès!' : '✅ Règle ajoutée avec succès!');
+        alert(isEditing
+          ? (tAny.admin?.paymentReleaseRules?.alerts?.editSuccess || '✅ Règle modifiée avec succès!')
+          : (tAny.admin?.paymentReleaseRules?.alerts?.addSuccess || '✅ Règle ajoutée avec succès!'));
         await fetchRules();
       } else {
-        alert('❌ Erreur lors de la sauvegarde');
+        alert(tAny.admin?.paymentReleaseRules?.alerts?.saveError || '❌ Erreur lors de la sauvegarde');
         await fetchRules();
       }
     } catch (error) {
       console.error('Error saving rule:', error);
-      alert('❌ Erreur lors de la sauvegarde');
+      alert(tAny.admin?.paymentReleaseRules?.alerts?.saveError || '❌ Erreur lors de la sauvegarde');
       await fetchRules();
     }
   };
@@ -348,10 +357,11 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const formatDelay = (hours: number) => {
-    if (hours === 0) return 'Immédiat';
+    if (hours === 0) return tAny.admin?.paymentReleaseRules?.formatDelay?.immediate || 'Immédiat';
     if (hours < 24) return `${hours}h`;
     const days = Math.floor(hours / 24);
-    return `${days} jour${days > 1 ? 's' : ''}`;
+    if (days === 1) return `1 ${tAny.admin?.paymentReleaseRules?.formatDelay?.day || 'jour'}`;
+    return `${days} ${tAny.admin?.paymentReleaseRules?.formatDelay?.days || 'jours'}`;
   };
 
   const getRuleIcon = (appliesTo: string) => {
@@ -383,10 +393,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Règles de Déblocage des Paiements
+              {tAny.admin?.paymentReleaseRules?.title || 'Règles de Déblocage des Paiements'}
             </h1>
             <p className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Configurez quand les fonds pending deviennent available automatiquement
+              {tAny.admin?.paymentReleaseRules?.subtitle || 'Configurez quand les fonds pending deviennent available automatiquement'}
             </p>
           </div>
 
@@ -400,7 +410,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
               } text-white transition-colors`}
             >
               <Plus className="w-4 h-4" />
-              Ajouter Règle
+              {tAny.admin?.paymentReleaseRules?.buttons?.addRule || 'Ajouter Règle'}
             </button>
 
             <button
@@ -413,7 +423,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
               } text-white transition-colors disabled:opacity-50`}
             >
               <Save className="w-4 h-4" />
-              {saving ? 'Sauvegarde...' : 'Sauvegarder Tout'}
+              {saving ? (tAny.admin?.paymentReleaseRules?.buttons?.saving || 'Sauvegarde...') : (tAny.admin?.paymentReleaseRules?.buttons?.saveAll || 'Sauvegarder Tout')}
             </button>
           </div>
         </div>
@@ -424,10 +434,9 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
         }`}>
           <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className={isDark ? 'text-blue-300' : 'text-blue-800'}>
-            <p className="font-medium mb-1">Comment ça marche?</p>
+            <p className="font-medium mb-1">{tAny.admin?.paymentReleaseRules?.info?.title || 'Comment ça marche?'}</p>
             <p className="text-sm">
-              Les règles sont appliquées par <strong>ordre de priorité</strong> (plus élevée = prioritaire).
-              Quand un paiement arrive, le système vérifie quelle règle s&apos;applique et programme le déblocage automatique.
+              {tAny.admin?.paymentReleaseRules?.info?.description || "Les règles sont appliquées par ordre de priorité (plus élevée = prioritaire). Quand un paiement arrive, le système vérifie quelle règle s'applique et programme le déblocage automatique."}
             </p>
           </div>
         </div>
@@ -467,7 +476,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                             {rule.name}
                           </h3>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${color}-100 text-${color}-700 dark:bg-${color}-900/30 dark:text-${color}-400`}>
-                            Priorité: {rule.priority}
+                            {tAny.admin?.paymentReleaseRules?.ruleCard?.priority || 'Priorité'}: {rule.priority}
                           </span>
                         </div>
 
@@ -480,7 +489,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                           </div>
 
                           <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                            S&apos;applique à: <strong>{rule.applies_to}</strong>
+                            {tAny.admin?.paymentReleaseRules?.ruleCard?.appliesTo || "S'applique à"}: <strong>{tAny.admin?.paymentReleaseRules?.modal?.[`option${rule.applies_to.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`] || rule.applies_to}</strong>
                           </div>
                         </div>
 
@@ -489,22 +498,22 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                           <div className="flex flex-wrap gap-2">
                             {rule.condition.min_amount && (
                               <span className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                Min: {(rule.condition.min_amount / 100).toFixed(0)}€
+                                {tAny.admin?.paymentReleaseRules?.ruleCard?.min || 'Min'}: {formatAmount(convertFromUSD(rule.condition.min_amount / 100))}
                               </span>
                             )}
                             {rule.condition.max_amount && (
                               <span className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                Max: {(rule.condition.max_amount / 100).toFixed(0)}€
+                                {tAny.admin?.paymentReleaseRules?.ruleCard?.max || 'Max'}: {formatAmount(convertFromUSD(rule.condition.max_amount / 100))}
                               </span>
                             )}
                             {rule.condition.provider_age_days && (
                               <span className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                Provider &lt; {rule.condition.provider_age_days} jours
+                                {tAny.admin?.paymentReleaseRules?.ruleCard?.providerAge || 'Provider'} &lt; {rule.condition.provider_age_days} {tAny.admin?.paymentReleaseRules?.formatDelay?.days || 'jours'}
                               </span>
                             )}
                             {rule.condition.provider_rating && (
                               <span className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                                Note ≥ {rule.condition.provider_rating}⭐
+                                {tAny.admin?.paymentReleaseRules?.ruleCard?.rating || 'Note'} ≥ {rule.condition.provider_rating}⭐
                               </span>
                             )}
                           </div>
@@ -561,14 +570,14 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
       {/* Quick Presets */}
       <div className="mt-8">
         <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Préréglages Rapides
+          {tAny.admin?.paymentReleaseRules?.presets?.title || 'Préréglages Rapides'}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { name: 'Immédiat', hours: 0, icon: Zap, color: 'green' },
-            { name: '24 heures', hours: 24, icon: Clock, color: 'blue' },
-            { name: '7 jours', hours: 168, icon: Calendar, color: 'amber' },
-            { name: '14 jours', hours: 336, icon: Shield, color: 'purple' },
+            { name: tAny.admin?.paymentReleaseRules?.presets?.immediate || 'Immédiat', hours: 0, icon: Zap, color: 'green' },
+            { name: tAny.admin?.paymentReleaseRules?.presets?.hours24 || '24 heures', hours: 24, icon: Clock, color: 'blue' },
+            { name: tAny.admin?.paymentReleaseRules?.presets?.days7 || '7 jours', hours: 168, icon: Calendar, color: 'amber' },
+            { name: tAny.admin?.paymentReleaseRules?.presets?.days14 || '14 jours', hours: 336, icon: Shield, color: 'purple' },
           ].map((preset) => (
             <button
               key={preset.name}
@@ -584,7 +593,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                 {preset.name}
               </div>
               <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Ajouter règle
+                {tAny.admin?.paymentReleaseRules?.presets?.addRule || 'Ajouter règle'}
               </div>
             </button>
           ))}
@@ -596,13 +605,15 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`max-w-2xl w-full rounded-xl p-6 max-h-[90vh] overflow-y-auto ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
             <h3 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {rules.some(r => r.id === editingRule.id) ? 'Modifier la Règle' : 'Nouvelle Règle de Paiement'}
+              {rules.some(r => r.id === editingRule.id)
+                ? (tAny.admin?.paymentReleaseRules?.modal?.editTitle || 'Modifier la Règle')
+                : (tAny.admin?.paymentReleaseRules?.modal?.addTitle || 'Nouvelle Règle de Paiement')}
             </h3>
 
             {/* Nom */}
             <div className="mb-4">
               <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Nom de la règle
+                {tAny.admin?.paymentReleaseRules?.modal?.nameLabel || 'Nom de la règle'}
               </label>
               <input
                 type="text"
@@ -613,14 +624,14 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                     ? 'bg-gray-700 border-gray-600 text-white'
                     : 'bg-white border-gray-300 text-gray-900'
                 }`}
-                placeholder="Ex: VIP Instant Release"
+                placeholder={tAny.admin?.paymentReleaseRules?.modal?.namePlaceholder || "Ex: VIP Instant Release"}
               />
             </div>
 
             {/* Délai */}
             <div className="mb-4">
               <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Délai (heures)
+                {tAny.admin?.paymentReleaseRules?.modal?.delayLabel || 'Délai (heures)'}
               </label>
               <input
                 type="number"
@@ -635,14 +646,14 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                 max="2160"
               />
               <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {formatDelay(editingRule.delay_hours)} (max 90 jours)
+                {formatDelay(editingRule.delay_hours)} {tAny.admin?.paymentReleaseRules?.modal?.max90days || '(max 90 jours)'}
               </p>
             </div>
 
             {/* Type d'application */}
             <div className="mb-4">
               <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                S'applique à
+                {tAny.admin?.paymentReleaseRules?.modal?.appliesLabel || "S'applique à"}
               </label>
               <select
                 value={editingRule.applies_to}
@@ -653,11 +664,11 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                     : 'bg-white border-gray-300 text-gray-900'
                 }`}
               >
-                <option value="all">Tous les providers</option>
-                <option value="new_providers">Nouveaux providers</option>
-                <option value="vip">VIP (rating élevé)</option>
-                <option value="amount_threshold">Seuil de montant</option>
-                <option value="country">Pays spécifique</option>
+                <option value="all">{tAny.admin?.paymentReleaseRules?.modal?.optionAll || 'Tous les providers'}</option>
+                <option value="new_providers">{tAny.admin?.paymentReleaseRules?.modal?.optionNew || 'Nouveaux providers'}</option>
+                <option value="vip">{tAny.admin?.paymentReleaseRules?.modal?.optionVip || 'VIP (rating élevé)'}</option>
+                <option value="amount_threshold">{tAny.admin?.paymentReleaseRules?.modal?.optionAmount || 'Seuil de montant'}</option>
+                <option value="country">{tAny.admin?.paymentReleaseRules?.modal?.optionCountry || 'Pays spécifique'}</option>
               </select>
             </div>
 
@@ -665,7 +676,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
             {editingRule.applies_to === 'new_providers' && (
               <div className="mb-4">
                 <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Âge maximum du provider (jours)
+                  {tAny.admin?.paymentReleaseRules?.modal?.providerAgeLabel || 'Âge maximum du provider (jours)'}
                 </label>
                 <input
                   type="number"
@@ -685,7 +696,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
             {editingRule.applies_to === 'vip' && (
               <div className="mb-4">
                 <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Rating minimum
+                  {tAny.admin?.paymentReleaseRules?.modal?.minRatingLabel || 'Rating minimum'}
                 </label>
                 <input
                   type="number"
@@ -709,7 +720,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Montant min (€)
+                    {tAny.admin?.paymentReleaseRules?.modal?.minAmountLabel || `Montant min (${defaultCurrency?.symbol || '€'})`}
                   </label>
                   <input
                     type="number"
@@ -726,7 +737,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                 </div>
                 <div>
                   <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Montant max (€)
+                    {tAny.admin?.paymentReleaseRules?.modal?.maxAmountLabel || `Montant max (${defaultCurrency?.symbol || '€'})`}
                   </label>
                   <input
                     type="number"
@@ -747,13 +758,13 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
             {editingRule.applies_to === 'country' && (
               <div className="mb-4">
                 <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Pays ({selectedCountries.length} sélectionné{selectedCountries.length > 1 ? 's' : ''})
+                  {tAny.admin?.paymentReleaseRules?.modal?.countriesLabel || 'Pays'} ({selectedCountries.length} {selectedCountries.length > 1 ? (tAny.admin?.paymentReleaseRules?.modal?.selected || 'sélectionnés') : (tAny.admin?.paymentReleaseRules?.modal?.selectedSingle || 'sélectionné')})
                 </label>
 
                 {/* Recherche */}
                 <input
                   type="text"
-                  placeholder="Rechercher un pays..."
+                  placeholder={tAny.admin?.paymentReleaseRules?.modal?.searchCountry || "Rechercher un pays..."}
                   value={countrySearch}
                   onChange={(e) => setCountrySearch(e.target.value)}
                   className={`w-full px-4 py-2 rounded-lg border mb-2 ${
@@ -823,7 +834,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
             {/* Priorité */}
             <div className="mb-6">
               <label className={`block mb-2 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Priorité (plus élevé = prioritaire)
+                {tAny.admin?.paymentReleaseRules?.modal?.priorityLabel || 'Priorité (plus élevé = prioritaire)'}
               </label>
               <input
                 type="number"
@@ -850,13 +861,13 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                     : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
                 }`}
               >
-                Annuler
+                {tAny.admin?.paymentReleaseRules?.modal?.cancel || 'Annuler'}
               </button>
               <button
                 onClick={saveNewRule}
                 className="px-6 py-2 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Enregistrer
+                {tAny.admin?.paymentReleaseRules?.modal?.save || 'Enregistrer'}
               </button>
             </div>
           </div>

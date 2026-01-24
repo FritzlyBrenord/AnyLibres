@@ -9,6 +9,7 @@ import { convertFromUSD } from "@/utils/lib/currencyConversion";
 import { useParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   Package,
@@ -32,6 +33,7 @@ import {
   Link,
   Eye,
   EyeOff,
+  DollarSign,
 } from "lucide-react";
 
 // Import du composant de galerie premium
@@ -39,6 +41,9 @@ import DeliveryGallery from "@/components/order/DeliveryGallery";
 import OrderMessagingModal from "@/components/message/OrderMessagingModal";
 import OrderChat from "@/components/order/OrderChat";
 import OrderReviewSection from "@/components/review/OrderReviewSection";
+import { RefundModal } from "./../RefundComponents";
+import DisputeChatWizard from "@/components/dispute/DisputeChatWizard";
+import { AdminMessageRecipientModal } from "@/components/message/AdminMessageRecipientModal";
 
 // Interfaces existantes
 interface OrderWithDetails {
@@ -303,102 +308,7 @@ const DisputeModal = ({ open, onClose, onSubmit, loading }: any) => {
 };
 
 // Nouveau modal pour choisir le destinataire du message (admin seulement)
-const AdminMessageRecipientModal = ({
-  open,
-  onClose,
-  onSelect,
-  order,
-  loading,
-}: any) => {
-  if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full animate-in fade-in-90 zoom-in-90">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-slate-600 text-sm">
-                Choisissez le destinataire du message
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-xl"
-          >
-            <X className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="p-6">
-          <div className="space-y-4">
-            {/* Option Client */}
-            <button
-              onClick={() => onSelect("client")}
-              disabled={loading}
-              className="w-full p-6 bg-gradient-to-r from-blue-50 to-cyan-50/80 border border-blue-200/60 rounded-2xl text-left hover:from-blue-100 hover:to-cyan-100 hover:border-blue-300 transition-all duration-300 group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <User className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-slate-900 text-lg mb-1 group-hover:text-blue-700">
-                    Envoyer au Client
-                  </h4>
-                  <p className="text-slate-600 text-sm">
-                    Message de l'administrateur vers le client
-                  </p>
-                </div>
-                <div className="text-xs font-medium px-3 py-1 bg-blue-100 text-blue-800 rounded-lg">
-                  ID: {order?.client_id?.slice(0, 8)}
-                </div>
-              </div>
-            </button>
-
-            {/* Option Prestataire */}
-            <button
-              onClick={() => onSelect("provider")}
-              disabled={loading}
-              className="w-full p-6 bg-gradient-to-r from-purple-50 to-pink-50/80 border border-purple-200/60 rounded-2xl text-left hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-300 group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <User className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-slate-900 text-lg mb-1 group-hover:text-purple-700">
-                    Envoyer au Prestataire
-                  </h4>
-                  <p className="text-slate-600 text-sm">
-                    Message de l'administrateur vers le prestataire
-                  </p>
-                </div>
-                <div className="text-xs font-medium px-3 py-1 bg-purple-100 text-purple-800 rounded-lg">
-                  ID: {order?.provider_id?.slice(0, 8)}
-                </div>
-              </div>
-            </button>
-          </div>
-
-          <div className="flex gap-3 pt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50"
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 interface PropsAdmin {
   order_Id: string;
@@ -420,7 +330,8 @@ export default function OrderDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const { user: currentUser } = useAuth(); // Use AuthContext
+  // Removed manual currentUserId state
 
   // États pour les modals
   const [revisionModal, setRevisionModal] = useState(false);
@@ -433,9 +344,32 @@ export default function OrderDetailPage({
   const [selectedRecipient, setSelectedRecipient] = useState<
     "client" | "provider" | null
   >(null);
+  const [disputeInfo, setDisputeInfo] = useState<any>(null); // State for dispute details
+  const [refundModal, setRefundModal] = useState<{
+    open: boolean;
+    orderId?: string;
+    orderTotal?: number;
+  }>({ open: false });
+  const [providerEarnings, setProviderEarnings] = useState<{
+    id: string;
+    amount_cents: number;
+  } | null>(null);
+  const [existingRefund, setExistingRefund] = useState<{
+    id: string;
+    status: string;
+    amount_cents: number;
+    created_at: string;
+  } | null>(null);
 
   // État pour afficher/cacher les IDs sensibles (admin seulement)
   const [showSensitiveInfo, setShowSensitiveInfo] = useState(false);
+
+  // Fonction utilitaire pour extraire la date de réunion depuis les détails du litige
+  const extractMeetingDate = (details: string): string | null => {
+    if (!details) return null;
+    const match = details.match(/\[DEMANDE DE RÉUNION\]:\s*(.+)/);
+    return match ? match[1].trim() : null;
+  };
 
   // --- Currency Support ---
   const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
@@ -460,12 +394,12 @@ export default function OrderDetailPage({
 
     window.addEventListener(
       "currencyChanged",
-      handleCurrencyChange as EventListener
+      handleCurrencyChange as EventListener,
     );
     return () => {
       window.removeEventListener(
         "currencyChanged",
-        handleCurrencyChange as EventListener
+        handleCurrencyChange as EventListener,
       );
     };
   }, []);
@@ -510,7 +444,7 @@ export default function OrderDetailPage({
             for (const extra of item.selected_extras) {
               const convExtra = await convertFromUSD(
                 extra.price_cents / 100,
-                selectedCurrency
+                selectedCurrency,
               );
               convExtras.push(convExtra || 0);
             }
@@ -551,40 +485,114 @@ export default function OrderDetailPage({
   }, [orderId]);
 
   const loadOrder = async () => {
+    console.log("📦 CHARGEMENT COMMANDE - Début", { orderId, isAdmin });
     try {
       const headers: Record<string, string> = {};
+      if (isAdmin) headers["x-is-admin"] = "true";
 
-      // Ajouter l'en-tête admin si nécessaire
-      if (isAdmin) {
-        headers["x-is-admin"] = "true";
+      const response = await fetch(`/api/orders/${orderId}/complete`, { headers });
+      
+      // Vérifier si la réponse est bien du JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("❌ Réponse non-JSON reçue:", contentType);
+        throw new Error("Erreur serveur - réponse invalide");
       }
-
-      const response = await fetch(`/api/orders/${orderId}/complete`, {
-        headers,
-      });
+      
       const data = await response.json();
 
       if (data.success) {
+        console.log("✅ Commande chargée", { status: data.data.order.status });
         setOrder(data.data.order);
-        // Récupérer l'ID de l'utilisateur actuel seulement si ce n'est pas admin
-        if (!isAdmin && data.data.order.client_id) {
-          setCurrentUserId(data.data.order.client_id);
+        
+        // Fetch dispute info if disputed
+        if (data.data.order.status === "disputed") {
+            try {
+                const disputeRes = await fetch(`/api/orders/${orderId}/dispute`);
+                
+                // Vérifier le content-type avant de parser
+                const disputeContentType = disputeRes.headers.get("content-type");
+                if (disputeContentType && disputeContentType.includes("application/json")) {
+                    const disputeData = await disputeRes.json();
+                    if (disputeData.success) {
+                        setDisputeInfo(disputeData.data);
+                    }
+                } else {
+                    console.warn("⚠️ API dispute non disponible ou erreur");
+                }
+            } catch (e) {
+                console.error("Error fetching dispute:", e);
+            }
+        } else {
+            setDisputeInfo(null);
         }
+
       } else {
+        console.error("❌ Erreur chargement:", data.error);
         setError(data.error);
       }
     } catch (err) {
+      console.error("❌ Erreur fetch:", err);
       setError("Erreur de chargement");
     } finally {
       setLoading(false);
     }
   };
 
+  // Charger les informations de provider_earnings (si le montant a été versé au provider)
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const fetchProviderEarnings = async () => {
+      try {
+        const response = await fetch(`/api/provider-earnings/${order.id}`);
+        const data = await response.json();
+        if (data.success) {
+          setProviderEarnings(data.earnings);
+        }
+      } catch (err) {
+        console.error(
+          "Erreur lors de la récupération des provider_earnings:",
+          err,
+        );
+      }
+    };
+
+    fetchProviderEarnings();
+  }, [order?.id]);
+
+  // Charger les remboursements existants pour cette commande
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const fetchExistingRefund = async () => {
+      try {
+        const response = await fetch(`/api/refunds?order_id=${order.id}`);
+        const data = await response.json();
+        if (data.success && data.refunds && data.refunds.length > 0) {
+          // Prendre le remboursement le plus récent
+          setExistingRefund(data.refunds[0]);
+        }
+      } catch (err) {
+        console.error(
+          "Erreur lors de la récupération des remboursements:",
+          err,
+        );
+      }
+    };
+
+    fetchExistingRefund();
+  }, [order?.id]);
+
   // ============================================================================
   // ACTIONS PRINCIPALES - NOUVELLES FONCTIONNALITÉS
   // ============================================================================
 
   const handleAcceptDelivery = async () => {
+    console.log("🟢 ACCEPTER LIVRAISON - Début", {
+      orderId: order?.id,
+      status: order?.status,
+    });
     setProcessing(true);
     try {
       const response = await fetch("/api/orders/accept", {
@@ -593,16 +601,21 @@ export default function OrderDetailPage({
         body: JSON.stringify({ order_id: order!.id }),
       });
 
+      console.log("📨 Réponse API Accept:", { status: response.status });
       const data = await response.json();
+      console.log("📦 Données reçues:", data);
+
       if (data.success) {
+        console.log("✅ Succès - Commande acceptée:", data.data.order);
         setOrder(data.data.order);
         setAcceptModal(false);
         alert("✅ Commande acceptée avec succès !");
       } else {
-        throw new Error(data.error);
+        console.error("❌ Erreur API:", data.error);
+        throw new Error(data.error || "Erreur inconnue");
       }
     } catch (error: any) {
-      console.error("Error:", error);
+      console.error("❌ Erreur lors de l'acceptation:", error);
       alert(`❌ Erreur: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -610,6 +623,10 @@ export default function OrderDetailPage({
   };
 
   const handleRequestRevision = async (message: string) => {
+    console.log("🔄 DEMANDER RÉVISION - Début", {
+      orderId: order?.id,
+      revisionsRemaining: "?",
+    });
     setProcessing(true);
     try {
       const response = await fetch("/api/orders/request-revision", {
@@ -622,52 +639,95 @@ export default function OrderDetailPage({
         }),
       });
 
+      console.log("📨 Réponse API Révision:", { status: response.status });
       const data = await response.json();
+      console.log("📦 Données reçues:", data);
+
       if (data.success) {
+        console.log("✅ Révision demandée");
         setOrder(data.data.order);
         setRevisionModal(false);
         alert("🔄 Demande de révision envoyée !");
       } else {
-        throw new Error(data.error);
+        console.error("❌ Erreur API:", data.error);
+        throw new Error(data.error || "Erreur inconnue");
       }
     } catch (error: any) {
-      console.error("Error:", error);
+      console.error("❌ Erreur révision:", error);
       alert(`❌ Erreur: ${error.message}`);
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleOpenDispute = async (reason: string, details: string) => {
+  const handleOpenDispute = async (data: { reason: string; details: string; meetingRequest?: string }) => {
+    console.log("⚖️ OUVRIR LITIGE - Début", { orderId: order?.id, reason: data.reason });
     setProcessing(true);
     try {
+      let finalDetails = data.details;
+      if (data.meetingRequest) {
+          finalDetails += `\n\n[DEMANDE DE RÉUNION]: ${data.meetingRequest}`;
+      }
+
       const response = await fetch("/api/orders/open-dispute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: order!.id,
-          reason,
-          details,
+          reason: data.reason,
+          details: finalDetails,
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setOrder(data.data.order);
+      console.log("📨 Réponse API Litige:", { status: response.status });
+      const resData = await response.json();
+      console.log("📦 Données reçues:", resData);
+
+      if (resData.success) {
+        console.log("✅ Litige ouvert");
+        setOrder(resData.data.order);
         setDisputeModal(false);
-        alert("⚖️ Litige ouvert. Notre équipe va examiner votre cas.");
+        alert("⚖️ Litige ouvert. L'administrateur a été notifié et rejoindra la conversation.");
       } else {
-        throw new Error(data.error);
+        console.error("❌ Erreur API:", resData.error);
+        throw new Error(resData.error || "Erreur inconnue");
       }
     } catch (error: any) {
-      console.error("Error:", error);
+      console.error("❌ Erreur litige:", error);
       alert(`❌ Erreur: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancelDispute = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir annuler ce litige ? La commande reprendra son cours.")) return;
+    setProcessing(true);
+    try {
+      const response = await fetch("/api/orders/cancel-dispute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: order?.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert("Litige annulé avec succès.");
+        loadOrder(); // Reload to update status
+      } else {
+        alert(`Erreur: ${data.error}`);
+      }
+    } catch (e: any) {
+      alert(`Erreur serveur: ${e.message}`);
     } finally {
       setProcessing(false);
     }
   };
 
   const handleCancelOrder = async () => {
+    console.log("🔴 ANNULER COMMANDE - Début", {
+      orderId: order?.id,
+      status: order?.status,
+    });
     setProcessing(true);
     try {
       const response = await fetch("/api/orders/update-status", {
@@ -679,19 +739,51 @@ export default function OrderDetailPage({
         }),
       });
 
+      console.log("📨 Réponse API Cancel:", { status: response.status });
       const data = await response.json();
+      console.log("📦 Données reçues:", data);
+
       if (data.success) {
+        console.log("✅ Succès - Commande annulée:", data.data.order);
         setOrder(data.data.order);
         setCancelModal(false);
         alert("✅ Commande annulée avec succès. Vous serez remboursé.");
       } else {
-        throw new Error(data.error);
+        console.error("❌ Erreur API:", data.error);
+        throw new Error(data.error || "Erreur inconnue");
       }
     } catch (error: any) {
-      console.error("Error:", error);
+      console.error("❌ Erreur lors de l'annulation:", error);
       alert(`❌ Erreur: ${error.message}`);
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleRespondExtension = async (approved: boolean) => {
+    if (approved && !confirm("Accepter ce délai supplémentaire ? La date de livraison sera mise à jour.")) return;
+    if (!approved && !confirm("Refuser cette demande de délai ?")) return;
+
+    setProcessing(true);
+    try {
+        const response = await fetch(`/api/orders/${orderId}/extension/respond`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ approved })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(approved ? "✅ Délai accordé !" : "❌ Demande refusée.");
+            loadOrder();
+        } else {
+            alert(result.error || "Erreur lors de la réponse");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Erreur de connexion");
+    } finally {
+        setProcessing(false);
     }
   };
 
@@ -951,9 +1043,94 @@ export default function OrderDetailPage({
             </div>
           </div>
 
+          {/* Bannière de médiation active */}
+          {!isAdmin && order.status === "disputed" && disputeInfo && disputeInfo.session_status === "active" && (
+            <div className="mb-8 bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-3xl shadow-xl p-6 animate-in fade-in-50 slide-in-from-top-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-purple-900 mb-1 flex items-center gap-2">
+                      🎯 Session de médiation en cours
+                    </h3>
+                    <p className="text-purple-700 mb-2">
+                      Un administrateur a lancé une session de médiation pour résoudre ce litige.
+                    </p>
+                    {(() => {
+                      const meetingDate = extractMeetingDate(disputeInfo.details || "");
+                      if (meetingDate) {
+                        return (
+                          <div className="flex items-center gap-2 text-sm text-purple-600 bg-white/60 px-3 py-2 rounded-lg inline-flex">
+                            <Calendar className="w-4 h-4" />
+                            <span className="font-medium">Réunion prévue : {meetingDate}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push(`/litige/${disputeInfo.id}`)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-purple-200 whitespace-nowrap"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  Rejoindre la médiation
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid xl:grid-cols-4 gap-8">
             {/* Contenu Principal */}
             <div className="xl:col-span-3 space-y-8">
+              {/* Bannière Demande de Délai (Extension) */}
+              {!isAdmin && order.extension_status === "pending" && (
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl shadow-xl p-6 animate-in slide-in-from-top-4">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-200">
+                        <Clock className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-amber-900 mb-1 flex items-center gap-2">
+                          ⏳ Demande de délai supplémentaire
+                        </h3>
+                        <p className="text-amber-800 font-medium mb-3">
+                          Le prestataire demande une prolongation de{" "}
+                          <span className="text-amber-900 font-bold bg-amber-100 px-2 py-0.5 rounded-lg">
+                            {order.extension_requested_days} jours
+                          </span>
+                        </p>
+                        <div className="bg-white/60 border border-amber-200 rounded-xl p-4 italic text-amber-700 text-sm">
+                          "{order.extension_reason}"
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                      <button
+                        onClick={() => handleRespondExtension(false)}
+                        disabled={processing}
+                        className="flex-1 px-6 py-3 bg-white border-2 border-amber-200 text-amber-700 rounded-2xl font-bold hover:bg-amber-100 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        Refuser
+                      </button>
+                      <button
+                        onClick={() => handleRespondExtension(true)}
+                        disabled={processing}
+                        className="flex-1 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl font-black hover:from-amber-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-amber-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <ThumbsUp className="w-5 h-5" />
+                        Autoriser le délai
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Bannière statut PAID - En attente du prestataire */}
               {!isAdmin && order.status === "paid" && (
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50/80 backdrop-blur-sm rounded-3xl border border-blue-200/60 shadow-xl p-8">
@@ -973,7 +1150,7 @@ export default function OrderDetailPage({
                       <span>
                         Délai de livraison :{" "}
                         {new Date(order.delivery_deadline).toLocaleDateString(
-                          "fr-FR"
+                          "fr-FR",
                         )}
                       </span>
                     </div>
@@ -994,17 +1171,17 @@ export default function OrderDetailPage({
               )}
 
               {/* Bannière statut IN_PROGRESS - Travail en cours */}
-              {order.status === "in_progress" && (
+              {(order.status === "in_progress" || (order.status === "disputed" && (!order.order_deliveries || order.order_deliveries.length === 0))) && (
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50/80 backdrop-blur-sm rounded-3xl border border-purple-200/60 shadow-xl p-8">
                   <div className="text-center mb-6">
                     <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Package className="w-8 h-8 text-white animate-bounce" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                      Travail en cours de réalisation
+                       {order.status === 'disputed' ? "Travail suspendu (Litige)" : "Travail en cours de réalisation"}
                     </h2>
                     <p className="text-slate-600 mb-4">
-                      Le prestataire travaille activement sur votre commande
+                      {order.status === 'disputed' ? "La commande est bloquée en attendant la résolution" : "Le prestataire travaille activement sur votre commande"}
                     </p>
                   </div>
 
@@ -1018,12 +1195,12 @@ export default function OrderDetailPage({
                         {(() => {
                           const start = new Date(order.created_at).getTime();
                           const end = new Date(
-                            order.delivery_deadline
+                            order.delivery_deadline,
                           ).getTime();
                           const now = Date.now();
                           const progress = Math.min(
                             Math.max(((now - start) / (end - start)) * 100, 5),
-                            95
+                            95,
                           );
                           return Math.round(progress);
                         })()}
@@ -1037,15 +1214,16 @@ export default function OrderDetailPage({
                           width: `${(() => {
                             const start = new Date(order.created_at).getTime();
                             const end = new Date(
-                              order.delivery_deadline
+                              order.delivery_deadline,
                             ).getTime();
                             const now = Date.now();
                             const progress = Math.min(
                               Math.max(
                                 ((now - start) / (end - start)) * 100,
-                                5
+                                5,
+                                10,
                               ),
-                              95
+                              95,
                             );
                             return progress;
                           })()}%`,
@@ -1067,7 +1245,7 @@ export default function OrderDetailPage({
                             day: "numeric",
                             month: "short",
                             year: "numeric",
-                          }
+                          },
                         )}
                       </div>
                     </div>
@@ -1082,8 +1260,8 @@ export default function OrderDetailPage({
                             Math.ceil(
                               (new Date(order.delivery_deadline).getTime() -
                                 Date.now()) /
-                                (1000 * 60 * 60 * 24)
-                            )
+                                (1000 * 60 * 60 * 24),
+                            ),
                           );
                           return remaining > 0
                             ? `${remaining} jour${remaining > 1 ? "s" : ""}`
@@ -1147,7 +1325,7 @@ export default function OrderDetailPage({
                               <p className="text-xs text-slate-500 mt-2">
                                 Demandée le{" "}
                                 {new Date(
-                                  revision.requested_at
+                                  revision.requested_at,
                                 ).toLocaleDateString("fr-FR")}
                               </p>
                             </div>
@@ -1158,9 +1336,83 @@ export default function OrderDetailPage({
                 </div>
               )}
 
+              {/* Bannière statut REFUNDED - Commande remboursée */}
+              {order.status === "refunded" && (
+                <div className="bg-gradient-to-br from-gray-50 to-slate-100/80 backdrop-blur-sm rounded-3xl border border-gray-300/60 shadow-xl p-8">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-gray-500 to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Shield className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                      Commande remboursée
+                    </h2>
+                    <p className="text-slate-600 mb-4">
+                      Cette commande a été remboursée. Le montant a été crédité sur votre solde.
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-xl font-medium">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Remboursement effectué</span>
+                    </div>
+                    {existingRefund && (
+                      <p className="text-sm text-slate-500 mt-4">
+                        Montant remboursé: {(existingRefund.amount_cents / 100).toFixed(2)} € le{" "}
+                        {new Date(existingRefund.created_at).toLocaleDateString("fr-FR")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* BANNER LITIGE */}
+              {order.status === "disputed" && disputeInfo && (
+                <div className="bg-red-50 border border-red-200 rounded-3xl p-6 mb-8 animate-in slide-in-from-top-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold text-red-700 flex items-center gap-2 mb-2">
+                             <AlertTriangle className="w-6 h-6" />
+                             Litige en cours
+                        </h3>
+                        <p className="text-red-600 mb-4">
+                            Un litige est ouvert pour cette commande. Les fonds sont bloqués en attendant la résolution.
+                        </p>
+                        
+                        <div className="space-y-2 bg-white/50 p-4 rounded-xl border border-red-100">
+                             <p className="text-sm text-red-800"><strong>Motif :</strong> {disputeInfo.reason}</p>
+                             <div className="text-sm text-red-800 whitespace-pre-wrap"><strong>Détails :</strong> {disputeInfo.details}</div>
+                             {disputeInfo.resolved_at && <p className="text-sm text-green-700 mt-2">Résolu le {new Date(disputeInfo.resolved_at).toLocaleDateString()}</p>}
+                        </div>
+                    </div>
+                    {/* Actions de Litige */}
+                    <div className="flex flex-col gap-3">
+                         {/* Bouton Annulation Litige (pour l'auteur ou admin) */}
+                         {(disputeInfo.opened_by_id === currentUser?.user_id || isAdmin) && (
+                              <button
+                                 onClick={handleCancelDispute}
+                                 disabled={processing}
+                                 className="w-full px-4 py-3 bg-white border border-red-300 text-red-700 rounded-xl hover:bg-red-100 transition-colors shadow-sm font-bold text-sm"
+                              >
+                                 {processing ? "Traitement..." : "Annuler le litige"}
+                              </button>
+                         )}
+
+                         {/* Bouton Médiation */}
+                         {disputeInfo.details?.includes("📅 Demande de Médiation :") && (
+                              <button
+                                 onClick={() => router.push(`/litige/${disputeInfo.id}`)}
+                                 className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg font-bold text-sm flex items-center justify-center gap-2"
+                              >
+                                 <MessageSquare className="w-4 h-4" />
+                                 Rejoindre la Médiation
+                              </button>
+                         )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Bannière d'actions pour livraison reçue */}
               {!isAdmin &&
-                order.status === "delivered" &&
+                (order.status === "delivered" || (order.status === "disputed" && order.order_deliveries && order.order_deliveries.length > 0)) &&
                 (() => {
                   // Calculer les révisions restantes
                   const revisionsUsed = order.order_revisions?.length || 0;
@@ -1170,7 +1422,7 @@ export default function OrderDetailPage({
                     order.service_info?.max_revisions || revisionsIncluded;
                   const revisionsRemaining = Math.max(
                     0,
-                    maxRevisions - revisionsUsed
+                    maxRevisions - revisionsUsed,
                   );
                   const canRequestRevision = revisionsRemaining > 0;
 
@@ -1181,15 +1433,16 @@ export default function OrderDetailPage({
                           <Package className="w-8 h-8 text-white" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                          Votre commande est livrée !
+                          {order.status === 'disputed' ? "Livraison sous litige" : "Votre commande est livrée !"}
                         </h2>
                         <p className="text-slate-600 mb-4">
-                          Veuillez vérifier le travail fourni et confirmer qu'il
-                          répond à vos attentes
+                          {order.status === 'disputed' 
+                            ? "La validation de cette livraison est suspendue." 
+                            : "Veuillez vérifier le travail fourni et confirmer qu'il répond à vos attentes"}
                         </p>
 
                         {/* Indicateur de révisions restantes */}
-                        {maxRevisions > 0 && (
+                        {maxRevisions > 0 && order.status !== 'disputed' && (
                           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 rounded-xl border border-green-200 mb-6">
                             <RefreshCw
                               className={`w-4 h-4 ${
@@ -1216,44 +1469,46 @@ export default function OrderDetailPage({
                           </div>
                         )}
 
-                        {/* Actions principales */}
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                          <button
-                            onClick={() => setAcceptModal(true)}
-                            disabled={processing}
-                            className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50"
-                          >
-                            <ThumbsUp className="w-5 h-5" />
-                            Accepter le travail
-                          </button>
-
-                          <div className="flex gap-3">
-                            {canRequestRevision ? (
+                        {/* Actions principales (Cachées si litige) */}
+                        {order.status !== 'disputed' && (
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                               <button
-                                onClick={() => setRevisionModal(true)}
+                                onClick={() => setAcceptModal(true)}
                                 disabled={processing}
-                                className="flex items-center gap-2 px-4 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50"
                               >
-                                <RefreshCw className="w-4 h-4" />
-                                Demander une révision
+                                <ThumbsUp className="w-5 h-5" />
+                                Accepter le travail
                               </button>
-                            ) : (
-                              <div className="px-4 py-3 bg-slate-200 text-slate-500 rounded-xl font-medium cursor-not-allowed flex items-center gap-2">
-                                <RefreshCw className="w-4 h-4" />
-                                <span>Révisions épuisées</span>
+    
+                              <div className="flex gap-3">
+                                {canRequestRevision ? (
+                                  <button
+                                    onClick={() => setRevisionModal(true)}
+                                    disabled={processing}
+                                    className="flex items-center gap-2 px-4 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Demander une révision
+                                  </button>
+                                ) : (
+                                  <div className="px-4 py-3 bg-slate-200 text-slate-500 rounded-xl font-medium cursor-not-allowed flex items-center gap-2">
+                                    <RefreshCw className="w-4 h-4" />
+                                    <span>Révisions épuisées</span>
+                                  </div>
+                                )}
+    
+                                <button
+                                  onClick={() => setDisputeModal(true)}
+                                  disabled={processing}
+                                  className="flex items-center gap-2 px-4 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                                >
+                                  <AlertTriangle className="w-4 h-4" />
+                                  Ouvrir un litige
+                                </button>
                               </div>
-                            )}
-
-                            <button
-                              onClick={() => setDisputeModal(true)}
-                              disabled={processing}
-                              className="flex items-center gap-2 px-4 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-                            >
-                              <AlertTriangle className="w-4 h-4" />
-                              Ouvrir un litige
-                            </button>
-                          </div>
-                        </div>
+                            </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1279,94 +1534,71 @@ export default function OrderDetailPage({
                     </div>
                   </div>
 
-                  {/* Utilisation du composant de galerie premium */}
-                  <DeliveryGallery
-                    images={deliveryImages}
-                    title="de la livraison"
-                  />
-
-                  {/* Lien externe si fourni */}
-                  {order.order_deliveries[0]?.external_link && (
-                    <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-200/60">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Link className="w-4 h-4 text-blue-600" />
+                  {/* Utilisation du composant de galerie premium avec données enrichies */}
+                  <div className="space-y-12">
+                    {order.order_deliveries.map((delivery, idx) => (
+                      <div key={delivery.id} className="pb-8 border-b border-slate-100 last:border-0 last:pb-0">
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                            Livraison #{delivery.delivery_number}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {new Date(delivery.delivered_at).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric"
+                            })}
+                          </span>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-slate-900 mb-3">
-                            Lien externe fourni par le prestataire
-                          </h4>
-                          <div className="bg-white/80 rounded-xl p-4 mb-4 border border-blue-200/40">
-                            <p className="text-sm text-slate-600 mb-2">
-                              URL de livraison :
-                            </p>
-                            <a
-                              href={order.order_deliveries[0].external_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 font-medium break-all block mb-3"
-                            >
-                              {order.order_deliveries[0].external_link}
-                            </a>
+
+                        {delivery.file_url && (
+                          <div className="mb-6">
+                            <DeliveryGallery
+                              media={[{
+                                url: delivery.file_url,
+                                type: (delivery.file_type?.startsWith('image/') ? 'image' : 
+                                       delivery.file_type?.startsWith('video/') ? 'video' :
+                                       delivery.file_type?.startsWith('audio/') ? 'audio' : 'document') as any,
+                                name: delivery.file_name,
+                                extension: delivery.file_name?.split('.').pop()
+                              }]}
+                              title={`Livraison #${delivery.delivery_number}`}
+                            />
                           </div>
-                          <div className="flex gap-3">
-                            <a
-                              href={order.order_deliveries[0].external_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg"
-                            >
-                              <Link className="w-4 h-4" />
+                        )}
+
+                        {delivery.external_link && (
+                          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-xl">
+                                <Link className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800">Lien de livraison externe</p>
+                                <a href={delivery.external_link} target="_blank" className="text-xs text-blue-600 hover:underline break-all">
+                                  {delivery.external_link}
+                                </a>
+                              </div>
+                            </div>
+                            <a href={delivery.external_link} target="_blank" className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-bold hover:bg-white/80 transition-colors">
                               Ouvrir le lien
                             </a>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(
-                                  order.order_deliveries[0].external_link || ""
-                                );
-                                alert("✅ Lien copié dans le presse-papier !");
-                              }}
-                              className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-300 text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-colors"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                />
-                              </svg>
-                              Copier le lien
-                            </button>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                        )}
 
-                  {/* Message du prestataire */}
-                  {order.order_deliveries[0]?.message && (
-                    <div className="mt-8 p-6 bg-slate-50/80 rounded-2xl border border-slate-200/60">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <MessageSquare className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900 mb-2">
-                            Message du prestataire
-                          </h4>
-                          <p className="text-slate-700 leading-relaxed">
-                            {order.order_deliveries[0].message}
-                          </p>
-                        </div>
+                        {delivery.message && (
+                          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
+                            <div className="flex gap-2">
+                              <MessageSquare className="w-4 h-4 text-purple-600 mt-1 flex-shrink-0" />
+                              <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap italic">
+                                "{delivery.message}"
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -1410,11 +1642,11 @@ export default function OrderDetailPage({
                                         +
                                         {formatAmount(
                                           convertedValues.items.get(item.id)
-                                            ?.extras[idx] || 0
+                                            ?.extras[idx] || 0,
                                         )}
                                       </span>
                                     </span>
-                                  )
+                                  ),
                                 )}
                               </div>
                             </div>
@@ -1423,7 +1655,7 @@ export default function OrderDetailPage({
                       <div className="text-right">
                         <p className="text-2xl font-bold text-slate-900">
                           {formatAmount(
-                            convertedValues.items.get(item.id)?.subtotal || 0
+                            convertedValues.items.get(item.id)?.subtotal || 0,
                           )}
                         </p>
                       </div>
@@ -1467,18 +1699,18 @@ export default function OrderDetailPage({
                           order.payment_info.status === "succeeded"
                             ? "bg-green-100 text-green-800"
                             : order.payment_info.status === "processing" ||
-                              order.payment_info.status === "requires_action"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-red-100 text-red-800"
+                                order.payment_info.status === "requires_action"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
                         }`}
                       >
                         {order.payment_info.status === "succeeded"
                           ? "Payé"
                           : order.payment_info.status === "processing"
-                          ? "En cours"
-                          : order.payment_info.status === "requires_action"
-                          ? "3DS requis"
-                          : "Échoué"}
+                            ? "En cours"
+                            : order.payment_info.status === "requires_action"
+                              ? "3DS requis"
+                              : "Échoué"}
                       </span>
                     </div>
 
@@ -1553,7 +1785,7 @@ export default function OrderDetailPage({
                           <p className="text-xs text-slate-500 mt-2">
                             Libéré le{" "}
                             {new Date(
-                              order.payment_info.escrow_released_at
+                              order.payment_info.escrow_released_at,
                             ).toLocaleDateString("fr-FR")}
                           </p>
                         )}
@@ -1577,7 +1809,7 @@ export default function OrderDetailPage({
                       <div className="text-xs text-slate-500 text-center pt-3 border-t border-blue-200">
                         Payé le{" "}
                         {new Date(
-                          order.payment_info.succeeded_at
+                          order.payment_info.succeeded_at,
                         ).toLocaleDateString("fr-FR", {
                           day: "numeric",
                           month: "long",
@@ -1585,6 +1817,71 @@ export default function OrderDetailPage({
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
+                      </div>
+                    )}
+
+                    {/* Bouton Demander remboursement ou Statut remboursement */}
+                    {!isAdmin && order.payment_info?.status === "succeeded" && (
+                      <div className="mt-6 pt-4 border-t border-blue-200">
+                        {existingRefund ? (
+                          // Afficher le statut du remboursement existant
+                          <div className="w-full px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center justify-center gap-2 text-green-700 font-medium">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              <span>
+                                {existingRefund.status === "pending" &&
+                                  "Remboursement demandé"}
+                                {existingRefund.status === "approved" &&
+                                  "Remboursement approuvé"}
+                                {existingRefund.status === "processing" &&
+                                  "Remboursement en cours"}
+                                {existingRefund.status === "completed" &&
+                                  "Remboursement effectué"}
+                                {existingRefund.status === "rejected" &&
+                                  "Remboursement refusé"}
+                                {existingRefund.status === "failed" &&
+                                  "Remboursement échoué"}
+                                {existingRefund.status === "cancelled" &&
+                                  "Remboursement annulé"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-green-600 text-center mt-2">
+                              Montant:{" "}
+                              {(existingRefund.amount_cents / 100).toFixed(2)} €
+                              • Demandé le{" "}
+                              {new Date(
+                                existingRefund.created_at,
+                              ).toLocaleDateString("fr-FR")}
+                            </p>
+                          </div>
+                        ) : (
+                          // Afficher le bouton pour demander un remboursement
+                          <>
+                            <button
+                              onClick={() => {
+                                const totalAmount =
+                                  convertedValues.total > 0
+                                    ? convertedValues.total
+                                    : (order.payment_info?.amount_cents ||
+                                        order.total_cents) / 100;
+                                setRefundModal({
+                                  open: true,
+                                  orderId: order.id,
+                                  orderTotal: totalAmount,
+                                });
+                              }}
+                              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <DollarSign className="w-4 h-4" />
+                              Demander un remboursement
+                            </button>
+                            <p className="text-xs text-slate-500 text-center mt-2">
+                              {providerEarnings
+                                ? "Le montant a été versé au prestataire"
+                                : "Vous pouvez demander un remboursement"}
+                            </p>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1754,7 +2051,7 @@ export default function OrderDetailPage({
                       timelineEvents.sort(
                         (a, b) =>
                           new Date(a.date).getTime() -
-                          new Date(b.date).getTime()
+                          new Date(b.date).getTime(),
                       );
 
                       // Afficher les événements triés
@@ -1787,7 +2084,7 @@ export default function OrderDetailPage({
                                       month: "short",
                                       hour: "2-digit",
                                       minute: "2-digit",
-                                    }
+                                    },
                                   )}
                                 </p>
                               </div>
@@ -1829,11 +2126,11 @@ export default function OrderDetailPage({
             loading={processing}
           />
 
-          <DisputeModal
-            open={disputeModal}
+          <DisputeChatWizard
+            isOpen={disputeModal}
             onClose={() => setDisputeModal(false)}
             onSubmit={handleOpenDispute}
-            loading={processing}
+            isLoading={processing}
           />
         </>
       )}
@@ -1985,20 +2282,46 @@ export default function OrderDetailPage({
         order={order}
         loading={processing}
       />
+
+      {/* Refund Modal */}
+      <RefundModal
+        orderId={refundModal.orderId || ""}
+        orderTotal={refundModal.orderTotal || 0}
+        isOpen={refundModal.open}
+        onClose={() => setRefundModal({ open: false })}
+        onSuccess={async () => {
+          setRefundModal({ open: false });
+          loadOrder();
+          // Rafraîchir l'état du remboursement existant
+          try {
+            const response = await fetch(`/api/refunds?order_id=${order?.id}`);
+            const data = await response.json();
+            if (data.success && data.refunds && data.refunds.length > 0) {
+              setExistingRefund(data.refunds[0]);
+            }
+          } catch (err) {
+            console.error(
+              "Erreur lors du rafraîchissement du remboursement:",
+              err,
+            );
+          }
+        }}
+      />
+
       {/* Chat flottant intégré dans la page (caché en mode admin) */}
       {order.provider_profile && (
         <OrderChat
           orderId={order.id}
-          currentUserId={currentUserId}
+          currentUserId={currentUser?.user_id || ""}
           otherUserId={order.provider_id}
-          otherUserName={`${order.provider_profile?.first_name || 'Prestataire'} ${order.provider_profile?.last_name || ''}`}
+          otherUserName={`${order.provider_profile?.first_name || "Prestataire"} ${order.provider_profile?.last_name || ""}`}
           otherUserAvatar={order.provider_profile?.avatar_url}
           userRole={isAdmin ? "admin" : "client"}
           isAdmin={isAdmin}
           clientId={order.client_id}
           providerId={order.provider_id}
           clientName={"Nom du Client"} // À récupérer de votre base de données
-          providerName={`${order.provider_profile?.first_name || 'Prestataire'} ${order.provider_profile?.last_name || ''}`}
+          providerName={`${order.provider_profile?.first_name || "Prestataire"} ${order.provider_profile?.last_name || ""}`}
         />
       )}
     </div>

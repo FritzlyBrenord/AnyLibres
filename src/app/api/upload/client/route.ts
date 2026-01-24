@@ -73,10 +73,10 @@ export async function POST(req: NextRequest) {
 
     // Determine the bucket name based on type
     const bucketMap = {
-      image: 'service-images',
-      video: 'service-videos',
-      audio: 'service-audio',
-      document: 'service-documents'
+      image: 'message-images',
+      video: 'message-videos',
+      audio: 'message-audio',
+      document: 'message-documents'
     };
     const bucketName = bucketMap[type as keyof typeof bucketMap];
 

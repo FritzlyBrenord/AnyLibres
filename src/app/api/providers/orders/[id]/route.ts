@@ -71,7 +71,8 @@ export async function GET(
           )
         ),
         order_deliveries (*),
-        order_revisions (*)
+        order_revisions (*),
+        dispute:disputes!order_id (*)
       `)
       .eq('id', orderId)
       .eq('provider_id', provider.id)

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Récupérer les commandes du provider
     let ordersQuery = supabase
       .from('orders')
-      .select('*')
+      .select('*, dispute:disputes!order_id (*)')
       .eq('provider_id', provider.id)
       .order('created_at', { ascending: false });
 
@@ -97,14 +97,17 @@ export async function GET(request: NextRequest) {
       { data: deliveries },
       { data: revisions },
       { data: clientsData },
-      { data: servicesData }
+      { data: servicesData },
+      { data: disputesData }
     ] = await Promise.all([
       supabase.from('order_items').select('*').in('order_id', orderIds),
       supabase.from('order_deliveries').select('*').in('order_id', orderIds),
       supabase.from('order_revisions').select('*').in('order_id', orderIds),
       supabase.from('profiles').select('*').in('user_id', orders.map(o => o.client_id)),
       // Récupérer les services pour obtenir revisions_included et max_revisions
-      supabase.from('order_items').select('service_id, services(revisions_included, max_revisions)').in('order_id', orderIds)
+      supabase.from('order_items').select('service_id, services(revisions_included, max_revisions)').in('order_id', orderIds),
+      // Récupérer les disputes pour les commandes en litige
+      supabase.from('disputes').select('*').in('order_id', orderIds).eq('status', 'open')
     ]);
 
     // Transformer les données
@@ -116,9 +119,12 @@ export async function GET(request: NextRequest) {
 
       // Récupérer les infos du service pour les révisions
       const firstOrderItem = orderItemsForOrder[0];
-      const serviceInfo = servicesData?.find((item: any) =>
+      const serviceDataEntry = servicesData?.find((item: any) =>
         item.service_id === firstOrderItem?.service_id
       );
+
+      const services = serviceDataEntry?.services as any;
+      const firstService = Array.isArray(services) ? services[0] : services;
 
       const clientName = clientProfile ?
         `${clientProfile.first_name || ''} ${clientProfile.last_name || ''}`.trim() ||
@@ -139,11 +145,15 @@ export async function GET(request: NextRequest) {
       const isLate = deadline && timeRemaining < 0 && isActiveOrder;
       const isUrgent = deadline && hoursRemaining < 48 && hoursRemaining > 0 && isActiveOrder;
 
+      // Trouver le dispute pour cette commande
+      const orderDispute = disputesData?.find(d => d.order_id === order.id);
+
       return {
         ...order,
         order_items: orderItemsForOrder,
         order_deliveries: deliveriesForOrder,
         order_revisions: revisionsForOrder,
+        dispute: orderDispute || null,  // Ajouter le dispute ici
         client: {
           id: order.client_id,
           email: clientProfile?.email || 'email@inconnu.com',
@@ -158,9 +168,9 @@ export async function GET(request: NextRequest) {
           },
           cover_image: null
         },
-        service_info: serviceInfo?.services ? {
-          revisions_included: serviceInfo.services.revisions_included || 0,
-          max_revisions: serviceInfo.services.max_revisions || serviceInfo.services.revisions_included || 0
+        service_info: firstService ? {
+          revisions_included: firstService.revisions_included || 0,
+          max_revisions: firstService.max_revisions || firstService.revisions_included || 0
         } : undefined,
         is_priority: calculatePriority(order),
         is_late: isLate,

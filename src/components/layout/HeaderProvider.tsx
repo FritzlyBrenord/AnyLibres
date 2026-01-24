@@ -28,6 +28,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessagesMenu } from "@/components/layout/MessagesMenu";
+import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
+import ImpersonationBanner from "../ImpersonationBanner";
 
 // Interface pour les devises
 interface Currency {
@@ -52,7 +54,9 @@ const HeaderProvider = () => {
 
   // États pour les devises
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(
+    null
+  );
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
 
   // Refs pour détecter les clics extérieurs
@@ -74,30 +78,36 @@ const HeaderProvider = () => {
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
-        const response = await fetch('/api/admin/currencies?isAdmin=true');
+        const response = await fetch("/api/admin/currencies?isAdmin=true");
         const data = await response.json();
 
         if (data.success) {
-          const activeCurrencies = data.data.currencies.filter((c: Currency) => c.is_active);
+          const activeCurrencies = data.data.currencies.filter(
+            (c: Currency) => c.is_active
+          );
           setCurrencies(activeCurrencies);
 
           // Charger la devise depuis localStorage ou utiliser USD par défaut
-          const savedCurrencyCode = localStorage.getItem('selectedCurrency');
-          const savedCurrency = activeCurrencies.find((c: Currency) => c.code === savedCurrencyCode);
+          const savedCurrencyCode = localStorage.getItem("selectedCurrency");
+          const savedCurrency = activeCurrencies.find(
+            (c: Currency) => c.code === savedCurrencyCode
+          );
 
           if (savedCurrency) {
             setSelectedCurrency(savedCurrency);
           } else {
             // Par défaut: USD
-            const defaultCurrency = activeCurrencies.find((c: Currency) => c.code === 'USD') || activeCurrencies[0];
+            const defaultCurrency =
+              activeCurrencies.find((c: Currency) => c.code === "USD") ||
+              activeCurrencies[0];
             setSelectedCurrency(defaultCurrency);
             if (defaultCurrency) {
-              localStorage.setItem('selectedCurrency', defaultCurrency.code);
+              localStorage.setItem("selectedCurrency", defaultCurrency.code);
             }
           }
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des devises:', error);
+        console.error("Erreur lors du chargement des devises:", error);
       } finally {
         setLoadingCurrencies(false);
       }
@@ -180,10 +190,12 @@ const HeaderProvider = () => {
   // Changer la devise sélectionnée
   const handleCurrencyChange = (currency: Currency) => {
     setSelectedCurrency(currency);
-    localStorage.setItem('selectedCurrency', currency.code);
+    localStorage.setItem("selectedCurrency", currency.code);
     setShowCurrencyMenu(false);
     // Déclencher un événement personnalisé pour notifier le changement
-    window.dispatchEvent(new CustomEvent('currencyChanged', { detail: currency }));
+    window.dispatchEvent(
+      new CustomEvent("currencyChanged", { detail: currency })
+    );
   };
 
   if (loading) {
@@ -549,10 +561,9 @@ const HeaderProvider = () => {
               <MessagesMenu />
 
               {/* Notifications (Desktop only) */}
-              <button className="hidden lg:flex relative p-2 hover:bg-slate-100 rounded-lg transition-colors group">
-                <Bell className="w-5 h-5 text-slate-600 group-hover:text-slate-900" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-              </button>
+              <div className="hidden lg:block">
+                <NotificationsMenu />
+              </div>
 
               {/* Currency Selector (Desktop only) */}
               {!loadingCurrencies && selectedCurrency && (
@@ -934,6 +945,7 @@ const HeaderProvider = () => {
           </div>
         </>
       )}
+      <ImpersonationBanner />
     </>
   );
 };

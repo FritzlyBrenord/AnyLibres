@@ -19,10 +19,17 @@ import {
   MoreHorizontal,
   ArrowRight,
   Briefcase,
+  Play,
+  Send,
+  RotateCcw,
+  Ban,
+  Check,
+  Loader2,
 } from "lucide-react";
-import OrderDetailView from "@/components/order/OrderDetailView"; // Adjust path if needed
 import Link from "next/link";
-import OrderDetailPage from "@/app/(protected)/orders/[id]/page";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import AdminOrderDetail from "./AdminOrderDetail";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
 interface OrdersProps {
   isDark: boolean;
@@ -60,11 +67,16 @@ interface Order {
 }
 
 const Orders: React.FC<OrdersProps> = ({ isDark }) => {
+  const { t } = useLanguageContext();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isDeliveryAction, setIsDeliveryAction] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,6 +85,128 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Actions admin sur les commandes
+  const handleAdminAction = async (
+    orderId: string,
+    action: "start" | "deliver" | "accept" | "cancel" | "revision",
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation(); // Empêcher l'ouverture du détail
+    console.log(`🟢 ADMIN ACTION - Début`, { orderId, action });
+
+    // Si c'est une livraison, ouvrir le détail et le modal de livraison
+    if (action === "deliver") {
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        console.log(`📦 ADMIN ACTION - Ouverture du modal de livraison`);
+        setIsDeliveryAction(true);
+        setSelectedOrder(order);
+        // Le modal s'ouvrira côté AdminOrderDetail
+        return;
+      }
+    }
+
+    // Pour les autres actions, appeler l'API directement
+    setActionLoading(`${orderId}-${action}`);
+
+    try {
+      const response = await fetch("/api/admin/orders/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, action }),
+      });
+
+      console.log(`📨 ADMIN ACTION - Réponse API`, {
+        status: response.status,
+        action,
+      });
+      const data = await response.json();
+      console.log(`📦 ADMIN ACTION - Données reçues`, {
+        success: data.success,
+        error: data.error,
+        action,
+      });
+
+      if (response.ok && data.success) {
+        console.log(`✅ ADMIN ACTION - Succès`, { action });
+        // Rafraîchir la liste des commandes
+        await fetchOrders();
+      } else {
+        console.error(`❌ ADMIN ACTION - Erreur API`, {
+          error: data.error,
+          action,
+        });
+        alert(data.error || "Erreur lors de l'action");
+      }
+    } catch (error) {
+      console.error(`❌ ADMIN ACTION - Exception`, { error, action });
+      alert("Erreur lors de l'action");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Déterminer les actions disponibles selon le statut
+  const getAvailableActions = (order: Order) => {
+    const actions: {
+      key: string;
+      label: string;
+      icon: React.ElementType;
+      color: string;
+      bgColor: string;
+    }[] = [];
+
+    switch (order.status) {
+      case "paid":
+        actions.push({
+          key: "start",
+          label: "Démarrer",
+          icon: Play,
+          color: "text-blue-600",
+          bgColor: "hover:bg-blue-50",
+        });
+        break;
+      case "in_progress":
+        actions.push({
+          key: "deliver",
+          label: "Livrer",
+          icon: Send,
+          color: "text-purple-600",
+          bgColor: "hover:bg-purple-50",
+        });
+        break;
+      case "delivered":
+        actions.push({
+          key: "accept",
+          label: "Accepter",
+          icon: Check,
+          color: "text-green-600",
+          bgColor: "hover:bg-green-50",
+        });
+        actions.push({
+          key: "revision",
+          label: "Révision",
+          icon: RotateCcw,
+          color: "text-orange-600",
+          bgColor: "hover:bg-orange-50",
+        });
+        break;
+    }
+
+    // Annuler disponible sauf si completed, cancelled ou refunded
+    if (!["completed", "cancelled", "refunded"].includes(order.status)) {
+      actions.push({
+        key: "cancel",
+        label: "Annuler",
+        icon: Ban,
+        color: "text-red-600",
+        bgColor: "hover:bg-red-50",
+      });
+    }
+
+    return actions;
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -119,20 +253,20 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
   const stats = {
     total: orders.length,
     completed: orders.filter(
-      (o) => o.status === "completed" || o.status === "delivered"
+      (o) => o.status === "completed" || o.status === "delivered",
     ).length,
     pending: orders.filter(
       (o) =>
         o.status === "pending" ||
         o.status === "paid" ||
-        o.status === "in_progress"
+        o.status === "in_progress",
     ).length,
     disputes: orders.filter(
-      (o) => o.status === "disputed" || o.status === "cancelled"
+      (o) => o.status === "disputed" || o.status === "cancelled",
     ).length,
     totalRevenue: orders.reduce(
       (acc, curr) => acc + (curr.total_cents + (curr.fees_cents || 0)) / 100,
-      0
+      0,
     ),
   };
 
@@ -140,7 +274,7 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const getStatusBadge = (status: string) => {
@@ -148,37 +282,50 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
       case "completed":
         return (
           <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200 flex items-center gap-1 w-fit">
-            <CheckCircle className="w-3 h-3" /> Terminée
+            <CheckCircle className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.completed || "Terminée"}
           </span>
         );
       case "delivered":
         return (
           <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200 flex items-center gap-1 w-fit">
-            <Package className="w-3 h-3" /> Livrée
+            <Package className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.delivered || "Livrée"}
           </span>
         );
       case "in_progress":
         return (
           <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium border border-purple-200 flex items-center gap-1 w-fit">
-            <Clock className="w-3 h-3" /> En cours
+            <Clock className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.inProgress || "En cours"}
           </span>
         );
       case "paid":
         return (
           <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium border border-blue-200 flex items-center gap-1 w-fit">
-            <Clock className="w-3 h-3" /> Payée
+            <Clock className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.paid || "Payée"}
           </span>
         );
       case "pending":
         return (
           <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium border border-amber-200 flex items-center gap-1 w-fit">
-            <Clock className="w-3 h-3" /> En attente
+            <Clock className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.pending || "En attente"}
           </span>
         );
       case "cancelled":
         return (
           <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium border border-red-200 flex items-center gap-1 w-fit">
-            <XCircle className="w-3 h-3" /> Annulée
+            <XCircle className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.cancelled || "Annulée"}
+          </span>
+        );
+      case "refunded":
+        return (
+          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium border border-gray-200 flex items-center gap-1 w-fit">
+            <XCircle className="w-3 h-3" />{" "}
+            {tAny.admin?.orders?.status?.refunded || "Remboursée"}
           </span>
         );
       default:
@@ -199,17 +346,15 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
             : "bg-white border border-slate-200"
         } p-6`}
       >
-        {/* <OrderDetailView
+        <AdminOrderDetail
           order={selectedOrder}
-          isAdmin={false}
+          onClose={() => {
+            setSelectedOrder(null);
+            setIsDeliveryAction(false);
+          }}
+          onRefresh={fetchOrders}
           isDark={isDark}
-          onBack={() => setSelectedOrder(null)}
-        /> */}
-        <OrderDetailPage
-          order_Id={selectedOrder.id}
-          isAdmin={true}
-          isDark={isDark}
-          onBack={() => setSelectedOrder(null)}
+          openDeliveryModal={isDeliveryAction}
         />
       </div>
     );
@@ -232,7 +377,7 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-slate-500"
               }`}
             >
-              Total Commandes
+              {tAny.admin?.orders?.stats?.total || "Total Commandes"}
             </p>
             <h3 className="text-2xl font-bold mt-1">{stats.total}</h3>
           </div>
@@ -253,7 +398,7 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-slate-500"
               }`}
             >
-              En cours / Attente
+              {tAny.admin?.orders?.stats?.pending || "En cours / Attente"}
             </p>
             <h3 className="text-2xl font-bold mt-1">{stats.pending}</h3>
           </div>
@@ -274,7 +419,7 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-slate-500"
               }`}
             >
-              Terminées
+              {tAny.admin?.orders?.stats?.completed || "Terminées"}
             </p>
             <h3 className="text-2xl font-bold mt-1">{stats.completed}</h3>
           </div>
@@ -295,13 +440,10 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-slate-500"
               }`}
             >
-              Volume d'affaires
+              {tAny.admin?.orders?.stats?.revenue || "Volume d'affaires"}
             </p>
             <h3 className="text-2xl font-bold mt-1">
-              {stats.totalRevenue.toLocaleString("fr-FR", {
-                style: "currency",
-                currency: "EUR",
-              })}
+              <CurrencyConverter amount={stats.totalRevenue} />
             </h3>
           </div>
           <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
@@ -325,7 +467,7 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
               isDark ? "text-white" : "text-slate-900"
             }`}
           >
-            Gestion des Commandes
+            {tAny.admin?.orders?.title || "Gestion des Commandes"}
           </h2>
 
           <div className="flex gap-3 w-full md:w-auto">
@@ -339,7 +481,10 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
               <Search className="w-4 h-4 opacity-50" />
               <input
                 type="text"
-                placeholder="Rechercher (ID, Client, Prestataire)..."
+                placeholder={
+                  tAny.admin?.orders?.search?.placeholder ||
+                  "Rechercher (ID, Client, Prestataire)..."
+                }
                 className="bg-transparent border-none outline-none w-full text-sm placeholder:opacity-50"
                 value={searchTerm}
                 onChange={(e) => {
@@ -360,12 +505,27 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 setCurrentPage(1);
               }}
             >
-              <option value="all">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="in_progress">En cours</option>
-              <option value="delivered">Livrée</option>
-              <option value="completed">Terminée</option>
-              <option value="cancelled">Annulée</option>
+              <option value="all">
+                {tAny.admin?.orders?.filters?.allStatus || "Tous les statuts"}
+              </option>
+              <option value="pending">
+                {tAny.admin?.orders?.filters?.pending || "En attente"}
+              </option>
+              <option value="in_progress">
+                {tAny.admin?.orders?.filters?.inProgress || "En cours"}
+              </option>
+              <option value="delivered">
+                {tAny.admin?.orders?.filters?.delivered || "Livrée"}
+              </option>
+              <option value="completed">
+                {tAny.admin?.orders?.filters?.completed || "Terminée"}
+              </option>
+              <option value="cancelled">
+                {tAny.admin?.orders?.filters?.cancelled || "Annulée"}
+              </option>
+              <option value="refunded">
+                {tAny.admin?.orders?.filters?.refunded || "Remboursée"}
+              </option>
             </select>
           </div>
         </div>
@@ -379,14 +539,28 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                   isDark ? "text-gray-400" : "text-slate-500"
                 }`}
               >
-                <th className="pb-4 pl-4">Commande</th>
-                <th className="pb-4">Client</th>
-                <th className="pb-4">Prestataire</th>
-                <th className="pb-4">Service</th>
-                <th className="pb-4">Montant</th>
-                <th className="pb-4">Statut</th>
-                <th className="pb-4">Date</th>
-                <th className="pb-4 text-right pr-4">Actions</th>
+                <th className="pb-4 pl-4">
+                  {tAny.admin?.orders?.table?.headers?.service || "Service"}
+                </th>
+                <th className="pb-4">
+                  {tAny.admin?.orders?.table?.headers?.client || "Client"}
+                </th>
+                <th className="pb-4">
+                  {tAny.admin?.orders?.table?.headers?.provider ||
+                    "Prestataire"}
+                </th>
+                <th className="pb-4">
+                  {tAny.admin?.orders?.table?.headers?.amount || "Montant"}
+                </th>
+                <th className="pb-4">
+                  {tAny.admin?.orders?.table?.headers?.status || "Statut"}
+                </th>
+                <th className="pb-4">
+                  {tAny.admin?.orders?.table?.headers?.date || "Date"}
+                </th>
+                <th className="pb-4 text-right pr-4">
+                  {tAny.admin?.orders?.table?.headers?.actions || "Actions"}
+                </th>
               </tr>
             </thead>
             <tbody
@@ -399,16 +573,13 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
                     <td className="py-4 pl-4">
-                      <div className="h-4 bg-gray-200 rounded w-20"></div>
-                    </td>
-                    <td className="py-4">
-                      <div className="h-4 bg-gray-200 rounded w-32"></div>
-                    </td>
-                    <td className="py-4">
-                      <div className="h-4 bg-gray-200 rounded w-32"></div>
-                    </td>
-                    <td className="py-4">
                       <div className="h-4 bg-gray-200 rounded w-40"></div>
+                    </td>
+                    <td className="py-4">
+                      <div className="h-4 bg-gray-200 rounded w-32"></div>
+                    </td>
+                    <td className="py-4">
+                      <div className="h-4 bg-gray-200 rounded w-32"></div>
                     </td>
                     <td className="py-4">
                       <div className="h-4 bg-gray-200 rounded w-16"></div>
@@ -420,94 +591,148 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                       <div className="h-4 bg-gray-200 rounded w-24"></div>
                     </td>
                     <td className="py-4 pr-4">
-                      <div className="h-4 bg-gray-200 rounded w-8 ml-auto"></div>
+                      <div className="h-4 bg-gray-200 rounded w-24 ml-auto"></div>
                     </td>
                   </tr>
                 ))
               ) : paginatedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    Aucune commande trouvée
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    {tAny.admin?.orders?.table?.empty ||
+                      "Aucune commande trouvée"}
                   </td>
                 </tr>
               ) : (
-                paginatedOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className={`group transition-colors cursor-pointer ${
-                      isDark
-                        ? "hover:bg-gray-700/50 text-gray-300"
-                        : "hover:bg-slate-50 text-slate-600"
-                    }`}
-                    onClick={() => setSelectedOrder(order)}
-                  >
-                    <td className="py-4 pl-4">
-                      <div className="font-mono text-xs opacity-70">
-                        #{order.id.slice(0, 8)}
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
+                paginatedOrders.map((order) => {
+                  const actions = getAvailableActions(order);
+                  return (
+                    <tr
+                      key={order.id}
+                      className={`group transition-colors cursor-pointer ${
+                        isDark
+                          ? "hover:bg-gray-700/50 text-gray-300"
+                          : "hover:bg-slate-50 text-slate-600"
+                      }`}
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      {/* Service */}
+                      <td className="py-4 pl-4">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                            isDark
-                              ? "bg-gray-700 text-gray-300"
-                              : "bg-slate-100 text-slate-600"
+                          className={`max-w-[200px] truncate text-sm font-medium ${
+                            isDark ? "text-white" : "text-slate-900"
                           }`}
+                          title={order.order_items?.[0]?.title}
                         >
-                          {order.client?.profile?.first_name?.charAt(0) || "U"}
+                          {order.order_items?.[0]?.title || "Service"}
                         </div>
+                      </td>
+                      {/* Client */}
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isDark
+                                ? "bg-gray-700 text-gray-300"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {order.client?.profile?.first_name?.charAt(0) ||
+                              "U"}
+                          </div>
+                          <span
+                            className={`font-medium text-sm ${
+                              isDark ? "text-gray-200" : "text-slate-900"
+                            }`}
+                          >
+                            {order.client?.profile?.first_name}{" "}
+                            {order.client?.profile?.last_name}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Prestataire */}
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-3 h-3 opacity-50" />
+                          <span className="font-medium text-sm">
+                            {order.provider?.company_name || "N/A"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4">
                         <span
-                          className={`font-medium ${
-                            isDark ? "text-gray-200" : "text-slate-900"
-                          }`}
+                          className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}
                         >
-                          {order.client?.profile?.first_name}{" "}
-                          {order.client?.profile?.last_name}
+                          <CurrencyConverter
+                            amount={
+                              (order.total_cents + (order.fees_cents || 0)) /
+                              100
+                            }
+                          />
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-3 h-3 opacity-50" />
-                        <span className="font-medium">
-                          {order.provider?.company_name || "Unknown Provider"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4">
-                      <div
-                        className="max-w-[200px] truncate text-sm"
-                        title={order.order_items?.[0]?.title}
-                      >
-                        {order.order_items?.[0]?.title || "Service"}
-                      </div>
-                    </td>
-                    <td className="py-4 font-bold">
-                      {((order.total_cents + order.fees_cents) / 100).toFixed(
-                        2
-                      )}{" "}
-                      €
-                    </td>
-                    <td className="py-4">{getStatusBadge(order.status)}</td>
-                    <td className="py-4 text-sm opacity-70">
-                      {new Date(order.created_at).toLocaleDateString("fr-FR")}
-                    </td>
-                    <td className="py-4 pr-4">
-                      <div className="flex justify-end">
-                        <button
-                          className={`p-2 rounded-lg transition-colors ${
-                            isDark
-                              ? "hover:bg-gray-600 text-gray-400"
-                              : "hover:bg-slate-200 text-slate-400"
-                          }`}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      {/* Statut */}
+                      <td className="py-4">{getStatusBadge(order.status)}</td>
+                      {/* Date */}
+                      <td className="py-4 text-sm opacity-70">
+                        {new Date(order.created_at).toLocaleDateString("fr-FR")}
+                      </td>
+                      {/* Actions */}
+                      <td className="py-4 pr-4">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Boutons d'actions selon le statut */}
+                          {actions.map((action) => {
+                            const Icon = action.icon;
+                            const isLoading =
+                              actionLoading === `${order.id}-${action.key}`;
+                            return (
+                              <button
+                                key={action.key}
+                                onClick={(e) =>
+                                  handleAdminAction(
+                                    order.id,
+                                    action.key as
+                                      | "start"
+                                      | "deliver"
+                                      | "accept"
+                                      | "cancel"
+                                      | "revision",
+                                    e,
+                                  )
+                                }
+                                disabled={!!actionLoading}
+                                className={`p-1.5 rounded-lg transition-colors ${action.color} ${
+                                  isDark ? "hover:bg-gray-600" : action.bgColor
+                                } disabled:opacity-50`}
+                                title={action.label}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Icon className="w-4 h-4" />
+                                )}
+                              </button>
+                            );
+                          })}
+                          {/* Bouton voir détails */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOrder(order);
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              isDark
+                                ? "hover:bg-gray-600 text-gray-400"
+                                : "hover:bg-slate-100 text-slate-400"
+                            }`}
+                            title="Voir détails"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -521,9 +746,13 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                 isDark ? "text-gray-400" : "text-slate-500"
               }`}
             >
-              Affichage de {(currentPage - 1) * itemsPerPage + 1} à{" "}
-              {Math.min(currentPage * itemsPerPage, filteredOrders.length)} sur{" "}
-              {filteredOrders.length} commandes
+              {tAny.admin?.orders?.pagination?.showing || "Affichage de"}{" "}
+              {(currentPage - 1) * itemsPerPage + 1}{" "}
+              {tAny.admin?.orders?.pagination?.to || "à"}{" "}
+              {Math.min(currentPage * itemsPerPage, filteredOrders.length)}{" "}
+              {tAny.admin?.orders?.pagination?.of || "sur"}{" "}
+              {filteredOrders.length}{" "}
+              {tAny.admin?.orders?.pagination?.orders || "commandes"}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -542,7 +771,8 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                   isDark ? "text-white" : "text-slate-700"
                 }`}
               >
-                Page {currentPage} / {totalPages}
+                {tAny.admin?.orders?.pagination?.page || "Page"} {currentPage} /{" "}
+                {totalPages}
               </span>
               <button
                 onClick={() =>

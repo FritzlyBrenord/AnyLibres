@@ -28,6 +28,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
 interface ClientProfileProps {
   profileId?: string;
@@ -726,7 +727,7 @@ export default function ProfilesClient({
                             isDark ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {stats.total_spent.toFixed(2)} €
+                          <CurrencyConverter amount={stats.total_spent} />
                         </span>
                       </div>
                       <p
@@ -915,11 +916,7 @@ export default function ProfilesClient({
                                 "fr-FR"
                               )}{" "}
                               •{" "}
-                              {(
-                                (order.total_cents + (order.fees_cents || 0)) /
-                                100
-                              ).toFixed(2)}{" "}
-                              €
+                              <CurrencyConverter amount={(order.total_cents + (order.fees_cents || 0)) / 100} />
                             </p>
                           </div>
                           <span

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useCurrency } from "@/hooks/useCurrency";
 import Currencies from "./Currencies";
 
 // ============================================================================
@@ -38,6 +39,7 @@ function Settings() {
   const [activeTab, setActiveTab] = useState<
     "global" | "category" | "country" | "location_type" | "monetaire"
   >("global");
+  const { defaultCurrency } = useCurrency();
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -377,7 +379,7 @@ function Settings() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Commission plateforme ({settings.global_fee_type === "percentage" ? "%" : "€"})
+                    Commission plateforme ({settings.global_fee_type === "percentage" ? "%" : (defaultCurrency?.symbol || "€")})
                   </label>
                   <div className="relative">
                     <input
@@ -396,7 +398,7 @@ function Settings() {
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <span className="text-gray-500 dark:text-gray-400 font-medium">
-                        {settings.global_fee_type === "percentage" ? "%" : "€"}
+                        {settings.global_fee_type === "percentage" ? "%" : (defaultCurrency?.symbol || "€")}
                       </span>
                     </div>
                   </div>
@@ -456,7 +458,7 @@ function Settings() {
                 {/* Frais minimum */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Frais minimum (€)
+                    Frais minimum ({defaultCurrency?.symbol || "€"})
                   </label>
                   <input
                     type="number"

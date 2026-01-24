@@ -27,8 +27,12 @@ import {
   MapPin,
   Globe,
   Package,
+  ArchiveRestore,
+  Play,
+  Copy,
 } from "lucide-react";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
+import EditServicePage from "../../edit/[id]/page";
 
 interface Service {
   id: string;
@@ -102,16 +106,26 @@ interface ExtraItemProps {
   formatCurrency: (amount: number, currency: string) => string;
 }
 
-function ExtraItem({ extra, selectedCurrency, isDark, formatCurrency }: ExtraItemProps) {
-  const [extraDisplayPrice, setExtraDisplayPrice] = useState<number>(extra.price_cents / 100);
+function ExtraItem({
+  extra,
+  selectedCurrency,
+  isDark,
+  formatCurrency,
+}: ExtraItemProps) {
+  const [extraDisplayPrice, setExtraDisplayPrice] = useState<number>(
+    extra.price_cents / 100
+  );
 
   useEffect(() => {
     const convertExtraPrice = async () => {
-      if (selectedCurrency === 'USD') {
+      if (selectedCurrency === "USD") {
         setExtraDisplayPrice(extra.price_cents / 100);
         return;
       }
-      const converted = await convertFromUSD(extra.price_cents / 100, selectedCurrency);
+      const converted = await convertFromUSD(
+        extra.price_cents / 100,
+        selectedCurrency
+      );
       if (converted !== null) {
         setExtraDisplayPrice(converted);
       }
@@ -133,7 +147,17 @@ function ExtraItem({ extra, selectedCurrency, isDark, formatCurrency }: ExtraIte
             isDark ? "text-white" : "text-gray-900"
           }`}
         >
-          {extra.title}
+          {(() => {
+            const t = extra.title;
+            if (typeof t === 'string') return t;
+            if (typeof t === 'object' && t) {
+              const fr = t.fr;
+              if (typeof fr === 'string') return fr;
+              if (typeof fr === 'object' && fr?.fr) return fr.fr;
+              if (t.en) return typeof t.en === 'string' ? t.en : '';
+            }
+            return '';
+          })()}
         </div>
         <div
           className={`text-xs md:text-sm font-semibold ${
@@ -148,8 +172,7 @@ function ExtraItem({ extra, selectedCurrency, isDark, formatCurrency }: ExtraIte
           isDark ? "text-gray-400" : "text-gray-600"
         }`}
       >
-        Délai supplémentaire : +
-        {extra.delivery_additional_days} jour(s)
+        Délai supplémentaire : +{extra.delivery_additional_days} jour(s)
       </div>
     </div>
   );
@@ -166,8 +189,7 @@ export default function ServiceViewPage({
   const { user } = useAuth();
 
   // Use prop ID if provided, otherwise fall back to route params
-  const serviceId =
-    propServiceId || (routeParams?.id as string);
+  const serviceId = propServiceId || (routeParams?.id as string);
   const apiBase = isAdmin ? "/api/admin/services" : "/api/services";
 
   const [service, setService] = useState<Service | null>(null);
@@ -175,9 +197,15 @@ export default function ServiceViewPage({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [statusChange, setStatusChange] = useState<{
+    newStatus: "published" | "draft" | "archived";
+    title: string;
+    message: string;
+  } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
   const [displayPrice, setDisplayPrice] = useState<number | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
 
@@ -190,7 +218,7 @@ export default function ServiceViewPage({
 
   // Charger la devise sélectionnée et écouter les changements
   useEffect(() => {
-    const savedCurrency = localStorage.getItem('selectedCurrency');
+    const savedCurrency = localStorage.getItem("selectedCurrency");
     if (savedCurrency) {
       setSelectedCurrency(savedCurrency);
     }
@@ -199,9 +227,15 @@ export default function ServiceViewPage({
       setSelectedCurrency(event.detail.code);
     };
 
-    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    window.addEventListener(
+      "currencyChanged",
+      handleCurrencyChange as EventListener
+    );
     return () => {
-      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+      window.removeEventListener(
+        "currencyChanged",
+        handleCurrencyChange as EventListener
+      );
     };
   }, []);
 
@@ -210,13 +244,16 @@ export default function ServiceViewPage({
     const convertPrice = async () => {
       if (!service) return;
 
-      if (selectedCurrency === 'USD') {
+      if (selectedCurrency === "USD") {
         setDisplayPrice(service.base_price_cents / 100);
         return;
       }
 
       setPriceLoading(true);
-      const converted = await convertFromUSD(service.base_price_cents / 100, selectedCurrency);
+      const converted = await convertFromUSD(
+        service.base_price_cents / 100,
+        selectedCurrency
+      );
       if (converted !== null) {
         setDisplayPrice(converted);
       } else {
@@ -268,29 +305,54 @@ export default function ServiceViewPage({
     }
   };
 
-  const handleStatusChange = async (
+  const requestStatusChange = (
     newStatus: "published" | "draft" | "archived"
   ) => {
+    const messages = {
+      published: {
+        title: "Publier le service",
+        message: `Voulez-vous vraiment publier "${
+          service?.title.fr || service?.title.en || "ce service"
+        }" ? Le service sera visible par tous les utilisateurs.`,
+      },
+      draft: {
+        title: "Mettre en brouillon",
+        message: `Voulez-vous vraiment mettre "${
+          service?.title.fr || service?.title.en || "ce service"
+        }" en brouillon ? Le service ne sera plus visible publiquement.`,
+      },
+      archived: {
+        title: "Archiver le service",
+        message: `Voulez-vous vraiment archiver "${
+          service?.title.fr || service?.title.en || "ce service"
+        }" ? Le service sera masqué mais pourra être restauré.`,
+      },
+    };
+
+    setStatusChange({
+      newStatus,
+      ...messages[newStatus],
+    });
+    setShowStatusModal(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusChange) return;
+
     try {
-      setActionLoading(newStatus);
+      setActionLoading(statusChange.newStatus);
       const response = await fetch(`${apiBase}/${serviceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: statusChange.newStatus }),
       });
 
       if (response.ok) {
-        setService((prev) => (prev ? { ...prev, status: newStatus } : null));
-        setShowArchiveModal(false);
-        alert(
-          `Service ${
-            newStatus === "published"
-              ? "publié"
-              : newStatus === "draft"
-              ? "mis en brouillon"
-              : "archivé"
-          } avec succès`
+        setService((prev) =>
+          prev ? { ...prev, status: statusChange.newStatus } : null
         );
+        setShowStatusModal(false);
+        setStatusChange(null);
       } else {
         const data = await response.json();
         alert(`Erreur: ${data.error}`);
@@ -368,6 +430,22 @@ export default function ServiceViewPage({
     return category?.name || "Catégorie inconnue";
   };
 
+  // Gestion du bouton Modifier : inline pour admin, redirection sinon
+  const handleEditClick = () => {
+    if (isAdmin) {
+      setIsEditMode(true);
+    } else {
+      router.push(`/Provider/TableauDeBord/Service/edit/${serviceId}`);
+    }
+  };
+
+  // Callback quand l'édition est terminée - retour à la vue
+  const handleEditClose = () => {
+    setIsEditMode(false);
+    // Recharger les données du service après édition
+    loadService();
+  };
+
   if (loading) {
     return (
       <div
@@ -412,17 +490,30 @@ export default function ServiceViewPage({
     );
   }
 
+  // Mode édition inline pour admin
+  if (isEditMode && isAdmin) {
+    return (
+      <EditServicePage
+        serviceId={serviceId}
+        onClose={handleEditClose}
+        isModal={true}
+        isAdmin={true}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
       {/* Header */}
       <div
         className={`${
           isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-        } border-b`}
+        } border-b sticky top-0 z-20`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 mb-4 md:mb-6">
-            <div className="flex items-start md:items-center space-x-3 md:space-x-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
+          {/* Ligne 1: Retour + Titre + Badge + Bouton Modifier */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
               <button
                 onClick={() => {
                   if (onBack) {
@@ -431,58 +522,159 @@ export default function ServiceViewPage({
                     router.push("/Provider/TableauDeBord/Service");
                   }
                 }}
-                className={`flex items-center text-sm md:text-base ${
+                className={`p-1.5 md:p-2 rounded-lg flex-shrink-0 ${
                   isDark
-                    ? "text-gray-400 hover:text-white"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "text-gray-400 hover:text-white hover:bg-gray-700"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 }`}
+                title="Retour"
               >
-                <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2 flex-shrink-0" />
-                <span className="hidden sm:inline">Retour</span>
+                <ArrowLeft className="h-5 w-5" />
               </button>
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2">
                   <h1
-                    className={`text-xl md:text-2xl lg:text-3xl font-bold truncate ${
+                    className={`text-base md:text-lg lg:text-xl font-bold leading-tight line-clamp-2 ${
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    {service.title.fr || service.title.en || "Sans titre"}
+                    {(() => {
+                      const t = service.title;
+                      if (typeof t === 'string') return t || "Sans titre";
+                      if (typeof t === 'object' && t) {
+                        const fr = t.fr;
+                        if (typeof fr === 'string' && fr) return fr;
+                        if (t.en && typeof t.en === 'string') return t.en;
+                      }
+                      return "Sans titre";
+                    })()}
                   </h1>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 mt-0.5">
                     {getStatusBadge(service.status)}
                   </div>
                 </div>
-                <p
-                  className={`text-xs md:text-sm mt-1 truncate ${
-                    isDark ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  Aperçu détaillé de votre service
-                </p>
               </div>
-            </div>
-            <div className="flex items-center justify-end space-x-2 md:space-x-3">
-              <button
-                onClick={() => router.push(`/service/${serviceId}`)}
-                className="flex items-center px-3 py-1.5 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
-              >
-                <Eye className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2 flex-shrink-0" />
-                <span className="hidden xs:inline">Voir</span>
-              </button>
 
-              <div className="relative">
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="flex items-center px-3 py-1.5 md:px-4 md:py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 text-sm"
-                >
-                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
-                </button>
-              </div>
+              {/* Bouton Modifier - toujours visible */}
+              <button
+                onClick={handleEditClick}
+                className="flex items-center px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex-shrink-0"
+              >
+                <Edit className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Modifier</span>
+              </button>
             </div>
           </div>
 
-          {/* Navigation par onglets */}
+          {/* Ligne 2: Actions secondaires */}
+          <div className="flex items-center justify-between gap-2">
+            <p
+              className={`text-xs md:text-sm truncate ${
+                isDark ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
+              Aperçu du service
+            </p>
+
+            <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+              {/* Voir public */}
+              <button
+                onClick={() => router.push(`/service/${serviceId}`)}
+                className={`flex items-center px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm ${
+                  isDark
+                    ? "text-gray-300 hover:bg-gray-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+                title="Voir la page publique"
+              >
+                <Eye className="h-4 w-4 md:mr-1.5" />
+                <span className="hidden sm:inline">Voir</span>
+              </button>
+
+              {/* Publier (si brouillon) */}
+              {service.status === "draft" && (
+                <button
+                  onClick={() => requestStatusChange("published")}
+                  disabled={actionLoading === "published"}
+                  className="flex items-center px-2 py-1.5 md:px-3 md:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs md:text-sm font-medium disabled:opacity-50"
+                  title="Publier le service"
+                >
+                  <Play className="h-4 w-4 md:mr-1.5" />
+                  <span className="hidden sm:inline">
+                    {actionLoading === "published" ? "..." : "Publier"}
+                  </span>
+                </button>
+              )}
+
+              {/* Mettre en brouillon (si publié) */}
+              {service.status === "published" && (
+                <button
+                  onClick={() => requestStatusChange("draft")}
+                  disabled={actionLoading === "draft"}
+                  className={`flex items-center px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm disabled:opacity-50 ${
+                    isDark
+                      ? "text-gray-300 hover:bg-gray-700"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                  title="Mettre en brouillon"
+                >
+                  <Edit className="h-4 w-4 md:mr-1.5" />
+                  <span className="hidden sm:inline">
+                    {actionLoading === "draft" ? "..." : "Brouillon"}
+                  </span>
+                </button>
+              )}
+
+              {/* Restaurer ou Archiver */}
+              {service.status === "archived" ? (
+                <button
+                  onClick={() => requestStatusChange("draft")}
+                  disabled={actionLoading === "draft"}
+                  className="flex items-center px-2 py-1.5 md:px-3 md:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs md:text-sm font-medium disabled:opacity-50"
+                  title="Restaurer le service"
+                >
+                  <ArchiveRestore className="h-4 w-4 md:mr-1.5" />
+                  <span className="hidden sm:inline">
+                    {actionLoading === "draft" ? "..." : "Restaurer"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => requestStatusChange("archived")}
+                  disabled={actionLoading === "archived"}
+                  className={`flex items-center px-2 py-1.5 md:px-3 md:py-2 rounded-lg text-xs md:text-sm disabled:opacity-50 ${
+                    isDark
+                      ? "text-orange-400 hover:bg-gray-700"
+                      : "text-orange-600 hover:bg-orange-50"
+                  }`}
+                  title="Archiver le service"
+                >
+                  <Archive className="h-4 w-4 md:mr-1.5" />
+                  <span className="hidden md:inline">
+                    {actionLoading === "archived" ? "..." : "Archiver"}
+                  </span>
+                </button>
+              )}
+
+              {/* Supprimer */}
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className={`flex items-center p-1.5 md:p-2 rounded-lg ${
+                  isDark
+                    ? "text-red-400 hover:bg-gray-700"
+                    : "text-red-600 hover:bg-red-50"
+                }`}
+                title="Supprimer le service"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation par onglets */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className={`border-b overflow-x-auto ${
               isDark ? "border-gray-700" : "border-gray-200"
@@ -555,7 +747,7 @@ export default function ServiceViewPage({
                     ) : displayPrice !== null ? (
                       formatCurrency(displayPrice, selectedCurrency)
                     ) : (
-                      formatCurrency(service.base_price_cents / 100, 'USD')
+                      formatCurrency(service.base_price_cents / 100, "USD")
                     )}
                   </span>
                 </div>
@@ -757,36 +949,56 @@ export default function ServiceViewPage({
             {/* Boutons d'action mobile */}
             <div className="lg:hidden bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="grid grid-cols-2 gap-2">
-                {service.status !== "published" && (
+                <button
+                  onClick={handleEditClick}
+                  className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium flex items-center justify-center"
+                >
+                  <Edit size={14} className="mr-1" />
+                  Modifier
+                </button>
+                {service.status === "draft" && (
                   <button
-                    onClick={() => handleStatusChange("published")}
+                    onClick={() => requestStatusChange("published")}
                     disabled={actionLoading === "published"}
-                    className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium disabled:opacity-50"
+                    className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium disabled:opacity-50 flex items-center justify-center"
                   >
+                    <Play size={14} className="mr-1" />
                     {actionLoading === "published" ? "..." : "Publier"}
                   </button>
                 )}
-                {service.status !== "draft" && (
+                {service.status === "published" && (
                   <button
-                    onClick={() => handleStatusChange("draft")}
+                    onClick={() => requestStatusChange("draft")}
                     disabled={actionLoading === "draft"}
                     className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs font-medium disabled:opacity-50"
                   >
                     {actionLoading === "draft" ? "..." : "Brouillon"}
                   </button>
                 )}
-                {service.status !== "archived" && (
+                {service.status === "archived" ? (
                   <button
-                    onClick={() => setShowArchiveModal(true)}
-                    className="w-full px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-xs font-medium"
+                    onClick={() => requestStatusChange("draft")}
+                    disabled={actionLoading === "draft"}
+                    className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs font-medium disabled:opacity-50 flex items-center justify-center"
                   >
-                    Archiver
+                    <ArchiveRestore size={14} className="mr-1" />
+                    {actionLoading === "draft" ? "..." : "Restaurer"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => requestStatusChange("archived")}
+                    disabled={actionLoading === "archived"}
+                    className="w-full px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-xs font-medium disabled:opacity-50 flex items-center justify-center"
+                  >
+                    <Archive size={14} className="mr-1" />
+                    {actionLoading === "archived" ? "..." : "Archiver"}
                   </button>
                 )}
                 <button
                   onClick={() => setShowDeleteModal(true)}
-                  className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium"
+                  className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium flex items-center justify-center"
                 >
+                  <Trash2 size={14} className="mr-1" />
                   Supprimer
                 </button>
               </div>
@@ -881,7 +1093,10 @@ export default function ServiceViewPage({
                             ) : displayPrice !== null ? (
                               formatCurrency(displayPrice, selectedCurrency)
                             ) : (
-                              formatCurrency(service.base_price_cents / 100, 'USD')
+                              formatCurrency(
+                                service.base_price_cents / 100,
+                                "USD"
+                              )
                             )}
                           </span>
                         </div>
@@ -1066,14 +1281,34 @@ export default function ServiceViewPage({
                               isDark ? "text-white" : "text-gray-900"
                             }`}
                           >
-                            Q: {faq.question.fr}
+                            Q: {(() => {
+                              const q = faq.question;
+                              if (typeof q === 'string') return q;
+                              if (typeof q === 'object' && q) {
+                                const fr = q.fr;
+                                if (typeof fr === 'string') return fr;
+                                if (typeof fr === 'object' && fr?.fr) return fr.fr;
+                                if (q.en) return typeof q.en === 'string' ? q.en : '';
+                              }
+                              return '';
+                            })()}
                           </h3>
                           <p
                             className={`text-sm md:text-base ${
                               isDark ? "text-gray-300" : "text-gray-700"
                             }`}
                           >
-                            R: {faq.answer.fr}
+                            R: {(() => {
+                              const a = faq.answer;
+                              if (typeof a === 'string') return a;
+                              if (typeof a === 'object' && a) {
+                                const fr = a.fr;
+                                if (typeof fr === 'string') return fr;
+                                if (typeof fr === 'object' && fr?.fr) return fr.fr;
+                                if (a.en) return typeof a.en === 'string' ? a.en : '';
+                              }
+                              return '';
+                            })()}
                           </p>
                         </div>
                       ))}
@@ -1128,7 +1363,17 @@ export default function ServiceViewPage({
                                 isDark ? "text-white" : "text-gray-900"
                               }`}
                             >
-                              {req.description.fr}
+                              {(() => {
+                                const d = req.description;
+                                if (typeof d === 'string') return d;
+                                if (typeof d === 'object' && d) {
+                                  const fr = d.fr;
+                                  if (typeof fr === 'string') return fr;
+                                  if (typeof fr === 'object' && fr?.fr) return fr.fr;
+                                  if (d.en) return typeof d.en === 'string' ? d.en : '';
+                                }
+                                return '';
+                              })()}
                             </div>
                             <div
                               className={`text-xs md:text-sm capitalize ${
@@ -1408,42 +1653,55 @@ export default function ServiceViewPage({
         </div>
       )}
 
-      {/* Modal d'archivage */}
-      {showArchiveModal && (
+      {/* Modal de changement de statut */}
+      {showStatusModal && statusChange && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg md:rounded-xl max-w-md w-full p-4 md:p-6">
             <div className="text-center mb-4 md:mb-6">
-              <Archive className="h-10 w-10 md:h-12 md:w-12 text-orange-600 mx-auto mb-3" />
+              {statusChange.newStatus === "published" && (
+                <Play className="h-10 w-10 md:h-12 md:w-12 text-green-600 mx-auto mb-3" />
+              )}
+              {statusChange.newStatus === "draft" && (
+                <Edit className="h-10 w-10 md:h-12 md:w-12 text-gray-600 mx-auto mb-3" />
+              )}
+              {statusChange.newStatus === "archived" && (
+                <Archive className="h-10 w-10 md:h-12 md:w-12 text-orange-600 mx-auto mb-3" />
+              )}
               <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">
-                Archiver le service
+                {statusChange.title}
               </h3>
               <p className="text-gray-600 text-sm md:text-base mb-4">
-                Êtes-vous sûr de vouloir archiver le service "{service.title.fr}
-                " ?
-              </p>
-              <p className="text-xs md:text-sm text-gray-500 mb-4 md:mb-6">
-                Le service ne sera plus visible par les clients mais restera
-                accessible dans vos archives.
+                {statusChange.message}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
               <button
-                onClick={() => setShowArchiveModal(false)}
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setStatusChange(null);
+                }}
                 className="flex-1 px-4 py-2 md:px-6 md:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-sm md:text-base"
               >
                 Annuler
               </button>
               <button
-                onClick={() => handleStatusChange("archived")}
-                disabled={actionLoading === "archived"}
-                className="flex-1 px-4 py-2 md:px-6 md:py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium text-sm md:text-base disabled:opacity-50"
+                onClick={confirmStatusChange}
+                disabled={!!actionLoading}
+                className={`flex-1 px-4 py-2 md:px-6 md:py-3 text-white rounded-lg font-medium text-sm md:text-base disabled:opacity-50 ${
+                  statusChange.newStatus === "published"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : statusChange.newStatus === "draft"
+                    ? "bg-gray-600 hover:bg-gray-700"
+                    : "bg-orange-600 hover:bg-orange-700"
+                }`}
               >
-                {actionLoading === "archived" ? "Archivage..." : "Archiver"}
+                {actionLoading ? "Traitement..." : "Confirmer"}
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

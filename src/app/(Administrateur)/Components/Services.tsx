@@ -18,6 +18,9 @@ import {
 import ServiceViewPage from "@/app/(protected)/Provider/TableauDeBord/Service/view/[id]/page";
 import AnalyticsPerformance from "@/app/(protected)/Provider/TableauDeBord/Analytique/Performance/page";
 import { ArrowLeft } from "lucide-react";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import { useCurrency } from "@/hooks/useCurrency";
+import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
 interface ServicesProps {
   isDark: boolean;
@@ -51,6 +54,10 @@ interface Service {
 }
 
 const Services: React.FC<ServicesProps> = ({ isDark }) => {
+  const { t } = useLanguageContext();
+  const { convertFromUSD, formatAmount } = useCurrency();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
@@ -102,12 +109,16 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
   };
 
   const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      published: "Publié",
-      draft: "Brouillon",
-      archived: "Archivé",
-    };
-    return labels[status] || status;
+    switch (status) {
+      case "published":
+        return tAny.admin?.services?.status?.published || "Publié";
+      case "draft":
+        return tAny.admin?.services?.status?.draft || "Brouillon";
+      case "archived":
+        return tAny.admin?.services?.status?.archived || "Archivé";
+      default:
+        return status;
+    }
   };
 
   const uniqueProviders = Array.from(
@@ -124,7 +135,10 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
   const filteredServices = services.filter((service) => {
     const searchLower = filters.search.toLowerCase();
     const matchesSearch =
-      (service.title.fr || "").toLowerCase().includes(searchLower) ||
+      (typeof service.title === 'object' 
+        ? (service.title?.fr || service.title?.en || "") 
+        : (service.title || "")
+      ).toLowerCase().includes(searchLower) ||
       (service.provider.company_name || "")
         .toLowerCase()
         .includes(searchLower) ||
@@ -162,7 +176,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
             }`}
           >
             <ArrowLeft className="w-5 h-5" />
-            Retour à la liste
+            {tAny.admin?.services?.buttons?.backToList || "Retour à la liste"}
           </button>
         </div>
         <AnalyticsPerformance
@@ -210,15 +224,14 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  🛠 Gestion des Services
+                  {tAny.admin?.services?.hero?.title || "🛠 Gestion des Services"}
                 </h1>
                 <p
                   className={`mt-2 ${
                     isDark ? "text-gray-300" : "text-gray-600"
                   }`}
                 >
-                  Vue d'ensemble et administration de tous les services de la
-                  plateforme
+                  {tAny.admin?.services?.hero?.subtitle || "Vue d'ensemble et administration de tous les services de la plateforme"}
                 </p>
               </div>
             </div>
@@ -231,25 +244,25 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         {[
           {
-            label: "Services totaux",
+            label: tAny.admin?.services?.stats?.total || "Services totaux",
             value: stats.total,
             icon: Package,
             color: "bg-blue-500",
           },
           {
-            label: "Services publiés",
+            label: tAny.admin?.services?.stats?.published || "Services publiés",
             value: stats.active,
             icon: CheckCircle,
             color: "bg-green-500",
           },
           {
-            label: "Brouillons",
+            label: tAny.admin?.services?.stats?.draft || "Brouillons",
             value: stats.draft,
             icon: Clock,
             color: "bg-gray-500",
           },
           {
-            label: "Archivés",
+            label: tAny.admin?.services?.stats?.archived || "Archivés",
             value: stats.archived,
             icon: AlertCircle,
             color: "bg-orange-500",
@@ -304,7 +317,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                   isDark ? "text-white" : "text-gray-900"
                 }`}
               >
-                Liste des Services
+                {tAny.admin?.services?.table?.title || "Liste des Services"}
               </h3>
             </div>
             <div className="flex items-center gap-3">
@@ -316,7 +329,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                 <Search className="w-4 h-4 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder={tAny.admin?.services?.search?.placeholder || "Rechercher..."}
                   value={filters.search}
                   onChange={(e) =>
                     setFilters({ ...filters, search: e.target.value })
@@ -339,10 +352,10 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                     : "bg-gray-50 border-gray-200 text-gray-700"
                 }`}
               >
-                <option value="all">Tous les statuts</option>
-                <option value="published">Publiés</option>
-                <option value="draft">Brouillons</option>
-                <option value="archived">Archivés</option>
+                <option value="all">{tAny.admin?.services?.filters?.allStatus || "Tous les statuts"}</option>
+                <option value="published">{tAny.admin?.services?.filters?.published || "Publiés"}</option>
+                <option value="draft">{tAny.admin?.services?.filters?.draft || "Brouillons"}</option>
+                <option value="archived">{tAny.admin?.services?.filters?.archived || "Archivés"}</option>
               </select>
 
               <select
@@ -359,7 +372,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                 }`}
               >
                 <option value="all">
-                  Tous les prestataires ({uniqueProviders.length})
+                  {tAny.admin?.services?.filters?.allProviders || "Tous les prestataires"} ({uniqueProviders.length})
                 </option>
                 {uniqueProviders.map((provider) => (
                   <option key={provider.id} value={provider.id}>
@@ -376,7 +389,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                   className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors"
                 >
                   <TrendingUp className="w-4 h-4" />
-                  Performance
+                  {tAny.admin?.services?.buttons?.performance || "Performance"}
                 </button>
               )}
             </div>
@@ -390,7 +403,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
               <p
                 className={`mt-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}
               >
-                Chargement des services...
+                {tAny.admin?.services?.table?.loading || "Chargement des services..."}
               </p>
             </div>
           ) : (
@@ -406,35 +419,35 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Service
+                    {tAny.admin?.services?.headers?.service || "Service"}
                   </th>
                   <th
                     className={`text-left py-4 px-6 text-sm font-semibold ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Prestataire
+                    {tAny.admin?.services?.headers?.provider || "Prestataire"}
                   </th>
                   <th
                     className={`text-left py-4 px-6 text-sm font-semibold ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Prix
+                    {tAny.admin?.services?.headers?.price || "Prix"}
                   </th>
                   <th
                     className={`text-left py-4 px-6 text-sm font-semibold ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Statut
+                    {tAny.admin?.services?.headers?.status || "Statut"}
                   </th>
                   <th
                     className={`text-left py-4 px-6 text-sm font-semibold ${
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Actions
+                    {tAny.admin?.services?.headers?.actions || "Actions"}
                   </th>
                 </tr>
               </thead>
@@ -460,9 +473,9 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                               isDark ? "text-white" : "text-gray-900"
                             }`}
                           >
-                            {service.title.fr ||
-                              service.title.en ||
-                              "Sans titre"}
+                            {typeof service.title === 'object'
+                              ? (service.title?.fr || service.title?.en || tAny.admin?.services?.defaults?.noTitle || "Sans titre")
+                              : (service.title || tAny.admin?.services?.defaults?.noTitle || "Sans titre")}
                           </p>
                           <p
                             className={`text-xs ${
@@ -494,10 +507,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                           isDark ? "text-white" : "text-gray-900"
                         }`}
                       >
-                        {(service.base_price_cents / 100).toLocaleString(
-                          "fr-FR",
-                          { style: "currency", currency: service.currency }
-                        )}
+                        <CurrencyConverter amount={service.base_price_cents / 100} />
                       </p>
                     </td>
                     <td className="py-4 px-6">
@@ -518,7 +528,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                               ? "hover:bg-gray-800 text-blue-400"
                               : "hover:bg-gray-100 text-blue-600"
                           }`}
-                          title="Voir les détails"
+                          title={tAny.admin?.services?.buttons?.viewDetails || "Voir les détails"}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -529,7 +539,7 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                 {filteredServices.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-gray-500">
-                      Aucun service trouvé.
+                      {tAny.admin?.services?.table?.empty || "Aucun service trouvé."}
                     </td>
                   </tr>
                 )}

@@ -25,6 +25,8 @@ import {
   Settings,
   TrendingDown,
 } from 'lucide-react';
+import { useLanguageContext } from '@/contexts/LanguageContext';
+import { useCurrency } from '@/hooks/useCurrency';
 
 interface ProviderBalance {
   id: string;
@@ -35,6 +37,7 @@ interface ProviderBalance {
   pending_cents: number;
   withdrawn_cents: number;
   total_earned_cents: number;
+  donations_received_cents?: number; // Dons reçus de l'admin
   currency: string;
   last_withdrawal_at: string | null;
   created_at: string;
@@ -48,6 +51,11 @@ interface BalanceManagementProps {
 }
 
 export default function BalanceManagement({ isDark }: BalanceManagementProps) {
+  const { t } = useLanguageContext();
+  const { convertFromUSD, formatAmount } = useCurrency();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tAny = t as Record<string, any>;
+
   const [balances, setBalances] = useState<ProviderBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,20 +117,20 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
         // Si des fonds ont été libérés, afficher une notification
         if (autoReleaseData.summary.released > 0) {
           console.log(`🎉 ${autoReleaseData.summary.released} provider(s) libéré(s) automatiquement!`);
-          alert(`✅ ${autoReleaseData.summary.released} provider(s) ont eu leurs fonds libérés automatiquement!`);
+          alert(`${autoReleaseData.summary.released} ${tAny.admin?.balanceManagement?.alerts?.autoReleaseSuccess || 'provider(s) ont eu leurs fonds libérés automatiquement!'}`);
         } else if (autoReleaseData.summary.failed > 0) {
           console.error('❌ Échecs:', autoReleaseData.summary.failed);
-          alert(`⚠️ ${autoReleaseData.summary.failed} provider(s) ont échoué lors de la libération automatique. Vérifiez les logs.`);
+          alert(`${autoReleaseData.summary.failed} ${tAny.admin?.balanceManagement?.alerts?.autoReleaseFailed || 'provider(s) ont échoué lors de la libération automatique.'}`);
         } else {
           console.log('ℹ️ Aucun pending à libérer');
         }
       } else {
         console.error('❌ API returned error:', autoReleaseData.error);
-        alert(`❌ Erreur auto-release: ${autoReleaseData.error}`);
+        alert(`${tAny.admin?.balanceManagement?.alerts?.operationError || 'Erreur'}: ${autoReleaseData.error}`);
       }
     } catch (error) {
       console.error('💥 Exception lors de l\'auto-release:', error);
-      alert(`❌ Erreur critique auto-release: ${error}`);
+      alert(`${tAny.admin?.balanceManagement?.alerts?.operationError || 'Erreur critique'}: ${error}`);
     } finally {
       // Charger les balances après (qu'il y ait eu libération ou non)
       console.log('🔄 Rechargement des balances...');
@@ -193,11 +201,11 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
     setStats(stats);
   };
 
-  const formatCurrency = (cents: number, currency: string = 'EUR') => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currency,
-    }).format(cents / 100);
+  const { language } = useLanguageContext();
+  const formatCurrency = (cents: number, currency: string = 'USD') => {
+    // Les montants sont stockés en USD (cents).
+    // On convertit d'abord en USD (unité), puis vers la devise par défaut.
+    return formatAmount(convertFromUSD(cents / 100));
   };
 
   const releaseFunds = async (providerId: string, amount?: number) => {
@@ -282,10 +290,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Gestion des Soldes
+                {tAny.admin?.balanceManagement?.title || 'Gestion des Soldes'}
               </h1>
               <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Contrôle total sur les soldes des providers
+                {tAny.admin?.balanceManagement?.subtitle || 'Contrôle total sur les soldes des providers'}
               </p>
             </div>
 
@@ -300,7 +308,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                 className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors`}
               >
                 <Download className="w-4 h-4" />
-                Exporter
+                {tAny.admin?.balanceManagement?.buttons?.export || 'Exporter'}
               </button>
             </div>
           </div>
@@ -309,7 +317,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Disponible Total</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.balanceManagement?.stats?.availableTotal || 'Disponible Total'}</span>
                 <DollarSign className="w-4 h-4 text-green-500" />
               </div>
               <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -319,7 +327,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
 
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>En Attente</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.balanceManagement?.stats?.pending || 'En Attente'}</span>
                 <Clock className="w-4 h-4 text-amber-500" />
               </div>
               <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -329,7 +337,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
 
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Retiré Total</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.balanceManagement?.stats?.withdrawnTotal || 'Retiré Total'}</span>
                 <TrendingUp className="w-4 h-4 text-blue-500" />
               </div>
               <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -339,7 +347,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
 
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Providers</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.balanceManagement?.stats?.providers || 'Providers'}</span>
                 <CheckCircle className="w-4 h-4 text-purple-500" />
               </div>
               <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -349,7 +357,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
 
             <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Comptes Gelés</span>
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.balanceManagement?.stats?.frozenAccounts || 'Comptes Gelés'}</span>
                 <Lock className="w-4 h-4 text-red-500" />
               </div>
               <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -367,7 +375,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Rechercher par nom ou email..."
+              placeholder={tAny.admin?.balanceManagement?.search || "Rechercher par nom ou email..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
@@ -393,10 +401,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                     : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
                 }`}
               >
-                {filter === 'all' && 'Tous'}
-                {filter === 'pending' && 'En attente'}
-                {filter === 'available' && 'Disponible'}
-                {filter === 'frozen' && 'Gelés'}
+                {filter === 'all' && (tAny.admin?.balanceManagement?.filters?.all || 'Tous')}
+                {filter === 'pending' && (tAny.admin?.balanceManagement?.filters?.pending || 'En attente')}
+                {filter === 'available' && (tAny.admin?.balanceManagement?.filters?.available || 'Disponible')}
+                {filter === 'frozen' && (tAny.admin?.balanceManagement?.filters?.frozen || 'Gelés')}
               </button>
             ))}
           </div>
@@ -409,32 +417,35 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
               <thead className={isDark ? 'bg-gray-800' : 'bg-gray-50'}>
                 <tr>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Provider
+                    {tAny.admin?.balanceManagement?.table?.provider || 'Provider'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Disponible
+                    {tAny.admin?.balanceManagement?.table?.available || 'Disponible'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    En Attente
+                    {tAny.admin?.balanceManagement?.table?.pending || 'En Attente'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Retiré
+                    {tAny.admin?.balanceManagement?.table?.withdrawn || 'Retiré'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Total Gagné
+                    {tAny.admin?.balanceManagement?.table?.totalEarned || 'Total Gagné'}
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Statut
+                    {tAny.admin?.balanceManagement?.table?.donationsReceived || 'Dons Reçus'}
+                  </th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                    {tAny.admin?.balanceManagement?.table?.status || 'Statut'}
                   </th>
                   <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Actions
+                    {tAny.admin?.balanceManagement?.table?.actions || 'Actions'}
                   </th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
                         <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
                       </div>
@@ -442,9 +453,9 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                   </tr>
                 ) : filteredBalances.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>
-                        Aucun solde trouvé
+                        {tAny.admin?.balanceManagement?.table?.noResults || 'Aucun solde trouvé'}
                       </p>
                     </td>
                   </tr>
@@ -482,15 +493,20 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-semibold ${(balance.donations_received_cents || 0) > 0 ? 'text-pink-500' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {formatCurrency(balance.donations_received_cents || 0, balance.currency)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {(balance.Account_gele || balance.is_frozen) ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                             <Lock className="w-3 h-3" />
-                            Gelé
+                            {tAny.admin?.balanceManagement?.table?.frozen || 'Gelé'}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                             <CheckCircle className="w-3 h-3" />
-                            Actif
+                            {tAny.admin?.balanceManagement?.table?.active || 'Actif'}
                           </span>
                         )}
                       </td>
@@ -610,7 +626,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Libérer les fonds
+                  {tAny.admin?.balanceManagement?.actions?.releaseFunds || 'Libérer les fonds'}
                 </h3>
                 <button
                   onClick={() => setShowReleaseModal(false)}
@@ -662,7 +678,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  Annuler
+                  {tAny.admin?.balanceManagement?.modals?.customLimit?.cancel || 'Annuler'}
                 </button>
                 <button
                   onClick={async () => {
@@ -698,7 +714,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Unlock className="w-4 h-4" />
-                    Libérer
+                    {tAny.admin?.balanceManagement?.actions?.releaseFunds || 'Libérer'}
                   </div>
                 </button>
               </div>
@@ -716,7 +732,9 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {(selectedBalance.Account_gele || selectedBalance.is_frozen) ? '🔓 Dégeler le compte' : '🔒 Geler le compte'}
+                  {(selectedBalance.Account_gele || selectedBalance.is_frozen) 
+                    ? (tAny.admin?.balanceManagement?.modals?.freeze?.unfreezeTitle || '🔓 Dégeler le compte') 
+                    : (tAny.admin?.balanceManagement?.modals?.freeze?.title || '🔒 Geler le compte')}
                 </h3>
                 <button
                   onClick={() => {
@@ -743,7 +761,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
               {!(selectedBalance.Account_gele || selectedBalance.is_frozen) && (
                 <div className="mb-6">
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Raison du gel *
+                    {tAny.admin?.balanceManagement?.modals?.freeze?.reasonLabel || 'Raison du gel *'}
                   </label>
                   <textarea
                     id="freeze-reason"
@@ -756,7 +774,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                     } focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none`}
                   ></textarea>
                   <p className={`text-xs mt-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    ⚠️ Le provider ne pourra plus effectuer de retraits tant que le compte est gelé
+                    ⚠️ {tAny.admin?.balanceManagement?.modals?.freeze?.warning || 'Le provider ne pourra plus effectuer de retraits tant que le compte est gelé'}
                   </p>
                 </div>
               )}
@@ -786,7 +804,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  Annuler
+                  {tAny.admin?.balanceManagement?.modals?.freeze?.cancel || 'Annuler'}
                 </button>
                 <button
                   onClick={async () => {
@@ -836,12 +854,12 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                     {(selectedBalance.Account_gele || selectedBalance.is_frozen) ? (
                       <>
                         <Unlock className="w-4 h-4" />
-                        Dégeler
+                        {tAny.admin?.balanceManagement?.modals?.freeze?.unfreezeButton || 'Dégeler'}
                       </>
                     ) : (
                       <>
                         <Lock className="w-4 h-4" />
-                        Geler
+                        {tAny.admin?.balanceManagement?.modals?.freeze?.freezeButton || 'Geler'}
                       </>
                     )}
                   </div>
@@ -939,7 +957,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Timer className="w-4 h-4" />
-                    Réinitialiser
+                    {tAny.admin?.balanceManagement?.modals?.resetTimer?.resetButton || 'Réinitialiser'}
                   </div>
                 </button>
               </div>
@@ -1076,7 +1094,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Historique des Transactions
+                  {tAny.admin?.balanceManagement?.modals?.history?.title || 'Historique des Transactions'}
                 </h3>
                 <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                   {selectedBalance.provider_name} ({selectedBalance.provider_email})
@@ -1109,25 +1127,25 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                     <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-gray-700/50' : 'bg-green-50'}`}>
                       <p className={`text-xs uppercase font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-green-700'}`}>Disponible</p>
                       <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-green-600'}`}>
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: historyData.balance?.currency || 'EUR' }).format(historyData.balance?.available || 0)}
+                        {formatAmount(convertFromUSD(historyData.balance?.available || 0))}
                       </p>
                     </div>
                     <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-gray-700/50' : 'bg-amber-50'}`}>
                       <p className={`text-xs uppercase font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>En attente</p>
                       <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-amber-600'}`}>
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: historyData.balance?.currency || 'EUR' }).format(historyData.balance?.pending || 0)}
+                        {formatAmount(convertFromUSD(historyData.balance?.pending || 0))}
                       </p>
                     </div>
                     <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-gray-700/50' : 'bg-blue-50'}`}>
                       <p className={`text-xs uppercase font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-blue-700'}`}>Total Gagné</p>
                       <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-blue-600'}`}>
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: historyData.balance?.currency || 'EUR' }).format(historyData.balance?.total_earned || 0)}
+                        {formatAmount(convertFromUSD(historyData.balance?.total_earned || 0))}
                       </p>
                     </div>
                     <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-gray-700/50' : 'bg-red-50'}`}>
                       <p className={`text-xs uppercase font-semibold mb-1 ${isDark ? 'text-gray-400' : 'text-red-700'}`}>Total Retiré</p>
                       <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-red-600'}`}>
-                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: historyData.balance?.currency || 'EUR' }).format(historyData.balance?.withdrawn || 0)}
+                        {formatAmount(convertFromUSD(historyData.balance?.withdrawn || 0))}
                       </p>
                     </div>
                   </div>
@@ -1185,7 +1203,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               <td className={`px-4 py-3 text-sm font-bold text-right ${
                                 tx.amount > 0 ? 'text-green-500' : 'text-red-500'
                               }`}>
-                                {tx.amount > 0 ? '+' : ''}{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: historyData.balance?.currency || 'EUR' }).format(tx.amount)}
+                                {tx.amount > 0 ? '+' : ''}{formatAmount(convertFromUSD(tx.amount))}
                               </td>
                             </tr>
                           ))
@@ -1219,7 +1237,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                   isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                 } transition-colors`}
               >
-                Fermer
+                {tAny.admin?.balanceManagement?.modals?.history?.close || 'Fermer'}
               </button>
             </div>
           </div>

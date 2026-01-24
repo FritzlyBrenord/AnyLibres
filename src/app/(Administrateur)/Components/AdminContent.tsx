@@ -12,6 +12,8 @@ import FinanceWithBalances from "./FinanceWithBalances";
 import Settings from "./Settings";
 import QuickActionsPanel from "./control/QuickActionsPanel";
 import ControlPage from "./control/page";
+import NotificationManagement from "./NotificationManagement";
+import DisputeManagement from "./DisputeManagement";
 
 interface AdminContentProps {
   activeMenu: MenuId;
@@ -83,6 +85,7 @@ const AdminContent: React.FC<AdminContentProps> = ({ activeMenu, isDark }) => {
     dashboard: Dashboard,
     services: Services,
     orders: Orders,
+    disputes: DisputeManagement,
     finance: FinanceWithBalances,
     users: Userss,
     analytics: Analytics,
@@ -91,6 +94,7 @@ const AdminContent: React.FC<AdminContentProps> = ({ activeMenu, isDark }) => {
     security: ControlPage,
     messages: Messages,
     calendar: Calendar,
+    notifications: NotificationManagement,
   };
 
   const Component = components[activeMenu] || Dashboard;

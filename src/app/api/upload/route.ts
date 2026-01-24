@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const allowedTypes = {
       image: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
       video: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/avi', 'video/x-matroska', 'video/mkv'],
-      audio: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/m4a', 'audio/x-m4a'],
+      audio: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/m4a', 'audio/x-m4a', 'audio/webm'],
       document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/x-zip-compressed']
     };
 
@@ -76,10 +76,10 @@ export async function POST(req: NextRequest) {
 
     // Determine the bucket name based on type
     const bucketMap = {
-      image: 'service-images',
-      video: 'service-videos',
-      audio: 'service-audio',
-      document: 'service-documents'
+      image: 'message-images',
+      video: 'message-videos',
+      audio: 'message-audio',
+      document: 'message-documents'
     };
     const bucketName = bucketMap[type as keyof typeof bucketMap];
 

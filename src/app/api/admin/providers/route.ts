@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const url = new URL(request.url);
-    
+
     // Récupérer les paramètres
     const search = url.searchParams.get('search') || '';
     const status = url.searchParams.get('status') || 'all';
@@ -81,9 +81,13 @@ export async function GET(request: Request) {
 
         let total_earned = 0;
         let completed_orders_count = 0;
+        let disputed_orders_count = 0;
 
         if (providerOrders && !ordersError) {
           providerOrders.forEach(order => {
+            if (order.status === 'disputed') {
+              disputed_orders_count += 1;
+            }
             if (order.payment_status === 'succeeded') {
               // Pour les prestataires, ils reçoivent le montant moins les frais
               const providerAmount = (order.total_cents / 100) * 0.95; // Exemple: 95% du total
@@ -112,6 +116,7 @@ export async function GET(request: Request) {
           ...provider,
           total_earned: parseFloat(total_earned.toFixed(2)),
           completed_orders_count,
+          disputed_orders_count,
           // Remplacer les valeurs cachées de la table providers par les vraies valeurs
           total_reviews: actual_reviews_count,
           rating: parseFloat(actual_average_rating.toFixed(1)),
@@ -130,7 +135,7 @@ export async function GET(request: Request) {
 
     // ÉTAPE 3 : Trier
     let sortedProviders = [...providersWithStats];
-    
+
     if (sort_by === 'newest') {
       sortedProviders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sort_by === 'oldest') {

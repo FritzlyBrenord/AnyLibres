@@ -83,11 +83,13 @@ export async function GET(request: NextRequest) {
           pending_cents: balance.pending_cents || 0,
           withdrawn_cents: balance.withdrawn_cents || 0,
           total_earned_cents: balance.total_earned_cents || 0,
+          donations_received_cents: balance.donations_received_cents || 0,
           currency: balance.currency || 'USD',
           last_withdrawal_at: balance.last_withdrawal_at,
           created_at: balance.created_at,
-          Account_gele: balance.Account_gele || false, // 🆕 Utilise le nouveau champ
-          is_frozen: balance.Account_gele || balance.is_frozen || false, // Garde pour compatibilité
+          Account_gele: balance.Account_gele || false,
+          is_frozen: balance.Account_gele || balance.is_frozen || false,
+          custom_withdra_qty: balance.custom_withdra_qty || null,
         };
       })
     );

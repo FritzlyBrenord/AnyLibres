@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { useLanguageContext } from "../../../contexts/LanguageContext";
 import { mainMenus, systemMenus, type MenuId, type MenuItem } from "./menus";
 import {
   X,
@@ -35,6 +36,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onCloseMobile,
   isMobile = false,
 }) => {
+  const { t } = useLanguageContext();
+
   const renderMenuItems = (menus: MenuItem[], title: string) => (
     <div>
       <div className="mb-8">
@@ -46,7 +49,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 isDark ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              {title}
+              {title === "Navigation Principale" ? (t.admin?.sidebar?.mainNav || title) : 
+               title === "Système" ? (t.admin?.sidebar?.system || title) : title}
             </h3>
           </div>
         )}
@@ -98,7 +102,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   {(!isCollapsed || isMobile) && (
                     <div className="text-left">
                       <div className="font-semibold text-sm flex items-center gap-2">
-                        {menu.label}
+                        {(t.admin?.sidebar?.menus as any)?.[menu.id] || menu.label}
                         {menu.id === "dashboard" && (
                           <Sparkles className="w-3 h-3 text-yellow-400" />
                         )}
@@ -112,7 +116,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                             : "text-gray-500"
                         }`}
                       >
-                        {menu.description}
+                         {(t.admin?.sidebar?.descriptions as any)?.[menu.id] || menu.description}
                       </div>
                     </div>
                   )}
@@ -262,7 +266,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    {isDark ? "Mode Clair" : "Mode Sombre"}
+                    {isDark ? (t.admin?.sidebar?.lightMode || "Mode Clair") : (t.admin?.sidebar?.darkMode || "Mode Sombre")}
                   </div>
                   <div
                     className={`text-xs ${
@@ -270,8 +274,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     }`}
                   >
                     {isDark
-                      ? "Activer le thème clair"
-                      : "Activer le thème sombre"}
+                      ? (t.admin?.sidebar?.enableLight || "Activer le thème clair")
+                      : (t.admin?.sidebar?.enableDark || "Activer le thème sombre")}
                   </div>
                 </div>
               )}

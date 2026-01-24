@@ -17,19 +17,21 @@ import {
 } from "lucide-react";
 
 interface DeliveryGalleryProps {
-  images: string[];
+  images?: string[];
+  media?: MediaItem[];
   title: string;
 }
 
-type MediaItem = {
+export type MediaItem = {
   url: string;
-  type: "image" | "video" | "document" | "audio";
-  name: string;
-  extension: string;
+  type?: "image" | "video" | "document" | "audio";
+  name?: string;
+  extension?: string;
 };
 
 export default function DeliveryGallery({
-  images,
+  images = [],
+  media = [],
   title,
 }: DeliveryGalleryProps) {
   const [lightboxMedia, setLightboxMedia] = useState<string | null>(null);
@@ -37,55 +39,71 @@ export default function DeliveryGallery({
   const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement }>({});
 
-  const getAllMedia = (): MediaItem[] => {
-    const mediaItems: MediaItem[] = [];
+  const getAllMedia = (): Required<MediaItem>[] => {
+    const finalMedia: Required<MediaItem>[] = [];
 
+    // Process structured media first
+    media.forEach((item) => {
+      if (!item.url) return;
+      const urlLower = item.url.toLowerCase();
+      const ext = item.extension || item.url.split(".").pop()?.toUpperCase() || "FICHIER";
+      
+      let type: "image" | "video" | "document" | "audio" = item.type || "document";
+      
+      // If type not provided, guess it
+      if (!item.type) {
+        if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)($|\?|#)/i)) type = "image";
+        else if (urlLower.match(/\.(mp4|avi|mov|wmv|flv|webm|mkv|m4v|3gp)($|\?|#)/i)) type = "video";
+        else if (urlLower.match(/\.(mp3|wav|ogg|flac|aac|m4a|wma)($|\?|#)/i)) type = "audio";
+      }
+
+      finalMedia.push({
+        url: item.url,
+        type,
+        name: item.name || `${type.charAt(0).toUpperCase() + type.slice(1)} ${finalMedia.filter(m => m.type === type).length + 1}`,
+        extension: ext
+      });
+    });
+
+    // Process legacy images array
     images.forEach((url) => {
-      if (!url) return;
+      if (!url || finalMedia.some(m => m.url === url)) return;
 
-      // Déterminer le type basé sur l'URL ou l'extension
       const urlLower = url.toLowerCase();
-      if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/)) {
-        mediaItems.push({
+      const extension = url.split(".").pop()?.toUpperCase() || "FICHIER";
+
+      if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)($|\?|#)/i)) {
+        finalMedia.push({
           url,
           type: "image",
-          name: `Image ${
-            mediaItems.filter((item) => item.type === "image").length + 1
-          }`,
-          extension: url.split(".").pop()?.toUpperCase() || "IMAGE",
+          name: `Image ${finalMedia.filter((item) => item.type === "image").length + 1}`,
+          extension: extension,
         });
-      } else if (urlLower.match(/\.(mp4|avi|mov|wmv|flv|webm|mkv)$/)) {
-        mediaItems.push({
+      } else if (urlLower.match(/\.(mp4|avi|mov|wmv|flv|webm|mkv|m4v|3gp)($|\?|#)/i)) {
+        finalMedia.push({
           url,
           type: "video",
-          name: `Vidéo ${
-            mediaItems.filter((item) => item.type === "video").length + 1
-          }`,
-          extension: url.split(".").pop()?.toUpperCase() || "VIDEO",
+          name: `Vidéo ${finalMedia.filter((item) => item.type === "video").length + 1}`,
+          extension: extension,
         });
-      } else if (urlLower.match(/\.(mp3|wav|ogg|flac|aac)$/)) {
-        mediaItems.push({
+      } else if (urlLower.match(/\.(mp3|wav|ogg|flac|aac|m4a|wma)($|\?|#)/i)) {
+        finalMedia.push({
           url,
           type: "audio",
-          name: `Audio ${
-            mediaItems.filter((item) => item.type === "audio").length + 1
-          }`,
-          extension: url.split(".").pop()?.toUpperCase() || "AUDIO",
+          name: `Audio ${finalMedia.filter((item) => item.type === "audio").length + 1}`,
+          extension: extension,
         });
       } else {
-        // Par défaut, considérer comme document
-        mediaItems.push({
+        finalMedia.push({
           url,
           type: "document",
-          name: `Document ${
-            mediaItems.filter((item) => item.type === "document").length + 1
-          }`,
-          extension: url.split(".").pop()?.toUpperCase() || "DOC",
+          name: `Document ${finalMedia.filter((item) => item.type === "document").length + 1}`,
+          extension: extension,
         });
       }
     });
 
-    return mediaItems;
+    return finalMedia;
   };
 
   const mediaItems = getAllMedia();

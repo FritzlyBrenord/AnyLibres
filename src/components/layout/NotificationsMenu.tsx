@@ -15,19 +15,22 @@ import {
   CheckCheck,
   Info,
   Truck,
+  AlertTriangle,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications, Notification } from "@/hooks/useNotifications";
+import { useAdminNotifications } from "@/contexts/NotificationContext";
 
 export function NotificationsMenu() {
   const { user } = useAuth();
   const {
     notifications,
     unreadCount,
-    loading,
     markAsRead,
     markAllAsRead,
-  } = useNotifications();
+    showModal,
+  } = useAdminNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +46,7 @@ export function NotificationsMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getNotificationIcon = (type: Notification["type"]) => {
+  const getNotificationIcon = (type: string) => {
     switch (type) {
       case "order":
         return <Package className="w-4 h-4 text-blue-600" />;
@@ -55,6 +58,14 @@ export function NotificationsMenu() {
         return <DollarSign className="w-4 h-4 text-purple-600" />;
       case "delivery":
         return <Truck className="w-4 h-4 text-indigo-600" />;
+      case "info":
+        return <Info className="w-4 h-4 text-blue-600" />;
+      case "warning":
+        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+      case "success":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "error":
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
       default:
         return <Info className="w-4 h-4 text-gray-600" />;
     }
@@ -109,32 +120,25 @@ export function NotificationsMenu() {
 
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto custom-scrollbar">
-            {loading ? (
-              <div className="px-4 py-8 text-center text-gray-400">
-                <div className="animate-pulse flex flex-col items-center">
-                  <div className="h-8 w-8 bg-gray-200 rounded-full mb-3"></div>
-                  <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
-                </div>
-              </div>
-            ) : notifications.length === 0 ? (
+            {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-500">
                 <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="text-sm">Aucune notification</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
-                  <Link
+                {notifications.slice(0, 5).map((notification) => (
+                  <button
                     key={notification.id}
-                    href={notification.link || "/notifications"}
                     onClick={() => {
-                      if (!notification.read) {
+                      if (!notification.is_read) {
                         markAsRead(notification.id);
                       }
+                      showModal(notification);
                       setIsOpen(false);
                     }}
-                    className={`block px-4 py-3 hover:bg-gray-50 transition-colors ${
-                      !notification.read ? "bg-indigo-50/40" : ""
+                    className={`w-full text-left block px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      !notification.is_read ? "bg-indigo-50/40" : ""
                     }`}
                   >
                     <div className="flex gap-3">
@@ -144,7 +148,7 @@ export function NotificationsMenu() {
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-sm ${
-                            !notification.read ? "font-bold" : "font-medium"
+                            !notification.is_read ? "font-bold" : "font-medium"
                           } text-gray-900`}
                         >
                           {notification.title}
@@ -152,17 +156,29 @@ export function NotificationsMenu() {
                         <p className="text-xs sm:text-sm text-gray-600 mt-0.5 line-clamp-2">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatTimeAgo(notification.created_at)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-400">
+                            {formatTimeAgo(notification.created_at)}
+                          </p>
+                          {notification.priority === "urgent" && (
+                            <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-semibold rounded">
+                              URGENT
+                            </span>
+                          )}
+                          {notification.priority === "high" && (
+                            <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-semibold rounded">
+                              IMPORTANT
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {!notification.read && (
+                      {!notification.is_read && (
                         <div className="flex-shrink-0 self-center">
                           <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
                         </div>
                       )}
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             )}
