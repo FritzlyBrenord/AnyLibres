@@ -28,6 +28,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/Button";
 import { useLanguageContext } from "@/contexts/LanguageContext";
+import { LiveStats } from "@/components/about/LiveStats";
+import { LiveStatsImpressive } from "@/components/about/LiveStatsImpressive";
 
 export default function AboutPage() {
   const { t } = useLanguageContext();
@@ -74,27 +76,8 @@ export default function AboutPage() {
                 {t?.about?.hero?.subtitle || 'AnyLibre est la première plateforme haïtienne dédiée à connecter les entreprises avec les meilleurs freelances et professionnels indépendants.'}
               </p>
 
-              {/* Statistiques Hero */}
-              <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-                <div>
-                  <div className="text-3xl lg:text-4xl font-bold text-amber-400 mb-2">
-                    2023
-                  </div>
-                  <div className="text-slate-300 text-sm">{t?.about?.hero?.stats?.founded || 'Fondation'}</div>
-                </div>
-                <div className="border-x border-white/20">
-                  <div className="text-3xl lg:text-4xl font-bold text-amber-400 mb-2">
-                    5K+
-                  </div>
-                  <div className="text-slate-300 text-sm">{t?.about?.hero?.stats?.freelances || 'Freelances'}</div>
-                </div>
-                <div>
-                  <div className="text-3xl lg:text-4xl font-bold text-amber-400 mb-2">
-                    10K+
-                  </div>
-                  <div className="text-slate-300 text-sm">{t?.about?.hero?.stats?.projects || 'Projets réalisés'}</div>
-                </div>
-              </div>
+              {/* Statistiques Hero - Live */}
+              <LiveStats />
             </div>
           </div>
         </section>
@@ -320,24 +303,7 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                {[
-                  { icon: Users, number: "5,000+", index: 0 },
-                  { icon: Building2, number: "2,500+", index: 1 },
-                  { icon: CheckCircle, number: "10,000+", index: 2 },
-                  { icon: Star, number: "4.9/5", index: 3 },
-                ].map((stat, idx) => (
-                  <div key={idx} className="text-center group">
-                    <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-white/20 transition-all">
-                      <stat.icon className="w-8 h-8 text-amber-400" />
-                    </div>
-                    <div className="text-4xl font-bold text-white mb-2">
-                      {stat.number}
-                    </div>
-                    <div className="text-slate-300">{t?.about?.stats?.items?.[stat.index]?.label || ''}</div>
-                  </div>
-                ))}
-              </div>
+              <LiveStatsImpressive />
             </div>
           </div>
         </section>

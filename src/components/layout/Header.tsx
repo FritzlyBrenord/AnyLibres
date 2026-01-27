@@ -11,6 +11,7 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
 import { MessagesMenu } from "@/components/layout/MessagesMenu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguageContext } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import {
   QuickSearchBar,
@@ -55,23 +56,27 @@ export function Header({
 }: HeaderProps) {
   const scrolled = useScroll(100);
   const { user, loading, checkAuth } = useAuth();
+  const { t } = useLanguageContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Textes statiques (en français par défaut)
+  // Textes dynamiques traduits avec fallback pour assurer que quelque chose s'affiche toujours
+
   const staticTexts = {
-    explore: navTexts.explore || "Explorer",
-    about: navTexts.about || "À propos",
-    login: navTexts.login || "Connexion",
-    register: navTexts.register || "S'inscrire",
-    searchPlaceholder: "Logo, site web, marketing digital...",
-    searchMobilePlaceholder: "Rechercher un service...",
-    menu: "Menu",
-    closeSearch: "Fermer la recherche",
-    search: "Rechercher",
+    explore: t?.navigation?.explore || navTexts.explore || "Explorer",
+    about: t?.navigation?.about || navTexts.about || "À propos",
+    login: t?.navigation?.login || navTexts.login || "Connexion",
+    register: t?.navigation?.register || navTexts.register || "S'inscrire",
+    searchPlaceholder:
+      t?.home?.hero?.searchPlaceholder || "Logo, site web, marketing...",
+    searchMobilePlaceholder:
+      t?.home?.services?.searchService || "Rechercher un service...",
+    menu: "Menu", // Pas de traduction explicite dans le fichier actuellement, laisser en fallback ou ajouter
+    closeSearch: "Fermer",
+    search: t?.home?.hero?.searchButton || "Rechercher",
     close: "Fermer",
-    language: "Changer la langue",
+    language: "Langue",
   };
 
   useEffect(() => {
@@ -123,7 +128,7 @@ export function Header({
         className={cn(
           fixed ? "fixed top-0 left-0 right-0 z-50" : "relative z-50",
           "h-16 lg:h-20 bg-white/95 backdrop-blur-xl border-b border-slate-200",
-          className
+          className,
         )}
       />
     );
@@ -137,7 +142,7 @@ export function Header({
         isSolid
           ? "bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-sm"
           : "bg-transparent",
-        className
+        className,
       )}
     >
       <div className="container mx-auto px-4">
@@ -166,7 +171,7 @@ export function Header({
                     "after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-current after:transition-all after:duration-300 hover:after:w-full",
                     isSolid
                       ? "text-slate-700 hover:text-slate-900 after:bg-slate-900"
-                      : "text-white/90 hover:text-white after:bg-white"
+                      : "text-white/90 hover:text-white after:bg-white",
                   )}
                 >
                   {staticTexts.explore}
@@ -179,7 +184,7 @@ export function Header({
                     "after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-current after:transition-all after:duration-300 hover:after:w-full",
                     isSolid
                       ? "text-slate-700 hover:text-slate-900 after:bg-slate-900"
-                      : "text-white/90 hover:text-white after:bg-white"
+                      : "text-white/90 hover:text-white after:bg-white",
                   )}
                 >
                   {staticTexts.about}
@@ -194,7 +199,7 @@ export function Header({
                 <div
                   className={cn(
                     "h-6 w-px transition-all duration-300",
-                    isSolid ? "bg-slate-300" : "bg-white/30"
+                    isSolid ? "bg-slate-300" : "bg-white/30",
                   )}
                 />
               )}
@@ -220,7 +225,7 @@ export function Header({
                           "transition-all duration-300 font-semibold",
                           isSolid
                             ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
-                            : "text-white border-white/40 hover:bg-white/10 hover:border-white/60"
+                            : "text-white border-white/40 hover:bg-white/10 hover:border-white/60",
                         )}
                       >
                         {staticTexts.login}
@@ -233,7 +238,7 @@ export function Header({
                           "font-semibold transition-all duration-300",
                           isSolid
                             ? "bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl"
-                            : "bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:shadow-xl"
+                            : "bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:shadow-xl",
                         )}
                       >
                         {staticTexts.register}
@@ -255,7 +260,7 @@ export function Header({
                 className={cn(
                   "p-2 rounded-lg transition-all duration-300 hover:bg-slate-100",
                   isSolid ? "text-slate-700" : "text-white",
-                  showMobileSearch ? "bg-indigo-100 text-indigo-600" : ""
+                  showMobileSearch ? "bg-indigo-100 text-indigo-600" : "",
                 )}
                 aria-label={
                   showMobileSearch
@@ -275,7 +280,6 @@ export function Header({
             {!showMobileSearch && (
               <>
                 {/* Language Switcher - Mobile */}
-                {showLanguageSwitcher && <LanguageSwitcher />}
 
                 {!disableAuth && !loading && user && (
                   <>
@@ -294,7 +298,7 @@ export function Header({
                       onClick={handleLogin}
                       className={cn(
                         "p-2 rounded-lg transition-all duration-300 hover:bg-slate-100",
-                        isSolid ? "text-slate-700" : "text-white"
+                        isSolid ? "text-slate-700" : "text-white",
                       )}
                       aria-label={staticTexts.login}
                     >
@@ -307,7 +311,7 @@ export function Header({
                   <button
                     className={cn(
                       "p-2 rounded-lg transition-all duration-300 hover:bg-slate-100",
-                      isSolid ? "text-slate-700" : "text-white"
+                      isSolid ? "text-slate-700" : "text-white",
                     )}
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     aria-label={
@@ -344,7 +348,7 @@ export function Header({
             "lg:hidden border-t backdrop-blur-xl animate-slide-down",
             isSolid
               ? "bg-white/95 border-slate-200"
-              : "bg-slate-900/95 border-white/20"
+              : "bg-slate-900/95 border-white/20",
           )}
         >
           <div className="container mx-auto px-4 py-6 space-y-3">
@@ -354,7 +358,7 @@ export function Header({
                 "block py-3 px-4 rounded-xl font-semibold transition-all duration-300 border",
                 isSolid
                   ? "text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                  : "text-white border-white/20 hover:bg-white/10"
+                  : "text-white border-white/20 hover:bg-white/10",
               )}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -367,7 +371,7 @@ export function Header({
                 "block py-3 px-4 rounded-xl font-semibold transition-all duration-300 border",
                 isSolid
                   ? "text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                  : "text-white border-white/20 hover:bg-white/10"
+                  : "text-white border-white/20 hover:bg-white/10",
               )}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -385,7 +389,7 @@ export function Header({
               <div className="pt-4 space-y-3 border-t border-slate-200">
                 <Button
                   variant="outline"
-                  className="w-full font-semibold"
+                  className="w-full font-semibold text-white"
                   onClick={handleLogin}
                 >
                   {staticTexts.login}
@@ -396,7 +400,7 @@ export function Header({
                     "w-full font-semibold",
                     isSolid
                       ? "bg-slate-900 text-white hover:bg-slate-800"
-                      : "bg-white text-slate-900 hover:bg-slate-100"
+                      : "bg-white text-slate-900 hover:bg-slate-100",
                   )}
                   onClick={handleRegister}
                 >

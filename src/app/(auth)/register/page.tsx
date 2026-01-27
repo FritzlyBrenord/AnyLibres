@@ -1,6 +1,7 @@
 "use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -29,6 +30,14 @@ export default function RegisterPage() {
     first_name: "",
     last_name: "",
   });
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => { // Added useEffect here
+    fetch("/api/stats/public")
+      .then((res) => res.json())
+      .then((data) => setStats(data))
+      .catch((err) => console.error("Failed to fetch stats:", err));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,19 +178,25 @@ export default function RegisterPage() {
             {/* Statistiques compactes */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">50K+</div>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {stats?.providers || "50K+"}
+                </div>
                 <div className="text-sm text-gray-400">
                   {t?.auth?.register?.stats?.freelances || "Freelances"}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">10K+</div>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {stats?.projects || "10K+"}
+                </div>
                 <div className="text-sm text-gray-400">
                   {t?.auth?.register?.stats?.projects || "Projets"}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white mb-1">4.9★</div>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {stats?.satisfaction || "4.9★"}
+                </div>
                 <div className="text-sm text-gray-400">
                   {t?.auth?.register?.stats?.satisfaction || "Satisfaction"}
                 </div>

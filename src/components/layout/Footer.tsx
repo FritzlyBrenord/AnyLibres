@@ -189,19 +189,6 @@ export function Footer() {
                   "Recevez les dernières actualités et offres exclusives"}
               </p>
             </div>
-            <div className="flex gap-3 w-full lg:w-auto">
-              <input
-                type="email"
-                placeholder={
-                  t?.footer?.newsletter?.placeholder || "Votre email"
-                }
-                className="flex-1 lg:w-80 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent backdrop-blur-sm"
-              />
-              <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-xl transition-all duration-300 hover:shadow-lg whitespace-nowrap">
-                {t?.footer?.newsletter?.subscribe || "S'abonner"}
-                <Mail className="w-4 h-4 ml-2 inline" />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -213,11 +200,6 @@ export function Footer() {
               {t?.footer?.bottom?.rights || "Tous droits réservés."}
             </span>
             <span className="text-slate-500">•</span>
-            <span className="flex items-center gap-1">
-              {t?.footer?.bottom?.madeWith || "Fait avec"}{" "}
-              <Heart className="w-4 h-4 text-red-400 fill-current" />{" "}
-              {t?.footer?.bottom?.in || "en Haïti"}
-            </span>
           </div>
           <div className="flex gap-6 text-sm">
             <Link

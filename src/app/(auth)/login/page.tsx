@@ -26,6 +26,14 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/stats/public")
+      .then((res) => res.json())
+      .then((data) => setStats(data))
+      .catch((err) => console.error("Failed to fetch stats:", err));
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -124,7 +132,9 @@ export default function LoginPage() {
                   <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                     <Users className="w-5 h-5 text-blue-400" />
                   </div>
-                  <span className="text-2xl font-bold text-white">50K+</span>
+                  <span className="text-2xl font-bold text-white">
+                    {stats?.providers || "50K+"}
+                  </span>
                 </div>
                 <p className="text-gray-400 text-sm">
                   {t?.auth?.login?.stats?.freelances || "Freelances actifs"}
@@ -136,7 +146,9 @@ export default function LoginPage() {
                   <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                     <Briefcase className="w-5 h-5 text-purple-400" />
                   </div>
-                  <span className="text-2xl font-bold text-white">10K+</span>
+                  <span className="text-2xl font-bold text-white">
+                    {stats?.projects || "10K+"}
+                  </span>
                 </div>
                 <p className="text-gray-400 text-sm">
                   {t?.auth?.login?.stats?.projects || "Projets réalisés"}
@@ -148,7 +160,9 @@ export default function LoginPage() {
                   <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                     <Award className="w-5 h-5 text-green-400" />
                   </div>
-                  <span className="text-2xl font-bold text-white">4.9/5</span>
+                  <span className="text-2xl font-bold text-white">
+                    {stats?.satisfaction || "4.9/5"}
+                  </span>
                 </div>
                 <p className="text-gray-400 text-sm">
                   {t?.auth?.login?.stats?.satisfaction || "Satisfaction client"}
@@ -160,7 +174,9 @@ export default function LoginPage() {
                   <div className="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-pink-400" />
                   </div>
-                  <span className="text-2xl font-bold text-white">98%</span>
+                  <span className="text-2xl font-bold text-white">
+                    {stats?.successRate || "98%"}
+                  </span>
                 </div>
                 <p className="text-gray-400 text-sm">
                   {t?.auth?.login?.stats?.successRate || "Taux de succès"}

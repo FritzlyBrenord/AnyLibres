@@ -17,7 +17,7 @@ export const translations = {
     home: {
       // Hero Section
       hero: {
-        badge: 'Plateforme #1 en Haïti',
+        badge: 'Une solution moderne, fiable et sécurisée',
         title: 'Trouvez le Prestataire',
         titleHighlight: 'Parfait pour Votre Projet',
         subtitle: 'Des milliers de professionnels qualifiés prêts à réaliser vos projets.',
@@ -1013,6 +1013,55 @@ export const translations = {
         },
       },
     },
+    // Search Page
+    searchPage: {
+      badge: 'Recherche Intelligente',
+      title: 'Trouvez exactement ce que vous cherchez',
+      subtitle: 'Recherche ultra-puissante par titre, description, prix, provider, lettre et bien plus...',
+      result: 'résultat',
+      results: 'résultats',
+      match: 'match',
+      matches: 'matchs',
+      perfect: 'parfait',
+      perfectMany: 'parfaits',
+      verifiedProviders: 'Professionnels vérifiés',
+      resultsFor: 'Résultats pour',
+      servicesContaining: 'Services contenant la lettre',
+      servicesStarting: 'Services commençant par la lettre',
+      servicesBetween: 'Services entre',
+      and: 'et',
+      found: 'trouvé',
+      foundMany: 'trouvés',
+      noResults: 'Aucun service trouvé',
+      noResultsDesc: 'Nous n\'avons trouvé aucun service correspondant à vos critères. Essayez de modifier votre recherche ou vos filtres.',
+      suggestions: 'Suggestions pour améliorer votre recherche :',
+      checkSpelling: 'Vérifiez l\'orthographe de vos mots-clés',
+      tryGeneral: 'Essayez des termes plus généraux ou différents',
+      lessFilters: 'Utilisez moins de filtres pour élargir la recherche',
+      tryLetter: 'Essayez la recherche par lettre (A-Z) en haut',
+      exploreCat: 'Explorer par catégories',
+      newSearch: 'Nouvelle recherche',
+      page: 'Page',
+      on: 'sur',
+      previous: 'Précédent',
+      next: 'Suivant',
+      searchResults: 'Résultats de recherche',
+      emptyTitle: 'Recherche Intelligente',
+      emptyDesc: 'Utilisez la barre de recherche avancée ci-dessus pour trouver exactement ce que vous cherchez. Recherchez par titre, description, prix, provider, ou même par lettre !',
+      exploreCatalog: 'Explorer notre catalogue',
+      fastSearch: 'Recherche Ultra-Rapide',
+      fastSearchDesc: 'Suggestions en temps réel pendant que vous tapez',
+      smartFilters: 'Filtres Intelligents',
+      smartFiltersDesc: 'Recherchez par titre, prix, provider, lettre et plus',
+      hierarchical: 'Résultats Hiérarchisés',
+      hierarchicalDesc: 'Matchs parfaits, similaires et suggestions pertinentes',
+      letterLabel: 'la lettre',
+      emptyTitle: 'Aucun service trouvé',
+      suggestionSpelling: 'Vérifiez l\'orthographe de vos mots-clés',
+      suggestionGeneral: 'Essayez des termes plus généraux ou différents',
+      suggestionFilters: 'Utilisez moins de filtres pour élargir la recherche',
+      suggestionLetter: 'Essayez la recherche par lettre (A-Z) en haut',
+    },
     // Auth Pages (Login & Register)
     auth: {
       login: {
@@ -1156,7 +1205,7 @@ export const translations = {
     home: {
       // Hero Section
       hero: {
-        badge: '#1 Platform in Haiti',
+        badge: 'A modern, reliable and secure solution',
         title: 'Find the Perfect',
         titleHighlight: 'Provider for Your Project',
         subtitle: 'Thousands of qualified professionals ready to bring your projects to life.',
@@ -1534,6 +1583,56 @@ export const translations = {
         startButton: 'Start Free',
         exploreButton: 'Explore Services',
       },
+    },
+
+    // Search Page
+    searchPage: {
+      badge: 'Smart Search',
+      title: 'Find exactly what you\'re looking for',
+      subtitle: 'Ultra-powerful search by title, description, price, provider, letter and much more...',
+      result: 'result',
+      results: 'results',
+      match: 'match',
+      matches: 'matches',
+      perfect: 'perfect',
+      perfectMany: 'perfect',
+      verifiedProviders: 'Verified Professionals',
+      resultsFor: 'Results for',
+      servicesContaining: 'Services containing the letter',
+      servicesStarting: 'Services starting with the letter',
+      servicesBetween: 'Services between',
+      and: 'and',
+      found: 'found',
+      foundMany: 'found',
+      noResults: 'No services found',
+      noResultsDesc: 'We didn\'t find any service matching your criteria. Try modifying your search or filters.',
+      suggestions: 'Suggestions to improve your search:',
+      checkSpelling: 'Check the spelling of your keywords',
+      tryGeneral: 'Try more general or different terms',
+      lessFilters: 'Use fewer filters to broaden your search',
+      tryLetter: 'Try searching by letter (A-Z) above',
+      exploreCat: 'Explore by categories',
+      newSearch: 'New search',
+      page: 'Page',
+      on: 'of',
+      previous: 'Previous',
+      next: 'Next',
+      searchResults: 'Search results',
+      emptyTitle: 'Smart Search',
+      emptyDesc: 'Use the advanced search bar above to find exactly what you\'re looking for. Search by title, description, price, provider, or even by letter!',
+      exploreCatalog: 'Explore our catalog',
+      fastSearch: 'Ultra-Fast Search',
+      fastSearchDesc: 'Real-time suggestions as you type',
+      smartFilters: 'Smart Filters',
+      smartFiltersDesc: 'Search by title, price, provider, letter and more',
+      hierarchical: 'Hierarchical Results',
+      hierarchicalDesc: 'Perfect matches, similar results and relevant suggestions',
+      letterLabel: 'the letter',
+      emptyTitle: 'No services found',
+      suggestionSpelling: 'Check the spelling of your keywords',
+      suggestionGeneral: 'Try more general or different terms',
+      suggestionFilters: 'Use fewer filters to broaden your search',
+      suggestionLetter: 'Try searching by letter (A-Z) above',
     },
 
     // Auth Pages (Login & Register)
@@ -2364,6 +2463,45 @@ export const translations = {
         accessibility: 'Accessibility',
       },
     },
+    // Search Component
+    search: {
+      placeholder: 'Search by title, description, price, provider, letter...',
+      searchIn: 'Search in',
+      price: 'Price',
+      min: 'Min',
+      max: 'Max',
+      sort: {
+        label: 'Sort by',
+        relevance: 'Relevance',
+        priceAsc: 'Price (Low to High)',
+        priceDesc: 'Price (High to Low)',
+        rating: 'Best Rating',
+        recent: 'Newest',
+      },
+      reset: 'Reset',
+      recentSearches: 'Recent Searches',
+      smartFilters: 'Smart Filters',
+      exactMatches: 'Exact Matches',
+      services: 'Services',
+      providers: 'Providers',
+      suggestions: 'Suggestions',
+      filters: {
+        title: 'title',
+        description: 'description',
+        tags: 'tags',
+        provider: 'provider',
+        price: 'price',
+      },
+      dynamic: {
+        startsWith: 'Services starting with',
+        contains: 'Services containing',
+        priceContains: 'Services with price containing',
+        priceAround: 'Services around',
+        priceLess: 'Services under',
+        allStarting: 'All services starting with',
+        servicesOf: 'Services by',
+      }
+    },
   },
   es: {
     // Navigation
@@ -2377,7 +2515,7 @@ export const translations = {
     home: {
       // Hero Section
       hero: {
-        badge: 'Plataforma #1 en Haití',
+        badge: 'Una solución moderna, fiable y segura',
         title: 'Encuentra el Proveedor',
         titleHighlight: 'Perfecto para Tu Proyecto',
         subtitle: 'Miles de profesionales calificados listos para realizar tus proyectos.',
@@ -2748,6 +2886,55 @@ export const translations = {
         startButton: 'Comenzar Gratis',
         exploreButton: 'Explorar Servicios',
       },
+    },
+    // Search Page
+    searchPage: {
+      badge: 'Búsqueda Inteligente',
+      title: 'Encuentra exactamente lo que buscas',
+      subtitle: 'Búsqueda ultra poderosa por título, descripción, precio, proveedor, letra y mucho más...',
+      result: 'resultado',
+      results: 'resultados',
+      match: 'coincidencia',
+      matches: 'coincidencias',
+      perfect: 'perfecta',
+      perfectMany: 'perfectas',
+      verifiedProviders: 'Profesionales Verificados',
+      resultsFor: 'Resultados para',
+      servicesContaining: 'Servicios que contienen la letra',
+      servicesStarting: 'Servicios que comienzan con la letra',
+      servicesBetween: 'Servicios entre',
+      and: 'y',
+      found: 'encontrado',
+      foundMany: 'encontrados',
+      noResults: 'No se encontraron servicios',
+      noResultsDesc: 'No encontramos ningún servicio que coincida con tus criterios. Intenta modificar tu búsqueda o filtros.',
+      suggestions: 'Sugerencias para mejorar tu búsqueda:',
+      checkSpelling: 'Verifica la ortografía de tus palabras clave',
+      tryGeneral: 'Intenta términos más generales o diferentes',
+      lessFilters: 'Usa menos filtros para ampliar tu búsqueda',
+      tryLetter: 'Intenta buscar por letra (A-Z) arriba',
+      exploreCat: 'Explorar por categorías',
+      newSearch: 'Nueva búsqueda',
+      page: 'Página',
+      on: 'de',
+      previous: 'Anterior',
+      next: 'Siguiente',
+      searchResults: 'Resultados de búsqueda',
+      emptyTitle: 'Búsqueda Inteligente',
+      emptyDesc: 'Usa la barra de búsqueda avanzada arriba para encontrar exactamente lo que buscas. ¡Busca por título, descripción, precio, proveedor o incluso por letra!',
+      exploreCatalog: 'Explorar nuestro catálogo',
+      fastSearch: 'Búsqueda Ultra-Rápida',
+      fastSearchDesc: 'Sugerencias en tiempo real mientras escribes',
+      smartFilters: 'Filtros Inteligentes',
+      smartFiltersDesc: 'Busca por título, precio, proveedor, letra y más',
+      hierarchical: 'Resultados Jerárquicos',
+      hierarchicalDesc: 'Coincidencias perfectas, resultados similares y sugerencias relevantes',
+      letterLabel: 'la letra',
+      emptyTitle: 'No se encontraron servicios',
+      suggestionSpelling: 'Verifica la ortografía de tus palabras clave',
+      suggestionGeneral: 'Intenta términos más generales o diferentes',
+      suggestionFilters: 'Usa menos filtros para ampliar tu búsqueda',
+      suggestionLetter: 'Intenta buscar por letra (A-Z) arriba',
     },
     // Auth Pages (Login & Register)
     auth: {
@@ -3574,9 +3761,81 @@ export const translations = {
         accessibility: 'Accesibilidad',
       },
     },
+    // Search Component
+    search: {
+      placeholder: 'Buscar por título, descripción, precio, proveedor, letra...',
+      searchIn: 'Buscar en',
+      price: 'Precio',
+      min: 'Mín',
+      max: 'Máx',
+      sort: {
+        label: 'Ordenar por',
+        relevance: 'Relevancia',
+        priceAsc: 'Precio ascendente',
+        priceDesc: 'Precio descendente',
+        rating: 'Mejor valoración',
+        recent: 'Más recientes',
+      },
+      reset: 'Restablecer',
+      recentSearches: 'Búsquedas recientes',
+      smartFilters: 'Filtros inteligentes',
+      exactMatches: 'Coincidencias exactas',
+      services: 'Servicios',
+      providers: 'Proveedores',
+      suggestions: 'Sugerencias',
+      filters: {
+        title: 'título',
+        description: 'descripción',
+        tags: 'tags',
+        provider: 'proveedor',
+        price: 'precio',
+      },
+      dynamic: {
+        startsWith: 'Servicios que empiezan por',
+        contains: 'Servicios que contienen',
+        priceContains: 'Servicios con precio conteniendo',
+        priceAround: 'Servicios alrededor de',
+        priceLess: 'Servicios menos de',
+        allStarting: 'Todos los servicios que empiezan por',
+        servicesOf: 'Servicios de',
+      }
+    },
   },
 };
 
+// Fonction utilitaire pour fusionner profondément deux objets
+function deepMerge(target: any, source: any): any {
+  const output = { ...target };
+
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach(key => {
+      if (isObject(source[key])) {
+        if (!(key in target)) {
+          output[key] = source[key];
+        } else {
+          output[key] = deepMerge(target[key], source[key]);
+        }
+      } else {
+        output[key] = source[key];
+      }
+    });
+  }
+
+  return output;
+}
+
+function isObject(item: any): boolean {
+  return item && typeof item === 'object' && !Array.isArray(item);
+}
+
 export function getTranslation(lang: Language) {
-  return translations[lang] || translations.fr;
+  // Si français, retourner directement
+  if (lang === 'fr') return translations.fr;
+
+  // Sinon, fusionner avec le français comme base
+  const langTranslations = translations[lang];
+  if (!langTranslations) return translations.fr;
+
+  // Merge profond : français en base, langue sélectionnée par-dessus
+  return deepMerge(translations.fr, langTranslations);
 }

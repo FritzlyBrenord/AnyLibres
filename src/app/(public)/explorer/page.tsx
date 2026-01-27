@@ -114,7 +114,7 @@ export default function ExplorerPage() {
             error: errorText,
           });
           throw new Error(
-            `Services API error: ${servicesRes.status} - ${servicesRes.statusText}`
+            `Services API error: ${servicesRes.status} - ${servicesRes.statusText}`,
           );
         }
 
@@ -190,13 +190,13 @@ export default function ExplorerPage() {
           currentPage,
           totalPages,
           suggestions: servicesResult.suggestions || [],
-          message: servicesResult.message || '',
+          message: servicesResult.message || "",
           fallback: servicesResult.fallback || false,
         });
       } catch (error) {
         console.error("❌ Error fetching explorer data:", error);
         setError(
-          error instanceof Error ? error.message : "Unknown error occurred"
+          error instanceof Error ? error.message : "Unknown error occurred",
         );
 
         // Données de fallback
@@ -263,7 +263,7 @@ export default function ExplorerPage() {
 
   // Trouver la catégorie active
   const activeCategory = data.categories.find(
-    (c: Category) => (c.key || c.id) === currentCategory
+    (c: Category) => (c.key || c.id) === currentCategory,
   );
 
   return (
@@ -275,18 +275,19 @@ export default function ExplorerPage() {
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-400/20 backdrop-blur-sm border border-amber-400/30 rounded-full text-amber-300 text-sm font-semibold mb-4">
                 <Sparkles className="w-4 h-4" />
-                {t?.explorer?.badge || 'Explorer'}
+                {t?.explorer?.badge || "Explorer"}
               </div>
 
               <h1 className="font-heading font-bold text-3xl lg:text-5xl text-white mb-4">
-                {t?.explorer?.hero?.title || 'Découvrez des Services'}{" "}
+                {t?.explorer?.hero?.title || "Découvrez des Services"}{" "}
                 <span className="bg-gradient-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent">
-                  {t?.explorer?.hero?.titleHighlight || 'Professionnels'}
+                  {t?.explorer?.hero?.titleHighlight || "Professionnels"}
                 </span>
               </h1>
 
               <p className="text-lg text-slate-200 mb-8 max-w-2xl mx-auto">
-                {t?.explorer?.hero?.subtitle || 'Trouvez le service parfait pour votre projet parmi notre catalogue'}
+                {t?.explorer?.hero?.subtitle ||
+                  "Trouvez le service parfait pour votre projet parmi notre catalogue"}
               </p>
 
               {/* Barre de recherche avancée */}
@@ -300,19 +301,25 @@ export default function ExplorerPage() {
                   <div className="text-2xl font-bold text-amber-400">
                     {data.total}+
                   </div>
-                  <div className="text-slate-300 text-sm">{t?.explorer?.stats?.services || 'Services'}</div>
+                  <div className="text-slate-300 text-sm">
+                    {t?.explorer?.stats?.services || "Services"}
+                  </div>
                 </div>
                 <div className="text-center border-x border-white/20">
                   <div className="text-2xl font-bold text-amber-400">
                     {data.categories.length}+
                   </div>
-                  <div className="text-slate-300 text-sm">{t?.explorer?.stats?.categories || 'Catégories'}</div>
+                  <div className="text-slate-300 text-sm">
+                    {t?.explorer?.stats?.categories || "Catégories"}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-amber-400">
                     {data.providers.length}+
                   </div>
-                  <div className="text-slate-300 text-sm">{t?.explorer?.stats?.experts || 'Experts'}</div>
+                  <div className="text-slate-300 text-sm">
+                    {t?.explorer?.stats?.experts || "Experts"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -333,7 +340,7 @@ export default function ExplorerPage() {
                 }`}
               >
                 <Grid3x3 className="w-4 h-4" />
-                {t?.explorer?.filters?.all || 'Tous'}
+                {t?.explorer?.filters?.all || "Tous"}
               </button>
 
               {/* Catégories */}
@@ -343,7 +350,7 @@ export default function ExplorerPage() {
                   onClick={() => {
                     console.log(
                       "🎯 Category clicked:",
-                      category.key || category.id
+                      category.key || category.id,
                     );
                     applyFilter("category", category.key || category.id);
                   }}
@@ -367,7 +374,7 @@ export default function ExplorerPage() {
                 }
                 className="flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all flex-shrink-0 border border-amber-200"
               >
-                {t?.explorer?.filters?.more || 'Plus'}
+                {t?.explorer?.filters?.more || "Plus"}
                 <ChevronDown className="w-4 h-4" />
               </button>
             </div>
@@ -386,11 +393,14 @@ export default function ExplorerPage() {
                     activeCategory?.name ||
                     currentCategory
                   : currentSearch
-                  ? `${t?.explorer?.results?.resultsFor || 'Résultats pour'} "${currentSearch}"`
-                  : t?.explorer?.results?.allServices || "Tous les services"}
+                    ? `${t?.explorer?.results?.resultsFor || "Résultats pour"} "${currentSearch}"`
+                    : t?.explorer?.results?.allServices || "Tous les services"}
               </h2>
               <span className="px-3 py-1 bg-slate-100 text-slate-600 text-sm font-medium rounded-full">
-                {data.total} {data.total !== 1 ? (t?.explorer?.results?.results || 'résultats') : (t?.explorer?.results?.result || 'résultat')}
+                {data.total}{" "}
+                {data.total !== 1
+                  ? t?.explorer?.results?.results || "résultats"
+                  : t?.explorer?.results?.result || "résultat"}
               </span>
             </div>
 
@@ -404,11 +414,21 @@ export default function ExplorerPage() {
                 }}
                 className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               >
-                <option value="popular">{t?.explorer?.sort?.popular || 'Les plus populaires'}</option>
-                <option value="recent">{t?.explorer?.sort?.recent || 'Les plus récents'}</option>
-                <option value="price_asc">{t?.explorer?.sort?.priceAsc || 'Prix croissant'}</option>
-                <option value="price_desc">{t?.explorer?.sort?.priceDesc || 'Prix décroissant'}</option>
-                <option value="rating">{t?.explorer?.sort?.rating || 'Meilleure note'}</option>
+                <option value="popular">
+                  {t?.explorer?.sort?.popular || "Les plus populaires"}
+                </option>
+                <option value="recent">
+                  {t?.explorer?.sort?.recent || "Les plus récents"}
+                </option>
+                <option value="price_asc">
+                  {t?.explorer?.sort?.priceAsc || "Prix croissant"}
+                </option>
+                <option value="price_desc">
+                  {t?.explorer?.sort?.priceDesc || "Prix décroissant"}
+                </option>
+                <option value="rating">
+                  {t?.explorer?.sort?.rating || "Meilleure note"}
+                </option>
               </select>
 
               {/* Vue grille/liste */}
@@ -450,7 +470,7 @@ export default function ExplorerPage() {
             <div className="flex flex-wrap gap-2 mb-6">
               {currentCategory && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
-                  {t?.explorer?.filters?.category || 'Catégorie'}:{" "}
+                  {t?.explorer?.filters?.category || "Catégorie"}:{" "}
                   {activeCategory?.name?.fr ||
                     activeCategory?.name?.en ||
                     activeCategory?.name ||
@@ -465,7 +485,8 @@ export default function ExplorerPage() {
               )}
               {currentSearch && (
                 <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
-                  {t?.explorer?.filters?.search || 'Recherche'}: "{currentSearch}"
+                  {t?.explorer?.filters?.search || "Recherche"}: "
+                  {currentSearch}"
                   <button
                     onClick={() => removeFilter("q")}
                     className="hover:bg-amber-200 rounded-full p-1"
@@ -480,7 +501,7 @@ export default function ExplorerPage() {
                   className="flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm hover:bg-slate-200"
                 >
                   <X className="w-3 h-3" />
-                  {t?.explorer?.filters?.clearAll || 'Tout effacer'}
+                  {t?.explorer?.filters?.clearAll || "Tout effacer"}
                 </button>
               )}
             </div>
@@ -489,13 +510,15 @@ export default function ExplorerPage() {
           {/* Message d'erreur */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-red-800 font-semibold">{t?.explorer?.errors?.loadingError || 'Erreur de chargement'}</p>
+              <p className="text-red-800 font-semibold">
+                {t?.explorer?.errors?.loadingError || "Erreur de chargement"}
+              </p>
               <p className="text-red-600 text-sm mt-1">{error}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
               >
-                {t?.explorer?.errors?.retry || 'Réessayer'}
+                {t?.explorer?.errors?.retry || "Réessayer"}
               </button>
             </div>
           )}
@@ -509,10 +532,11 @@ export default function ExplorerPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-slate-900">
-                    {t?.explorer?.trending?.title || '🔥 Tendances du moment'}
+                    {t?.explorer?.trending?.title || "🔥 Tendances du moment"}
                   </h3>
                   <p className="text-sm text-slate-600">
-                    {t?.explorer?.trending?.subtitle || 'Les services les plus recherchés cette semaine'}
+                    {t?.explorer?.trending?.subtitle ||
+                      "Les services les plus recherchés cette semaine"}
                   </p>
                 </div>
               </div>
@@ -575,19 +599,22 @@ export default function ExplorerPage() {
                 <Search className="w-10 h-10 text-slate-400" />
               </div>
               <h3 className="font-bold text-xl text-slate-900 mb-2">
-                {t?.explorer?.noResults?.title || 'Aucun service trouvé'}
+                {t?.explorer?.noResults?.title || "Aucun service trouvé"}
               </h3>
               <p className="text-slate-600 mb-6">
                 {currentCategory || currentSearch
-                  ? (t?.explorer?.noResults?.subtitle || 'Essayez de modifier vos critères de recherche')
-                  : (t?.explorer?.noResults?.subtitleEmpty || 'Aucun service disponible pour le moment')}
+                  ? t?.explorer?.noResults?.subtitle ||
+                    "Essayez de modifier vos critères de recherche"
+                  : t?.explorer?.noResults?.subtitleEmpty ||
+                    "Aucun service disponible pour le moment"}
               </p>
               <Button
                 onClick={resetFilters}
                 variant="outline"
                 className="border-2 border-slate-300"
               >
-                {t?.explorer?.noResults?.resetFilters || 'Réinitialiser les filtres'}
+                {t?.explorer?.noResults?.resetFilters ||
+                  "Réinitialiser les filtres"}
               </Button>
             </div>
           )}
@@ -604,7 +631,7 @@ export default function ExplorerPage() {
                   disabled={data.currentPage === 1}
                   onClick={() => goToPage(data.currentPage - 1)}
                 >
-                  {t?.explorer?.pagination?.previous || 'Précédent'}
+                  {t?.explorer?.pagination?.previous || "Précédent"}
                 </Button>
 
                 {/* Pages */}
@@ -635,7 +662,7 @@ export default function ExplorerPage() {
                         {pageNum}
                       </button>
                     );
-                  }
+                  },
                 )}
 
                 <Button
@@ -644,7 +671,7 @@ export default function ExplorerPage() {
                   disabled={data.currentPage === data.totalPages}
                   onClick={() => goToPage(data.currentPage + 1)}
                 >
-                  {t?.explorer?.pagination?.next || 'Suivant'}
+                  {t?.explorer?.pagination?.next || "Suivant"}
                 </Button>
               </div>
             )}
@@ -656,13 +683,14 @@ export default function ExplorerPage() {
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold mb-3">
                 <Folder className="w-4 h-4" />
-                {t?.explorer?.categories?.badge || 'Toutes les catégories'}
+                {t?.explorer?.categories?.badge || "Toutes les catégories"}
               </div>
               <h2 className="font-heading font-bold text-3xl lg:text-4xl text-slate-900 mb-4">
-                {t?.explorer?.categories?.title || 'Explorez par Catégorie'}
+                {t?.explorer?.categories?.title || "Explorez par Catégorie"}
               </h2>
               <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                {t?.explorer?.categories?.subtitle || 'Trouvez rapidement ce que vous cherchez'}
+                {t?.explorer?.categories?.subtitle ||
+                  "Trouvez rapidement ce que vous cherchez"}
               </p>
             </div>
 
@@ -682,7 +710,8 @@ export default function ExplorerPage() {
                     <CategoryName category={category} />
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    {category.services_count || 0} {t?.explorer?.categories?.servicesCount || 'services'}
+                    {category.services_count || 0}{" "}
+                    {t?.explorer?.categories?.servicesCount || "services"}
                   </p>
                 </button>
               ))}

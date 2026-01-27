@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { TranslatedHeader } from "@/components/layout/TranslatedHeader";
 import { Footer } from "@/components/layout/Footer";
@@ -9,16 +9,23 @@ interface HomePageClientProps {
   services: Service[];
   categories: Category[];
   providers: ProviderProfile[];
+  stats?: any;
 }
 
-export function HomePageClient({ services, categories, providers }: HomePageClientProps) {
+export function HomePageClient({
+  services,
+  categories,
+  providers,
+  stats,
+}: HomePageClientProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <TranslatedHeader />
-      <HomePageContent 
+      <HomePageContent
         services={services}
         categories={categories}
         providers={providers}
+        stats={stats}
       />
       <Footer />
     </div>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import {
@@ -25,9 +25,15 @@ interface HomePageContentProps {
   services: Service[];
   categories: Category[];
   providers: ProviderProfile[];
+  stats?: any;
 }
 
-export function HomePageContent({ services, categories, providers }: HomePageContentProps) {
+export function HomePageContent({
+  services,
+  categories,
+  providers,
+  stats,
+}: HomePageContentProps) {
   const { t, getText } = useSafeLanguage();
 
   return (
@@ -60,7 +66,7 @@ export function HomePageContent({ services, categories, providers }: HomePageCon
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badge premium avec icônes */}
-            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 rounded-full text-slate-900 font-bold text-sm mb-6 animate-fade-in shadow-2xl">
+            <div className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 rounded-full text-slate-900 font-bold text-sm mb-6 animate-fade-in shadow-2xl">
               <Star className="w-4 h-4 fill-current" />
               {t.home.hero.badge}
               <Sparkles className="w-4 h-4" />
@@ -121,7 +127,7 @@ export function HomePageContent({ services, categories, providers }: HomePageCon
               <span className="text-slate-300 text-sm font-medium">
                 {t.home.hero.popularLabel}
               </span>
-              {t.home.hero.popularTags.map((term) => (
+              {t.home.hero.popularTags.map((term: string) => (
                 <Link
                   key={term}
                   href={`/search?q=${term}`}
@@ -136,21 +142,27 @@ export function HomePageContent({ services, categories, providers }: HomePageCon
             <div className="mt-12 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div className="text-center">
                 <div className="text-3xl font-bold text-amber-400 mb-1">
-                  10K+
+                  {stats?.projects || "10K+"}
                 </div>
-                <div className="text-slate-300 text-xs">{t.home.stats.projects}</div>
+                <div className="text-slate-300 text-xs">
+                  {t.home.stats.projects}
+                </div>
               </div>
               <div className="text-center border-x border-white/20">
                 <div className="text-3xl font-bold text-amber-400 mb-1">
-                  5K+
+                  {stats?.providers || "5K+"}
                 </div>
-                <div className="text-slate-300 text-xs">{t.home.stats.experts}</div>
+                <div className="text-slate-300 text-xs">
+                  {t.home.stats.experts}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-amber-400 mb-1">
-                  98%
+                  {stats?.satisfaction || "98%"}
                 </div>
-                <div className="text-slate-300 text-xs">{t.home.stats.satisfied}</div>
+                <div className="text-slate-300 text-xs">
+                  {t.home.stats.satisfied}
+                </div>
               </div>
             </div>
           </div>
