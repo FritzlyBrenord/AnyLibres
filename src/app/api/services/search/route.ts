@@ -52,6 +52,8 @@ export async function GET(request: Request) {
     // Parse URL parameters
     const { searchParams } = new URL(request.url);
     const rawQuery = searchParams.get('q') || '';
+    const qAllParam = searchParams.get('q_all') || '';
+    console.log('🔎 Paramètres de recherche reçus:', { rawQuery, qAllParam });
     const categoryId = searchParams.get('category');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -159,9 +161,21 @@ export async function GET(request: Request) {
         searchQuery = searchQuery.or(`title->>fr.ilike.%${letterUpper}%,description->>fr.ilike.%${letterUpper}%`);
       }
     }
-    // Recherche textuelle
-    else if (query.trim()) {
-      const searchTerms = query.trim().toLowerCase().split(' ').filter(t => t.length > 0);
+    // Recherche textuelle (support q_all combiné envoyé depuis le client)
+    else if ((qAllParam && qAllParam.trim()) || query.trim()) {
+      // Correction : si qAllParam est vide, utiliser query, sinon utiliser qAllParam
+      let searchSource = qAllParam && qAllParam.trim() ? qAllParam : query;
+      // Correction : éviter de splitter sur tous les espaces (ex : "site web" → ["site", "web"])
+      // On préfère splitter sur les espaces UNIQUEMENT si qAllParam contient plusieurs langues concaténées
+      // Si qAllParam == query, on ne duplique pas les tokens
+      let searchTerms: string[] = [];
+      if (searchSource.includes(' ')) {
+        // On retire les doublons
+        searchTerms = Array.from(new Set(searchSource.trim().toLowerCase().split(' ').filter(t => t.length > 0)));
+      } else {
+        searchTerms = [searchSource.trim().toLowerCase()];
+      }
+      console.log('🔎 searchTerms utilisés:', searchTerms);
       const fields = fieldsParam ? fieldsParam.split(',') : ['title', 'description'];
 
       const conditions: string[] = [];

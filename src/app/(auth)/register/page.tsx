@@ -14,6 +14,9 @@ import {
   User,
   ArrowRight,
   Check,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
@@ -23,6 +26,8 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -32,16 +37,59 @@ export default function RegisterPage() {
   });
   const [stats, setStats] = useState<any>(null);
 
-  useEffect(() => { // Added useEffect here
+  // Password validation state
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    special: false,
+  });
+
+  const [passwordScore, setPasswordScore] = useState(0);
+
+  useEffect(() => {
     fetch("/api/stats/public")
       .then((res) => res.json())
       .then((data) => setStats(data))
       .catch((err) => console.error("Failed to fetch stats:", err));
   }, []);
 
+  // Check password strength
+  useEffect(() => {
+    const { password } = formData;
+    const criteria = {
+      length: password.length >= 8,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+
+    setPasswordCriteria(criteria);
+
+    // Calculate score (0-5)
+    const score = Object.values(criteria).filter(Boolean).length;
+    setPasswordScore(score);
+  }, [formData.password]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validation stricte
+    if (passwordScore < 5) {
+      setError(
+        "Le mot de passe ne respecte pas tous les critères de sécurité.",
+      );
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -59,7 +107,7 @@ export default function RegisterPage() {
         setError(
           data.error ||
             t?.auth?.register?.form?.errorGeneric ||
-            "Une erreur est survenue"
+            "Une erreur est survenue",
         );
         setLoading(false);
         return;
@@ -70,10 +118,22 @@ export default function RegisterPage() {
       console.error("Registration error:", err);
       setError(
         t?.auth?.register?.form?.errorRegister ||
-          "Une erreur est survenue lors de l'inscription"
+          "Une erreur est survenue lors de l'inscription",
       );
       setLoading(false);
     }
+  };
+
+  const getStrengthColor = () => {
+    if (passwordScore <= 2) return "bg-red-500";
+    if (passwordScore <= 4) return "bg-yellow-500";
+    return "bg-green-500";
+  };
+
+  const getStrengthText = () => {
+    if (passwordScore <= 2) return "Faible";
+    if (passwordScore <= 4) return "Moyen";
+    return "Fort";
   };
 
   return (
@@ -147,10 +207,10 @@ export default function RegisterPage() {
                       index === 0
                         ? "bg-green-500/20"
                         : index === 1
-                        ? "bg-blue-500/20"
-                        : index === 2
-                        ? "bg-purple-500/20"
-                        : "bg-pink-500/20"
+                          ? "bg-blue-500/20"
+                          : index === 2
+                            ? "bg-purple-500/20"
+                            : "bg-pink-500/20"
                     } rounded-lg flex items-center justify-center flex-shrink-0`}
                   >
                     <Check
@@ -158,10 +218,10 @@ export default function RegisterPage() {
                         index === 0
                           ? "text-green-400"
                           : index === 1
-                          ? "text-blue-400"
-                          : index === 2
-                          ? "text-purple-400"
-                          : "text-pink-400"
+                            ? "text-blue-400"
+                            : index === 2
+                              ? "text-purple-400"
+                              : "text-pink-400"
                       }`}
                     />
                   </div>
@@ -353,24 +413,41 @@ export default function RegisterPage() {
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
-                      required
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
-                      className="block w-full pl-12 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all backdrop-blur-sm"
+                      className="block w-full pl-12 pr-12 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all backdrop-blur-sm"
                       placeholder={
                         t?.auth?.register?.form?.passwordPlaceholder ||
                         "••••••••"
                       }
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-400">
-                    {t?.auth?.register?.form?.passwordHint ||
-                      "Minimum 8 caractères"}
-                  </p>
+
+                  {/* Password Strength Indicator */}
+                  <div className="mt-3 space-y-2">
+                    {/* Progress Bar */}
+                    <div className="h-1.5 w-full bg-gray-700/50 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${getStrengthColor()}`}
+                        style={{ width: `${(passwordScore / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Confirm Password */}
@@ -389,7 +466,7 @@ export default function RegisterPage() {
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       autoComplete="new-password"
                       required
                       value={formData.confirmPassword}
@@ -399,12 +476,25 @@ export default function RegisterPage() {
                           confirmPassword: e.target.value,
                         })
                       }
-                      className="block w-full pl-12 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all backdrop-blur-sm"
+                      className="block w-full pl-12 pr-12 py-3.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all backdrop-blur-sm"
                       placeholder={
                         t?.auth?.register?.form?.confirmPasswordPlaceholder ||
                         "••••••••"
                       }
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -412,8 +502,8 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={loading}
-                  className="group relative w-full flex items-center justify-center py-4 px-6 border border-transparent text-base font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 mt-6"
+                  disabled={loading || passwordScore < 5}
+                  className="group relative w-full flex items-center justify-center py-4 px-6 border border-transparent text-base font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 mt-6 grayscale disabled:grayscale-0"
                 >
                   {loading ? (
                     t?.auth?.register?.form?.submitting ||

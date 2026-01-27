@@ -103,16 +103,16 @@ export default function ServiceDetailPage() {
 
   const { translatedText: translatedTitle } = useSmartTranslate(
     serviceTitle,
-    "fr"
+    "fr",
   );
   const { translatedText: translatedDescription } = useSmartTranslate(
     serviceDescription,
-    "fr"
+    "fr",
   );
 
   const { translatedText: translatedShortDescription } = useSmartTranslate(
     data?.service?.short_description || "",
-    "fr"
+    "fr",
   );
 
   // Charger les données du service
@@ -154,7 +154,7 @@ export default function ServiceDetailPage() {
 
         // Charger les services similaires
         const similarResponse = await fetch(
-          `/api/services/similar?serviceId=${serviceId}&limit=6`
+          `/api/services/similar?serviceId=${serviceId}&limit=6`,
         );
         const similarResult = await similarResponse.json();
 
@@ -167,7 +167,7 @@ export default function ServiceDetailPage() {
 
         // Charger les vrais avis
         const reviewsResponse = await fetch(
-          `/api/services/${serviceId}/reviews`
+          `/api/services/${serviceId}/reviews`,
         );
         const reviewsData = await reviewsResponse.json();
 
@@ -216,7 +216,7 @@ export default function ServiceDetailPage() {
         } else {
           if (data.error === "Unauthorized") {
             // Rediriger vers la connexion si non connecté
-            router.push(`/`);
+            router.push("/login");
           } else {
             alert("Erreur: " + data.error);
           }
@@ -264,8 +264,8 @@ export default function ServiceDetailPage() {
 
           alert(
             `Vous devez vérifier votre ${missing.join(
-              " et "
-            )} avant de continuer. Vous allez être redirigé vers votre profil.`
+              " et ",
+            )} avant de continuer. Vous allez être redirigé vers votre profil.`,
           );
           router.push(`/profile/${profileData.data.profile.user_id}`);
           return;

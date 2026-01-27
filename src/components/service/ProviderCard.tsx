@@ -5,9 +5,17 @@
 
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star, MapPin, CheckCircle, Award, Briefcase } from "lucide-react";
+import {
+  Star,
+  MapPin,
+  CheckCircle,
+  Award,
+  Briefcase,
+  User,
+} from "lucide-react";
 import { ProviderProfile } from "@/types";
 import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import { useSmartTranslate } from "@/hooks/useSmartTranslate";
@@ -19,7 +27,7 @@ interface ProviderCardProps {
 // Composant pour traduire un skill
 function SkillBadge({ skill }: { skill: string }) {
   // Force sourceLang='fr' car le contenu de la base de données est en français
-  const skillTranslation = useSmartTranslate(skill, 'fr');
+  const skillTranslation = useSmartTranslate(skill, "fr");
   return (
     <span className="px-3 py-1.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-slate-700 text-xs rounded-lg border border-blue-200 font-medium">
       {skillTranslation.translatedText}
@@ -29,17 +37,33 @@ function SkillBadge({ skill }: { skill: string }) {
 
 export function ProviderCard({ provider }: ProviderCardProps) {
   const { t } = useSafeLanguage();
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   const displayName =
-    provider.profile?.display_name || provider.company_name || t?.providerCard?.provider || 'Prestataire';
-  const avatar =
-    provider.profile?.avatar_url ||
-    "/images/placeholders/avatar-placeholder.png";
+    provider.profile?.display_name ||
+    provider.company_name ||
+    t?.providerCard?.provider ||
+    "Prestataire";
+  // Image par défaut si aucun avatar n'est défini
+  const defaultAvatarImage =
+    "https://via.placeholder.com/200/E2E8F0/64748B?text=Avatar";
+  const avatar = provider.profile?.avatar_url || defaultAvatarImage;
+
+  // Générer les initiales du prestataire
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const bioRaw = provider.profile?.bio || provider.about || "";
 
   // Traduction automatique de la bio
   // Force sourceLang='fr' car le contenu de la base de données est en français
-  const bioTranslation = useSmartTranslate(bioRaw, 'fr');
+  const bioTranslation = useSmartTranslate(bioRaw, "fr");
   const bio = bioTranslation.translatedText;
   const location =
     provider.location?.city && provider.location?.country
@@ -52,12 +76,22 @@ export function ProviderCard({ provider }: ProviderCardProps) {
         {/* Avatar avec effet premium */}
         <div className="relative w-20 h-20 mx-auto mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-md opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
-          <Image
-            src={avatar}
-            alt={displayName}
-            fill
-            className="rounded-full object-cover border-2 border-slate-200 relative z-10"
-          />
+          {imageLoadError ? (
+            // Fallback : afficher un avatar par défaut avec initiales
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center border-2 border-slate-200 relative z-10">
+              <span className="text-white font-bold text-lg">
+                {getInitials(displayName)}
+              </span>
+            </div>
+          ) : (
+            <Image
+              src={avatar}
+              alt={displayName}
+              fill
+              className="rounded-full object-cover border-2 border-slate-200 relative z-10"
+              onError={() => setImageLoadError(true)}
+            />
+          )}
           {provider.is_verified && (
             <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full p-1 z-20 shadow-lg">
               <CheckCircle className="w-4 h-4" />

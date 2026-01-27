@@ -9,8 +9,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ProviderProfile, Service, Review, ReviewStats } from "@/types";
 import { useLanguage } from "@/hooks/useLanguage";
+import TranslatedText from "@/components/common/TranslatedText";
 
-// Components
 // Components
 import ProviderAbout from "@/components/provider/ProviderAbout";
 import ProviderServices from "@/components/provider/ProviderServices";
@@ -66,6 +66,7 @@ interface ProviderData {
       3: number;
       2: number;
       1: number;
+      0: number; // Added 0 for completeness
     };
     completion_rate?: number;
     response_time?: string;
@@ -123,10 +124,10 @@ export default function ProviderProfilePage() {
             <Sparkles className="w-6 h-6 text-yellow-500 absolute -top-2 -right-2 animate-pulse" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mt-4">
-            Chargement du profil
+            {t.providerProfile?.loading || "Chargement du profil"}
           </h3>
           <p className="text-gray-500 mt-2">
-            Préparation de l&apos;expérience exclusive
+            {t.providerProfile?.loadingSubtitle || "Préparation de l'expérience exclusive"}
           </p>
         </div>
       </div>
@@ -142,7 +143,7 @@ export default function ProviderProfilePage() {
             <Users className="w-10 h-10 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Profil non disponible
+            {t.providerProfile?.error || "Profil non disponible"}
           </h2>
           <p className="text-gray-600 mb-6">{error || t.common.error}</p>
           <div className="flex gap-4 justify-center">
@@ -150,13 +151,13 @@ export default function ProviderProfilePage() {
               onClick={() => router.back()}
               className="px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-xl hover:from-slate-800 hover:to-slate-600 transition-all duration-200 font-medium shadow-lg"
             >
-              ← Retour
+              ← {t.providerProfile?.back || "Retour"}
             </button>
             <button
               onClick={() => router.push("/explorer")}
               className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all duration-200 font-medium"
             >
-              Explorer
+              {t.providerProfile?.explore || "Explorer"}
             </button>
           </div>
         </div>
@@ -184,11 +185,11 @@ export default function ProviderProfilePage() {
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors group"
               >
                 <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                Retour
+                {t.providerProfile?.back || "Retour"}
               </button>
               <div className="w-px h-6 bg-gray-300"></div>
               <div className="text-sm text-gray-500">
-                Prestataire{" "}
+                {t.providerProfile?.provider || "Prestataire"}{" "}
                 <span className="font-medium text-gray-700">
                   #{provider.id.slice(0, 8)}
                 </span>
@@ -231,14 +232,14 @@ export default function ProviderProfilePage() {
                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
                   <span className="text-sm font-medium">
                     {stats.average_rating.toFixed(1)} ({stats.total_reviews}{" "}
-                    avis)
+                    {t.providerProfile?.reviews || "avis"})
                   </span>
                 </div>
                 {stats.completion_rate && stats.completion_rate > 90 && (
                   <div className="flex items-center gap-2 bg-green-500/20 backdrop-blur-sm rounded-full px-4 py-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
                     <span className="text-sm font-medium">
-                      {stats.completion_rate}% réussite
+                      {stats.completion_rate}{t.providerProfile?.successRate || "% réussite"}
                     </span>
                   </div>
                 )}
@@ -246,7 +247,7 @@ export default function ProviderProfilePage() {
                   <div className="flex items-center gap-2 bg-blue-500/20 backdrop-blur-sm rounded-full px-4 py-2">
                     <Clock className="w-4 h-4 text-blue-400" />
                     <span className="text-sm font-medium">
-                      Réponse: {stats.response_time}
+                      {t.providerProfile?.response || "Réponse:"} <TranslatedText text={stats.response_time} />
                     </span>
                   </div>
                 )}
@@ -260,13 +261,15 @@ export default function ProviderProfilePage() {
               
               <div className="text-2xl text-amber-400 font-medium mb-6 flex items-center gap-2">
                 <Briefcase className="w-6 h-6" />
-                {provider.profession || "Expert Anylibre"}
+                <TranslatedText text={provider.profession || "Expert Anylibre"} />
               </div>
 
-              <p className="text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl">
-                {provider.tagline || provider.profile?.bio ||
-                  "Prestataire professionnel offrant des services de qualité exceptionnelle"}
-              </p>
+              <div className="text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl">
+                <TranslatedText 
+                  text={provider.tagline || provider.profile?.bio ||
+                  "Prestataire professionnel offrant des services de qualité exceptionnelle"} 
+                />
+              </div>
 
               {/* Informations de contact et détails */}
               <div className="flex flex-wrap gap-6 text-gray-200">
@@ -282,7 +285,7 @@ export default function ProviderProfilePage() {
                 {provider.experience_years ? (
                   <div className="flex items-center gap-2">
                     <Award className="w-5 h-5" />
-                    <span>{provider.experience_years} ans d'expérience</span>
+                    <span>{provider.experience_years} {t.providerProfile?.experience || "ans d'expérience"}</span>
                   </div>
                 ) : null}
 
@@ -290,7 +293,7 @@ export default function ProviderProfilePage() {
                   <div className="flex items-center gap-2">
                     <Calendar className="w-5 h-5" />
                     <span>
-                      Membre depuis{" "}
+                      {t.providerProfile?.memberSince || "Membre depuis"}{" "}
                       {new Date(provider.profile.joined_date).getFullYear()}
                     </span>
                   </div>
@@ -302,31 +305,31 @@ export default function ProviderProfilePage() {
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
               <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-yellow-400" />
-                Performance
+                {t.providerProfile?.performance || "Performance"}
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-200">Services</span>
+                  <span className="text-gray-200">{t.providerProfile?.services || "Services"}</span>
                   <span className="font-semibold text-white">
                     {stats.total_services}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-200">Clients satisfaits</span>
+                  <span className="text-gray-200">{t.providerProfile?.satisfiedClients || "Clients satisfaits"}</span>
                   <span className="font-semibold text-white">
                     {stats.repeat_clients || stats.total_reviews}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-200">Taux de réussite</span>
+                  <span className="text-gray-200">{t.providerProfile?.successRateLabel || "Taux de réussite"}</span>
                   <span className="font-semibold text-green-400">
                     {stats.completion_rate || 95}%
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-200">Délai réponse</span>
+                  <span className="text-gray-200">{t.providerProfile?.responseTime || "Délai réponse"}</span>
                   <span className="font-semibold text-blue-400">
-                    {stats.response_time || "1h"}
+                    <TranslatedText text={stats.response_time || "1h"} />
                   </span>
                 </div>
               </div>
@@ -348,7 +351,7 @@ export default function ProviderProfilePage() {
               }`}
             >
               <Briefcase className="w-5 h-5" />
-              Services ({stats.total_services})
+              {t.providerProfile?.tabs?.services || "Services"} ({stats.total_services})
             </button>
             <button
               onClick={() => setActiveTab("about")}
@@ -358,7 +361,7 @@ export default function ProviderProfilePage() {
                   : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50"
               }`}
             >
-              <Users className="w-5 h-5" />À propos
+              <Users className="w-5 h-5" />{t.providerProfile?.tabs?.about || "À propos"}
             </button>
             <button
               onClick={() => setActiveTab("reviews")}
@@ -369,7 +372,7 @@ export default function ProviderProfilePage() {
               }`}
             >
               <Star className="w-5 h-5" />
-              Avis ({stats.total_reviews})
+              {t.providerProfile?.tabs?.reviews || "Avis"} ({stats.total_reviews})
             </button>
           </div>
         </div>
@@ -382,11 +385,10 @@ export default function ProviderProfilePage() {
           <div className="space-y-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Mes Services Premium
+                {t.providerProfile?.sections?.services || "Mes Services Premium"}
               </h2>
               <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-                Découvrez une sélection de services professionnels conçus pour
-                exceller
+                {t.providerProfile?.sections?.servicesSubtitle || "Découvrez une sélection de services professionnels conçus pour exceller"}
               </p>
             </div>
             <ProviderServices services={services} />
@@ -398,11 +400,10 @@ export default function ProviderProfilePage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Mon Expertise
+                {t.providerProfile?.sections?.expertise || "Mon Expertise"}
               </h2>
               <p className="text-gray-600 text-lg">
-                Plus qu&apos;un prestataire, un partenaire de confiance pour vos
-                projets
+                {t.providerProfile?.sections?.expertiseSubtitle || "Plus qu'un prestataire, un partenaire de confiance pour vos projets"}
               </p>
             </div>
             <ProviderAbout provider={provider} />
@@ -414,10 +415,10 @@ export default function ProviderProfilePage() {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Témoignages Clients
+                {t.providerProfile?.sections?.reviews || "Témoignages Clients"}
               </h2>
               <p className="text-gray-600 text-lg">
-                Ce que disent les clients satisfaits de mon travail
+                {t.providerProfile?.sections?.reviewsSubtitle || "Ce que disent les clients satisfaits de mon travail"}
               </p>
             </div>
             <ProviderReviews reviews={reviews} stats={reviewStats} />
@@ -429,10 +430,10 @@ export default function ProviderProfilePage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
         <div className="flex gap-3">
           <button className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl font-semibold text-center">
-            Contacter
+            {t.providerProfile?.mobile?.contact || "Contacter"}
           </button>
           <button className="flex-1 bg-white border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold text-center">
-            Voir les services
+            {t.providerProfile?.mobile?.viewServices || "Voir les services"}
           </button>
         </div>
       </div>

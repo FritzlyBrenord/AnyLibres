@@ -9,6 +9,44 @@
 
 import { SearchPageClient } from "@/components/search/SearchPageClient";
 
+// Petit cache de traduction pour éviter des appels répétés durant le SSR
+const _translationCache: { [key: string]: string } = {};
+
+async function translateQueryToLanguages(
+  query: string,
+  targetLangs: string[],
+  baseUrl: string,
+) {
+  const results: string[] = [];
+
+  for (const lang of targetLangs) {
+    const cacheKey = `${query}::${lang}`;
+    if (_translationCache[cacheKey]) {
+      results.push(_translationCache[cacheKey]);
+      continue;
+    }
+
+    try {
+      const trResp = await fetch(`${baseUrl}/api/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: query, targetLang: lang }),
+      });
+      if (!trResp.ok) continue;
+      const trData = await trResp.json();
+      const translated = trData.translatedText || "";
+      if (translated) {
+        _translationCache[cacheKey] = translated;
+        results.push(translated);
+      }
+    } catch (e) {
+      // ignore individual translation failures
+    }
+  }
+
+  return results;
+}
+
 // Fetch résultats avec les nouveaux paramètres
 async function getSearchResults(params: {
   q?: string;
@@ -38,6 +76,19 @@ async function getSearchResults(params: {
   searchQuery.set("limit", limit.toString());
 
   try {
+    // Si l'utilisateur a saisi une query, traduire en plusieurs langues courantes
+    // et envoyer une version combinée pour augmenter les chances de correspondance
+    if (query) {
+      const translations = await translateQueryToLanguages(
+        query,
+        ["fr", "en", "es"],
+        baseUrl,
+      );
+      const combined = [query, ...translations].filter(Boolean).join(" ");
+      // Envoyer à la fois la query originale et la version combinée
+      searchQuery.set("q", query);
+      searchQuery.set("q_all", combined);
+    }
     const apiUrl = `${baseUrl}/api/services/search?${searchQuery.toString()}`;
     console.log("📡 Calling API:", apiUrl);
 
