@@ -1,5 +1,5 @@
 // ============================================================================
-// Middleware: Protection des routes et redirection intelligente
+// Middleware: Sécurisation Stricte des Routes par Rôles
 // ============================================================================
 
 import { createServerClient } from '@supabase/ssr';
@@ -60,96 +60,156 @@ export async function middleware(request) {
 
   const path = request.nextUrl.pathname;
 
-  // Routes publiques accessibles à tous (connecté ou non)
+  // 1. Définition des Routes
+  // --------------------------------------------------------------------------
+
+  // Routes Publiques et Auth (Accessibles sans connexion)
   const publicPaths = [
-    '/', // Page d'accueil publique
+    '/',
     '/explorer',
     '/categories',
     '/about',
+    '/search',
     '/login',
     '/register',
-    '/search',
     '/forgot-password',
+    '/reset-password',
   ];
 
-  // Routes dynamiques publiques (avec paramètres)
+  // Patterns pour routes publiques dynamiques
   const publicDynamicPatterns = [
-    /^\/service\/[^\/]+$/, // /service/[id]
-    /^\/provider\/[^\/]+$/, // /provider/[id]
-    /^\/profile\/[^\/]+$/, // /profile/[id]
-    /^\/categories\/[^\/]+$/, // /categories/[slug]
+    /^\/service\/[^\/]+$/,    // /service/*
+    /^\/provider\/[^\/]+$/,   // /provider/* (profil public)
+    /^\/profile\/[^\/]+$/,    // /profile/*
+    /^\/categories\/[^\/]+$/, // /categories/*
+    /^\/reset-password\/[^\/]+$/,
   ];
 
-  // Vérifier si c'est une route publique
+  const authPaths = [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password'
+  ];
+
+  // Routes Provider Uniquement
+  const providerPrefix = '/Provider';
+
+  // Routes Admin Uniquement
+  const adminPrefix = '/Admin';
+  // NOTE: Dans votre structure, le dossier s'appelle (Administrateur)/Admin
+  // Donc l'URL est /Admin. Nous sécurisons tout ce qui commence par /Admin
+
+
+  // 2. Vérifications Préliminaires
+  // --------------------------------------------------------------------------
+
   const isPublicPath = publicPaths.includes(path) ||
     publicDynamicPatterns.some(pattern => pattern.test(path));
 
-  // Vérifier l'authentification
+  const isAuthPage = authPaths.some(p => path.startsWith(p));
+
+  const rootSession = request.cookies.get('anylibre_root_session')?.value === 'true';
   const { data: { user }, error } = await supabase.auth.getUser();
-  const isAuthenticated = !!user && !error;
+  const isAuthenticated = (!!user && !error) || rootSession;
 
-  // Routes d'authentification - rediriger si déjà connecté
-  if (isAuthenticated && (path === '/login' || path === '/register')) {
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
 
-  // Rediriger l'utilisateur connecté de / vers /home
-  if (isAuthenticated && path === '/') {
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
+  // 3. Logique de Redirection
+  // --------------------------------------------------------------------------
 
-  // Si c'est une route publique, laisser passer
-  if (isPublicPath) {
-    return response;
-  }
+  // CAS A: Utilisateur NON Connecté
+  if (!isAuthenticated) {
+    // Si route publique -> OK
+    if (isPublicPath) {
+      return response;
+    }
 
-  // Routes protégées - nécessitent une authentification
-  const protectedPaths = [
-    '/home', // Page d'accueil connectée
-    '/dashboard',
-    '/orders',
-    '/messages',
-    '/notifications',
-    '/favorites',
-    '/reviews',
-    '/settings',
-    '/become-provider',
-    '/Provider',
-  ];
+    // Si route auth -> OK
+    if (isAuthPage) {
+      return response;
+    }
 
-  const isProtectedPath = protectedPaths.some(p => path === p || path.startsWith(p + '/'));
-
-  // Si route protégée et pas connecté -> rediriger vers login
-  if (isProtectedPath && !isAuthenticated) {
+    // Sinon (route protégée) -> Redirection Login
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', path);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Si utilisateur connecté, vérifier son profil
+  // CAS B: Utilisateur Connecté
   if (isAuthenticated) {
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, is_active, role')
-        .eq('user_id', user.id)
-        .single();
 
-      // Si profil désactivé -> déconnecter et rediriger
-      if (!profile || !profile.is_active) {
-        await supabase.auth.signOut();
-        return NextResponse.redirect(new URL('/login?error=account_disabled', request.url));
-      }
+    // 1. Identification du Rôle (Nécessaire pour toute la suite)
+    let userRole = 'client'; // Par défaut
 
-      // Vérifier accès au dashboard (réservé aux providers)
-      if (path.startsWith('/dashboard') && profile.role !== 'provider') {
-        return NextResponse.redirect(new URL('/become-provider', request.url));
+    if (rootSession) {
+      userRole = 'super_admin';
+    } else if (user) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, is_active')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile) {
+          if (!profile.is_active) {
+            await supabase.auth.signOut();
+            return NextResponse.redirect(new URL('/login?error=account_disabled', request.url));
+          }
+          userRole = profile.role || 'client';
+        }
+      } catch (e) {
+        console.error('Middleware role check error:', e);
       }
-    } catch (error) {
-      console.error('❌ Erreur middleware:', error);
-      // En cas d'erreur, rediriger vers login
-      return NextResponse.redirect(new URL('/login?error=profile_error', request.url));
     }
+
+    // 2. CAS 1: Rôles Administratifs (STRICT JAIL MODE)
+    // --------------------------------------------------------------------------
+    const adminRoles = ['admin', 'super_admin', 'moderator', 'support', 'finance', 'content_manager'];
+
+    if (adminRoles.includes(userRole)) {
+      if (!path.startsWith(adminPrefix)) {
+        // Redirection immédiate vers /Admin pour TOUTE autre route (public ou protected)
+        return NextResponse.redirect(new URL('/Admin', request.url));
+      }
+      return response;
+    }
+
+    // 3. CAS 2: Rôles Standards (Client, Provider)
+    // --------------------------------------------------------------------------
+
+    // Rediriger des pages Auth vers Home
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
+
+    // Root / redirige vers /home
+    if (path === '/') {
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
+
+    // Ne doivent PAS accéder à /Admin
+    if (path.startsWith(adminPrefix)) {
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
+
+    // Règle PROVIDER: Accès Exclusif à /Provider
+    if (path.startsWith(providerPrefix)) {
+      if (userRole !== 'provider') {
+        // Seul provider a accès
+        return NextResponse.redirect(new URL('/home', request.url));
+      }
+      return response;
+    }
+
+    // Accès Dashboard (Legacy)
+    if (path.startsWith('/dashboard') && userRole !== 'provider') {
+      return NextResponse.redirect(new URL('/become-provider', request.url));
+    }
+
+    // Tout le reste (routes (protected) standards comme /home, /orders ...)
+    // Accessible aux rôles Client et Provider
+    return response;
   }
 
   return response;

@@ -37,7 +37,9 @@ import { compressImage } from "@/utils/lib/imageCompression";
 import { compressVideo } from "@/utils/lib/videoCompression";
 import { compressAudio } from "@/utils/lib/audioCompression";
 import OrderChat from "@/components/order/OrderChat";
+import OrderMessagingModal from "@/components/message/OrderMessagingModal";
 import ProviderOrderReviewSection from "@/components/review/ProviderOrderReviewSection";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface OrderDetails {
   id: string;
@@ -114,21 +116,22 @@ interface OrderDetails {
     reason: string;
     details: string;
     status: string;
+    session_status?: string;
     created_at: string;
     resolved_at?: string;
   };
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "En attente",
-  paid: "Payé - À démarrer",
-  in_progress: "En cours",
-  delivered: "Livré - En attente validation",
-  revision_requested: "Révision demandée",
-  completed: "Terminé",
-  cancelled: "Annulé",
-  refunded: "Remboursé",
-};
+const getStatusLabels = (t: any) => ({
+  pending: t.ordersPage.status.pending,
+  paid: t.ordersPage.status.paid, // Or "Payé - À démarrer"
+  in_progress: t.ordersPage.status.in_progress,
+  delivered: t.ordersPage.status.delivered,
+  revision_requested: t.ordersPage.status.revision_requested,
+  completed: t.ordersPage.status.completed,
+  cancelled: t.ordersPage.status.cancelled,
+  refunded: t.ordersPage.status.refunded,
+});
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -162,6 +165,7 @@ const DeliveryModal = ({
   uploadProgress: number;
   uploadStatus: string;
 }) => {
+  const { t } = useSafeLanguage();
   const [fileType, setFileType] = useState<
     "document" | "image" | "video" | "audio" | "link"
   >("document");
@@ -176,7 +180,7 @@ const DeliveryModal = ({
 
   const handleSubmit = () => {
     if (!message.trim()) {
-      alert("Veuillez ajouter un message de livraison");
+      alert(t.ordersPage.deliveryModal.errorRequiredMessage);
       return;
     }
     onDeliver({ message, file, link, fileType });
@@ -184,9 +188,7 @@ const DeliveryModal = ({
 
   useEffect(() => {
     if (isRevision && !message) {
-      setMessage(
-        "Voici les modifications demandées. N'hésitez pas si vous avez d'autres retours."
-      );
+      setMessage(t.ordersPage.deliveryModal.revisionDefaultMessage);
     }
   }, [isRevision]);
 
@@ -210,10 +212,17 @@ const DeliveryModal = ({
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                {isRevision ? "Livrer la révision" : "Livrer la commande"}
+                {isRevision
+                  ? t.ordersPage.deliveryModal.titleRevision
+                  : t.ordersPage.deliveryModal.titleDeliver}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Commande #{order.id.split("-")[0]}
+                {t.ordersPage.deliveryModal.subtitle
+                  .replace("{id}", order?.id?.split("-")[0] || "???")
+                  .replace(
+                    "{client}",
+                    order?.client?.full_name || t.ordersPage.list.unknownClient,
+                  )}
               </p>
             </div>
             <button
@@ -230,23 +239,39 @@ const DeliveryModal = ({
             {/* Type de livraison */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Type de livraison
+                {t.ordersPage.deliveryModal.typeLabel}
               </label>
               <div className="grid grid-cols-5 gap-2">
                 {[
                   {
                     type: "document" as const,
                     icon: FileText,
-                    label: "Document",
+                    label: t.ordersPage.deliveryModal.types.document,
                   },
-                  { type: "image", icon: Image, label: "Image" },
-                  { type: "video", icon: Video, label: "Vidéo" },
-                  { type: "audio", icon: Music, label: "Audio" },
-                  { type: "link", icon: Link, label: "Lien" },
+                  {
+                    type: "image",
+                    icon: Image,
+                    label: t.ordersPage.deliveryModal.types.image,
+                  },
+                  {
+                    type: "video",
+                    icon: Video,
+                    label: t.ordersPage.deliveryModal.types.video,
+                  },
+                  {
+                    type: "audio",
+                    icon: Music,
+                    label: t.ordersPage.deliveryModal.types.audio,
+                  },
+                  {
+                    type: "link",
+                    icon: Link,
+                    label: t.ordersPage.deliveryModal.types.link,
+                  },
                 ].map((item) => (
                   <button
                     key={item.type}
-                    onClick={() => setFileType(item.type)}
+                    onClick={() => setFileType(item.type as any)}
                     className={`p-3 rounded-xl border-2 transition-all ${
                       fileType === item.type
                         ? "border-blue-500 bg-blue-50 text-blue-700"
@@ -265,7 +290,7 @@ const DeliveryModal = ({
             {/* Message */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Message de livraison *
+                {t.ordersPage.deliveryModal.messageLabel}
               </label>
               <textarea
                 value={message}
@@ -273,8 +298,8 @@ const DeliveryModal = ({
                 rows={4}
                 placeholder={
                   isRevision
-                    ? "Décrivez les corrections apportées..."
-                    : "Décrivez le travail livré..."
+                    ? t.ordersPage.deliveryModal.messagePlaceholderRevision
+                    : t.ordersPage.deliveryModal.messagePlaceholder
                 }
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
               />
@@ -284,7 +309,7 @@ const DeliveryModal = ({
             {fileType !== "link" ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fichier livrable
+                  {t.ordersPage.deliveryModal.fileLabel}
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
                   <input
@@ -296,16 +321,16 @@ const DeliveryModal = ({
                   <label htmlFor="delivery-file" className="cursor-pointer">
                     <Upload size={32} className="mx-auto text-gray-400 mb-3" />
                     <p className="text-sm text-gray-600">
-                      Cliquez pour télécharger ou glissez votre fichier
+                      {t.ordersPage.deliveryModal.fileHint}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {fileType === "image"
-                        ? "JPG, PNG, GIF (max 10MB)"
+                        ? t.ordersPage.deliveryModal.fileTypes.image
                         : fileType === "video"
-                        ? "MP4, MOV (max 100MB)"
-                        : fileType === "audio"
-                        ? "MP3, WAV (max 50MB)"
-                        : "PDF, DOC, ZIP (max 50MB)"}
+                          ? t.ordersPage.deliveryModal.fileTypes.video
+                          : fileType === "audio"
+                            ? t.ordersPage.deliveryModal.fileTypes.audio
+                            : t.ordersPage.deliveryModal.fileTypes.generic}
                     </p>
                   </label>
                 </div>
@@ -327,13 +352,15 @@ const DeliveryModal = ({
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lien externe
+                  {t.ordersPage.deliveryModal.externalLinkLabel}
                 </label>
                 <input
                   type="url"
                   value={link}
                   onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://example.com/votre-travail"
+                  placeholder={
+                    t.ordersPage.deliveryModal.externalLinkPlaceholder
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
@@ -368,7 +395,7 @@ const DeliveryModal = ({
                 disabled={isUploading}
                 className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Annuler
+                {t.ordersPage.deliveryModal.cancel}
               </button>
               <button
                 onClick={handleSubmit}
@@ -378,12 +405,14 @@ const DeliveryModal = ({
                 {isUploading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Envoi en cours...
+                    {t.ordersPage.deliveryModal.uploading}
                   </>
                 ) : (
                   <>
                     <Send size={18} className="mr-2" />
-                    {isRevision ? "Envoyer la révision" : "Livrer la commande"}
+                    {isRevision
+                      ? t.ordersPage.deliveryModal.submitRevision
+                      : t.ordersPage.deliveryModal.submitDeliver}
                   </>
                 )}
               </button>
@@ -400,6 +429,7 @@ const DeliveryModal = ({
 // ============================================================================
 
 export default function ProviderOrderDetailPage() {
+  const { t, language } = useSafeLanguage();
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
@@ -423,25 +453,40 @@ export default function ProviderOrderDetailPage() {
     uploadStatus: "",
   });
 
+  // État pour le modal de contact client
+  const [contactClientModalOpen, setContactClientModalOpen] = useState(false);
+
+  const STATUS_LABELS = getStatusLabels(t);
+
   useEffect(() => {
     loadOrder();
   }, [orderId]);
 
   const loadOrder = async () => {
+    setLoading(true);
     try {
       const response = await fetch(`/api/providers/orders/${orderId}`);
       const data = await response.json();
 
       if (data.success) {
+        console.log("🔍 DEBUG: Order data received:", {
+          status: data.data.order.status,
+          hasDispute: !!data.data.order.dispute,
+          disputeDetails: data.data.order.dispute?.details,
+          disputeSessionStatus: data.data.order.dispute?.session_status,
+          fullDispute: data.data.order.dispute
+        });
         setOrder(data.data.order);
         if (data.data.order.provider_id) {
           setCurrentUserId(data.data.order.provider_id);
         }
       } else {
+        console.error("❌ Error loading order:", data.error);
         setError(data.error);
       }
     } catch (err) {
-      setError("Erreur de chargement");
+      console.error("❌ Fetch error:", err);
+      setError("Erreur lors du chargement de la commande");
     } finally {
       setLoading(false);
     }
@@ -458,10 +503,10 @@ export default function ProviderOrderDetailPage() {
       });
       const data = await response.json();
       if (data.success) {
-        alert("✅ Commande démarrée avec succès !");
+        alert(t.ordersPage.detail.successStart);
         loadOrder();
       } else {
-        alert(`❌ Erreur: ${data.error}`);
+        alert(`${t.common?.error || "Error"}: ${data.error}`);
       }
     } catch (error) {
       alert("❌ Erreur lors du démarrage");
@@ -620,22 +665,28 @@ export default function ProviderOrderDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return new Date(dateString).toLocaleDateString(
+      language === "fr" ? "fr-FR" : language === "es" ? "es-ES" : "en-US",
+      {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      },
+    );
   };
 
   const formatShortDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return new Date(dateString).toLocaleDateString(
+      language === "fr" ? "fr-FR" : language === "es" ? "es-ES" : "en-US",
+      {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      },
+    );
   };
 
   if (loading) {
@@ -643,7 +694,7 @@ export default function ProviderOrderDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Chargement de la commande...</p>
+          <p className="text-slate-600">{t.ordersPage.detail.loading}</p>
         </div>
       </div>
     );
@@ -654,15 +705,17 @@ export default function ProviderOrderDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Erreur</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            {t.common?.error || "Erreur"}
+          </h2>
           <p className="text-slate-600 mb-6">
-            {error || "Commande non trouvée"}
+            {error || t.ordersPage.detail.notFound}
           </p>
           <button
             onClick={() => router.push("/Provider/TableauDeBord/Order")}
             className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
           >
-            Retour aux commandes
+            {t.ordersPage.detail.backToList}
           </button>
         </div>
       </div>
@@ -685,7 +738,9 @@ export default function ProviderOrderDetailPage() {
             className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-3 transition-colors group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium">Retour aux commandes</span>
+            <span className="font-medium">
+              {t.ordersPage.detail.backToList}
+            </span>
           </button>
 
           <div className="flex items-start justify-between">
@@ -696,15 +751,19 @@ export default function ProviderOrderDetailPage() {
                 </h1>
                 <span
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                    STATUS_COLORS[order.status] ||
+                    STATUS_COLORS[order.status as keyof typeof STATUS_COLORS] ||
                     "bg-slate-100 text-slate-800 border-slate-200"
                   }`}
                 >
-                  {STATUS_LABELS[order.status] || order.status}
+                  {STATUS_LABELS[order.status as keyof typeof STATUS_LABELS] ||
+                    order.status}
                 </span>
               </div>
               <p className="text-slate-600 text-sm">
-                Créée le {formatDate(order.created_at)}
+                {t.ordersPage.detail.createdOn.replace(
+                  "{date}",
+                  formatDate(order.created_at),
+                )}
               </p>
             </div>
 
@@ -722,9 +781,18 @@ export default function ProviderOrderDetailPage() {
                     ) : (
                       <Play className="w-4 h-4" />
                     )}
-                    Démarrer la commande
+                    {t.ordersPage.detail.startOrder}
                   </button>
                 )}
+                {/* Bouton Contact Client */}
+                <button
+                  onClick={() => setContactClientModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all shadow-sm hover:shadow-md"
+                >
+                  <MessageSquare className="w-4 h-4 text-purple-600" />
+                  {t.common?.contact || "Contacter le client"}
+                </button>
+
                 {(order.status === "in_progress" ||
                   order.status === "revision_requested" ||
                   order.status === "delivery_delayed") && (
@@ -741,8 +809,8 @@ export default function ProviderOrderDetailPage() {
                   >
                     <Send className="w-4 h-4" />
                     {order.status === "revision_requested"
-                      ? "Livrer la révision"
-                      : "Livrer le travail"}
+                      ? t.ordersPage.detail.deliverRevision
+                      : t.ordersPage.detail.deliverWork}
                   </button>
                 )}
               </div>
@@ -761,19 +829,37 @@ export default function ProviderOrderDetailPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold mb-2">
-                  💰 Commande remboursée
+                  {t.ordersPage.detail.refundedBanner.title}
                 </h3>
                 <p className="text-white/90 mb-2">
-                  Cette commande a été remboursée au client. Aucune action n'est possible.
+                  {t.ordersPage.detail.refundedBanner.text}
                 </p>
                 <p className="text-white/70 text-sm">
-                  Le montant a été déduit de votre solde et crédité au client.
+                  {t.ordersPage.detail.refundedBanner.subtitle}
                 </p>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal de contact client */}
+      <OrderMessagingModal
+        open={contactClientModalOpen}
+        onClose={() => setContactClientModalOpen(false)}
+        providerId={currentUserId} // L'ID de l'expéditeur (le prestataire) n'est pas utilisé comme ID de fetch ici pour le destinataire, mais on peut le passer
+        clientId={order.client_id} // ID du client destinataire
+        orderId={order.id}
+        messageType="simple"
+        recipientType="client" // IMPORTANT: on contacte le CLIENT
+        initialRecipientData={order.client}
+        onMessageSent={() => {
+          setContactClientModalOpen(false);
+          // Optionnel refetch
+        }}
+        serviceId={order.service?.id}
+        serviceTitle={order.service?.title?.fr || "votre commande"}
+      />
 
       {/* Bannière d'alerte pour révisions */}
       {hasRevisionRequested && (
@@ -785,12 +871,13 @@ export default function ProviderOrderDetailPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold mb-2">
-                  🔄 Révision demandée par le client
+                  {t.ordersPage.detail.revisionsBanner.title}
                 </h3>
                 <p className="text-white/90 mb-4">
-                  Le client a demandé {pendingRevisions.length} révision
-                  {pendingRevisions.length > 1 ? "s" : ""}. Veuillez consulter
-                  les détails ci-dessous et livrer les modifications demandées.
+                  {t.ordersPage.detail.revisionsBanner.text.replace(
+                    "{count}",
+                    pendingRevisions.length.toString(),
+                  )}
                 </p>
                 <button
                   onClick={() => {
@@ -803,7 +890,7 @@ export default function ProviderOrderDetailPage() {
                   }}
                   className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-colors"
                 >
-                  Voir les révisions
+                  {t.ordersPage.detail.viewRevisions}
                 </button>
               </div>
             </div>
@@ -813,14 +900,18 @@ export default function ProviderOrderDetailPage() {
       {/* Bannière de Litige pour le Prestataire */}
       {order.status === "disputed" && order.dispute && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-          <div className={`rounded-2xl shadow-2xl overflow-hidden border-2 ${
-            order.dispute.details?.includes("📅 Demande de Médiation :")
-              ? "bg-gradient-to-r from-blue-600 to-indigo-700 border-blue-400"
-              : "bg-gradient-to-r from-red-600 to-rose-700 border-red-400"
-          } text-white p-6`}>
+          <div
+            className={`rounded-2xl shadow-2xl overflow-hidden border-2 ${
+              order.dispute.details?.includes("📅 Demande de Médiation :")
+                ? "bg-gradient-to-r from-blue-600 to-indigo-700 border-blue-400"
+                : "bg-gradient-to-r from-red-600 to-rose-700 border-red-400"
+            } text-white p-6`}
+          >
             <div className="flex items-start gap-5">
               <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center flex-shrink-0">
-                {order.dispute.details?.includes("📅 Demande de Médiation :") ? (
+                {order.dispute.details?.includes(
+                  "📅 Demande de Médiation :",
+                ) ? (
                   <Calendar className="w-8 h-8" />
                 ) : (
                   <AlertTriangle className="w-8 h-8 animate-pulse" />
@@ -829,65 +920,85 @@ export default function ProviderOrderDetailPage() {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-2xl font-bold">
-                    {order.dispute.details?.includes("📅 Demande de Médiation :")
-                      ? "📅 Médiation en attente"
-                      : "⚠️ Commande en Litige"}
+                    {order.dispute.details?.includes("📅 Demande de Médiation :") || 
+                     order.dispute.details?.includes("[DEMANDE DE RÉUNION]") ||
+                     order.dispute.session_status === 'active'
+                      ? t.ordersPage.detail.mediationPending
+                      : t.ordersPage.detail.disputedTitle}
                   </h3>
                   <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider">
-                    Arbitrage Anylibre
+                    {t.common?.arbitration || "Arbitrage Anylibre"}
                   </span>
                 </div>
 
-                {order.dispute.details?.includes("📅 Demande de Médiation :") ? (
-                   <>
-                     <p className="text-blue-50/90 mb-4 max-w-2xl">
-                       Le client a demandé une réunion de médiation pour discuter de la commande. 
-                       Un administrateur va organiser la conversation.
-                     </p>
-                     
-                     {/* Extraction de la date/heure si possible (simplifié pour l'instant via affichage direct) */}
-                     <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                        <div className="bg-white/10 p-4 rounded-xl border border-white/20">
-                           <p className="text-xs text-blue-200 uppercase font-bold mb-1">Disponibilités client</p>
-                           <p className="font-semibold text-lg">
-                              {order.dispute.details.split("📅 Demande de Médiation :")[1]?.trim() || "Consultez le chat"}
-                           </p>
-                        </div>
-                        <div className="bg-white/10 p-4 rounded-xl border border-white/20">
-                           <p className="text-xs text-blue-200 uppercase font-bold mb-1">Motif du client</p>
-                           <p className="font-semibold">{order.dispute.reason}</p>
-                        </div>
-                     </div>
+                {order.dispute.details?.includes("📅 Demande de Médiation :") ||
+                 order.dispute.details?.includes("[DEMANDE DE RÉUNION]") ||
+                 order.dispute.session_status === 'active' ? (
+                  <>
+                    <p className="text-blue-50/90 mb-4 max-w-2xl">
+                      {t.ordersPage.detail.mediationDescLine1}
+                      {t.ordersPage.detail.mediationDescLine2}
+                    </p>
 
-                     <div className="bg-white/10 p-4 rounded-xl border border-white/20 italic text-sm mb-4">
-                        <p className="text-blue-100 font-bold mb-1 uppercase text-[10px]">Détails de la demande :</p>
-                        {order.dispute.details.split("📅 Demande de Médiation :")[0]?.trim()}
-                     </div>
-
-                     {/* Mediation Access Button */}
-                     <button
-                       onClick={() => router.push(`/litige/${order.dispute.id}`)}
-                       className="w-full sm:w-auto px-6 py-3 bg-white text-blue-700 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg flex items-center justify-center gap-2"
-                     >
-                       <MessageSquare className="w-5 h-5" />
-                       Rejoindre la Médiation
-                     </button>
-                   </>
-                ) : (
-                   <>
-                     <p className="text-red-50/90 mb-4 max-w-2xl">
-                       Un litige a été ouvert sur cette commande. Les fonds sont temporairement bloqués par la plateforme.
-                     </p>
-                     <div className="flex items-center gap-3 p-4 bg-black/20 rounded-xl border border-white/10">
-                        <Loader2 className="w-5 h-5 animate-spin text-red-200" />
-                        <p className="text-sm font-medium">
-                          Un administrateur Anylibre analyse actuellement le dossier. Vous serez notifié dès qu'une action est requise de votre part.
+                    {/* Extraction de la date/heure si possible */}
+                    <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-white/10 p-4 rounded-xl border border-white/20">
+                        <p className="text-xs text-blue-200 uppercase font-bold mb-1">
+                          {t.ordersPage.detail.clientAvailability}
                         </p>
-                     </div>
-                     <p className="mt-4 text-xs text-red-200 italic">
-                       Note : Les détails de la réclamation client ne sont visibles que par l'administrateur pendant la phase d'analyse initiale.
-                     </p>
-                   </>
+                        <p className="font-semibold text-lg">
+                          {order.dispute.details.includes("📅 Demande de Médiation :") 
+                            ? order.dispute.details.split("📅 Demande de Médiation :")[1]?.trim() 
+                            : order.dispute.details.includes("[DEMANDE DE RÉUNION]:")
+                              ? order.dispute.details.split("[DEMANDE DE RÉUNION]:")[1]?.trim()
+                              : t.ordersPage.detail.checkChat}
+                        </p>
+                      </div>
+                      <div className="bg-white/10 p-4 rounded-xl border border-white/20">
+                        <p className="text-xs text-blue-200 uppercase font-bold mb-1">
+                          {t.ordersPage.detail.clientReason}
+                        </p>
+                        <p className="font-semibold">{order.dispute.reason}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/10 p-4 rounded-xl border border-white/20 italic text-sm mb-4">
+                      <p className="text-blue-100 font-bold mb-1 uppercase text-[10px]">
+                        {t.ordersPage.detail.requestDetails}
+                      </p>
+                      {order.dispute.details
+                        .split("📅 Demande de Médiation :")[0]
+                        .split("[DEMANDE DE RÉUNION]")[0]
+                        ?.trim()}
+                    </div>
+
+                    {/* Mediation Access Button */}
+                    <button
+                      onClick={() =>
+                        order.dispute &&
+                        router.push(`/litige/${order.dispute.id}`)
+                      }
+                      className="w-full sm:w-auto px-6 py-3 bg-white text-blue-700 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      {t.ordersPage.detail.joinMediation}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-red-50/90 mb-4 max-w-2xl">
+                      {t.ordersPage.detail.disputeDesc}
+                    </p>
+                    <div className="flex items-center gap-3 p-4 bg-black/20 rounded-xl border border-white/10">
+                      <Loader2 className="w-5 h-5 animate-spin text-red-200" />
+                      <p className="text-sm font-medium">
+                        {t.ordersPage.detail.adminAnalysis}
+                      </p>
+                    </div>
+                    <p className="mt-4 text-xs text-red-200 italic">
+                      {t.ordersPage.detail.disputeNote}
+                    </p>
+                  </>
                 )}
               </div>
             </div>
@@ -908,10 +1019,10 @@ export default function ProviderOrderDetailPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">
-                    Timeline complète de la commande
+                    {t.ordersPage.detail.timelineTitle}
                   </h2>
                   <p className="text-slate-600 text-sm">
-                    Tous les événements et messages
+                    {t.ordersPage.detail.timelineSubtitle}
                   </p>
                 </div>
               </div>
@@ -929,7 +1040,7 @@ export default function ProviderOrderDetailPage() {
                     <div className="flex-1 bg-purple-50 rounded-xl p-4 border border-purple-200">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-bold text-slate-900">
-                          📦 Commande créée
+                          {t.ordersPage.detail.timeline.created}
                         </h3>
                         <span className="text-sm text-slate-600">
                           {formatShortDate(order.created_at)}
@@ -938,7 +1049,7 @@ export default function ProviderOrderDetailPage() {
                       {order.message && (
                         <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
                           <p className="text-xs font-semibold text-purple-900 mb-1">
-                            💬 Message initial du client :
+                            {t.ordersPage.detail.timeline.clientInitialMessage}
                           </p>
                           <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap">
                             {order.message}
@@ -959,8 +1070,10 @@ export default function ProviderOrderDetailPage() {
                         <div className="flex-1 bg-indigo-50 rounded-xl p-4 border border-indigo-200">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-bold text-slate-900">
-                              📤 Livraison #{delivery.delivery_number}{" "}
-                              (Provider)
+                              {t.ordersPage.detail.timeline.deliveryTitle.replace(
+                                "{number}",
+                                delivery.delivery_number.toString(),
+                              )}
                             </h3>
                             <span className="text-sm text-slate-600">
                               {formatShortDate(delivery.delivered_at)}
@@ -969,7 +1082,7 @@ export default function ProviderOrderDetailPage() {
                           {delivery.message && (
                             <div className="mt-3 p-3 bg-white rounded-lg border border-indigo-200">
                               <p className="text-xs font-semibold text-indigo-900 mb-1">
-                                💬 Message du prestataire (vous) :
+                                {t.ordersPage.detail.timeline.providerMessage}
                               </p>
                               <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap">
                                 {delivery.message}
@@ -980,12 +1093,12 @@ export default function ProviderOrderDetailPage() {
                             <div className="mt-2 flex gap-2">
                               {delivery.file_url && (
                                 <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">
-                                  📎 Fichier joint
+                                  {t.ordersPage.detail.timeline.attachment}
                                 </span>
                               )}
                               {delivery.external_link && (
                                 <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                                  🔗 Lien externe
+                                  {t.ordersPage.detail.timeline.externalLink}
                                 </span>
                               )}
                             </div>
@@ -1006,23 +1119,25 @@ export default function ProviderOrderDetailPage() {
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <h3 className="font-bold text-slate-900">
-                                🔄 Révision #{revision.revision_number} demandée
-                                par le client
+                                {t.ordersPage.detail.timeline.revisionRequested.replace(
+                                  "{number}",
+                                  revision.revision_number.toString(),
+                                )}
                               </h3>
                               <span
                                 className={`px-2 py-1 rounded text-xs font-bold ${
                                   revision.status === "completed"
                                     ? "bg-green-100 text-green-800"
                                     : revision.status === "in_progress"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-orange-100 text-orange-800"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-orange-100 text-orange-800"
                                 }`}
                               >
                                 {revision.status === "completed"
-                                  ? "✅ Terminée"
+                                  ? t.ordersPage.detail.timeline.completed
                                   : revision.status === "in_progress"
-                                  ? "🔄 En cours"
-                                  : "⏳ EN ATTENTE"}
+                                    ? t.ordersPage.detail.timeline.inProgress
+                                    : t.ordersPage.detail.timeline.pending}
                               </span>
                             </div>
                             <span className="text-sm text-slate-600">
@@ -1033,10 +1148,10 @@ export default function ProviderOrderDetailPage() {
                           {/* RAISON */}
                           <div className="mt-3 p-3 bg-orange-100 rounded-lg border-2 border-orange-300">
                             <p className="text-xs font-bold text-orange-900 mb-2 uppercase">
-                              📌 Raison de la révision :
+                              {t.ordersPage.detail.timeline.revisionReason}
                             </p>
                             <p className="text-slate-900 font-semibold text-base leading-relaxed">
-                              {revision.reason || "Aucune raison spécifiée"}
+                              {revision.reason || t.ordersPage.detail.noReason}
                             </p>
                           </div>
 
@@ -1044,7 +1159,7 @@ export default function ProviderOrderDetailPage() {
                           {revision.details && revision.details.trim() && (
                             <div className="mt-3 p-3 bg-white rounded-lg border-2 border-orange-200">
                               <p className="text-xs font-bold text-slate-900 mb-2 uppercase">
-                                💬 Message et recommandations du client :
+                                {t.ordersPage.detail.timeline.clientMessage}
                               </p>
                               <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-medium">
                                 {revision.details}
@@ -1056,8 +1171,7 @@ export default function ProviderOrderDetailPage() {
                           {(!revision.details || !revision.details.trim()) && (
                             <div className="mt-3 p-3 bg-slate-100 rounded-lg border border-slate-300">
                               <p className="text-xs text-slate-600 italic">
-                                ℹ️ Le client n'a pas fourni de détails
-                                supplémentaires pour cette révision
+                                {t.ordersPage.detail.noDetails}
                               </p>
                             </div>
                           )}
@@ -1072,11 +1186,13 @@ export default function ProviderOrderDetailPage() {
                     </div>
                     <div className="flex-1 bg-purple-50 rounded-xl p-4 border-2 border-purple-300">
                       <h3 className="font-bold text-purple-700 text-lg">
-                        📍 Statut actuel :{" "}
-                        {STATUS_LABELS[order.status] || order.status}
+                        {t.ordersPage.detail.currentStatus}{" "}
+                        {STATUS_LABELS[
+                          order.status as keyof typeof STATUS_LABELS
+                        ] || order.status}
                       </h3>
                       <p className="text-slate-600 text-sm mt-1">
-                        En attente de votre action...
+                        {t.ordersPage.detail.waitingAction}
                       </p>
                     </div>
                   </div>
@@ -1096,10 +1212,13 @@ export default function ProviderOrderDetailPage() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">
-                      Révisions demandées ({order.order_revisions.length})
+                      {t.ordersPage.detail.revisionsTitle.replace(
+                        "{count}",
+                        order.order_revisions.length.toString(),
+                      )}
                     </h2>
                     <p className="text-slate-600 text-sm">
-                      Modifications à apporter
+                      {t.ordersPage.detail.revisionsSubtitle}
                     </p>
                   </div>
                 </div>
@@ -1120,7 +1239,8 @@ export default function ProviderOrderDetailPage() {
                           </div>
                           <div>
                             <h3 className="font-bold text-slate-900 text-lg">
-                              Révision #{revision.revision_number}
+                              {t.ordersPage.detail.revisionPrefix}#
+                              {revision.revision_number}
                             </h3>
                             <p className="text-sm text-slate-600">
                               {formatShortDate(revision.requested_at)}
@@ -1132,22 +1252,22 @@ export default function ProviderOrderDetailPage() {
                             revision.status === "completed"
                               ? "bg-green-100 text-green-800 border border-green-200"
                               : revision.status === "in_progress"
-                              ? "bg-blue-100 text-blue-800 border border-blue-200"
-                              : "bg-orange-100 text-orange-800 border border-orange-200"
+                                ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                : "bg-orange-100 text-orange-800 border border-orange-200"
                           }`}
                         >
                           {revision.status === "completed"
-                            ? "✅ Terminée"
+                            ? t.ordersPage.detail.timeline.completed
                             : revision.status === "in_progress"
-                            ? "🔄 En cours"
-                            : "⏳ En attente"}
+                              ? t.ordersPage.detail.timeline.inProgress
+                              : t.ordersPage.detail.timeline.pending}
                         </span>
                       </div>
 
                       {/* Raison de la révision */}
                       <div className="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
                         <p className="text-sm font-semibold text-orange-900 mb-2">
-                          📌 Raison de la demande :
+                          {t.ordersPage.detail.timeline.revisionReason}
                         </p>
                         <p className="text-slate-800 font-medium text-base leading-relaxed">
                           {revision.reason}
@@ -1158,7 +1278,7 @@ export default function ProviderOrderDetailPage() {
                       {revision.details && (
                         <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                           <p className="text-sm font-semibold text-slate-700 mb-2">
-                            💬 Détails et recommandations du client :
+                            {t.ordersPage.detail.timeline.clientMessage}
                           </p>
                           <p className="text-slate-800 leading-relaxed whitespace-pre-wrap">
                             {revision.details}
@@ -1172,13 +1292,13 @@ export default function ProviderOrderDetailPage() {
                           <button
                             onClick={() =>
                               router.push(
-                                `/Provider/TableauDeBord/Order?deliver=${order.id}&revision=${revision.id}`
+                                `/Provider/TableauDeBord/Order?deliver=${order.id}&revision=${revision.id}`,
                               )
                             }
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all shadow-lg hover:shadow-xl"
                           >
                             <Send className="w-4 h-4" />
-                            Livrer cette révision
+                            {t.ordersPage.detail.deliverRevision}
                           </button>
                         </div>
                       )}
@@ -1196,7 +1316,9 @@ export default function ProviderOrderDetailPage() {
                     <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                       <User className="w-4 h-4 text-white" />
                     </div>
-                    <h2 className="text-lg font-bold text-white">Client</h2>
+                    <h2 className="text-lg font-bold text-white">
+                      {t.ordersPage.detail.client}
+                    </h2>
                   </div>
                 </div>
 
@@ -1218,7 +1340,7 @@ export default function ProviderOrderDetailPage() {
                       </div>
                       <div
                         className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center"
-                        title="En ligne"
+                        title={t.ordersPage.detail.online}
                       >
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       </div>
@@ -1234,10 +1356,13 @@ export default function ProviderOrderDetailPage() {
 
                       <div className="flex flex-wrap gap-2">
                         <span className="px-2 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-md border border-violet-100">
-                          Client Premium
+                          {t.ordersPage.detail.premiumClient}
                         </span>
                         <span className="px-2 py-1 bg-slate-50 text-slate-600 text-xs font-medium rounded-md border border-slate-200">
-                          Depuis 2024
+                          {t.ordersPage.detail.sinceYear.replace(
+                            "{year}",
+                            "2024",
+                          )}
                         </span>
                       </div>
                     </div>
@@ -1245,10 +1370,10 @@ export default function ProviderOrderDetailPage() {
 
                   <div className="mt-6 flex gap-3">
                     <button className="flex-1 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-md hover:shadow-lg">
-                      Voir le profil
+                      {t.ordersPage.detail.viewProfile}
                     </button>
                     <button className="flex-1 px-4 py-2 bg-white text-slate-700 text-sm font-semibold rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                      Contacter
+                      {t.ordersPage.detail.contact}
                     </button>
                   </div>
                 </div>
@@ -1263,7 +1388,7 @@ export default function ProviderOrderDetailPage() {
                     <MessageSquare className="w-5 h-5 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-bold text-slate-900">
-                    Message du client
+                    {t.ordersPage.list.clientMessage}
                   </h2>
                 </div>
                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
@@ -1283,7 +1408,7 @@ export default function ProviderOrderDetailPage() {
                       <FileText className="w-4 h-4 text-white" />
                     </div>
                     <h2 className="text-lg font-bold text-white">
-                      Informations détaillées de la commande
+                      {t.ordersPage.detail.detailedInfo}
                     </h2>
                   </div>
                 </div>
@@ -1298,10 +1423,10 @@ export default function ProviderOrderDetailPage() {
                         </div>
                         <div>
                           <h3 className="font-bold text-slate-900 text-lg">
-                            Type de prestation
+                            {t.ordersPage.detail.prestationType}
                           </h3>
                           <p className="text-sm text-slate-600">
-                            Lieu d'exécution du service
+                            {t.ordersPage.detail.locationExec}
                           </p>
                         </div>
                       </div>
@@ -1315,13 +1440,13 @@ export default function ProviderOrderDetailPage() {
                           <div>
                             <p className="font-bold text-slate-900 text-base">
                               {order.metadata.location_type === "remote"
-                                ? "À distance"
-                                : "Sur place / À domicile"}
+                                ? t.ordersPage.detail.remote
+                                : t.ordersPage.detail.onSite}
                             </p>
                             <p className="text-sm text-slate-600">
                               {order.metadata.location_type === "remote"
-                                ? "Service réalisé entièrement en ligne"
-                                : "Rencontre physique nécessaire"}
+                                ? t.ordersPage.detail.remoteDesc
+                                : t.ordersPage.detail.onSiteDesc}
                             </p>
                           </div>
                         </div>
@@ -1332,7 +1457,7 @@ export default function ProviderOrderDetailPage() {
                             <div className="mt-4 pt-4 border-t border-slate-200 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600">
-                                  Contact préalable établi
+                                  {t.ordersPage.detail.priorContact}
                                 </span>
                                 <span
                                   className={`px-3 py-1 rounded-lg text-xs font-bold ${
@@ -1344,30 +1469,39 @@ export default function ProviderOrderDetailPage() {
                                 >
                                   {order.metadata.location_details
                                     .on_site_confirmed
-                                    ? "✅ Confirmé"
-                                    : "⚠️ Non confirmé"}
+                                    ? t.ordersPage.detail.confirmed
+                                    : t.ordersPage.detail.notConfirmed}
                                 </span>
                               </div>
                               {order.metadata.location_details
                                 .contact_choice && (
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm text-slate-600">
-                                    Réponse du client
+                                    {t.ordersPage.detail.clientResponse}
                                   </span>
                                   <span className="text-sm font-semibold text-slate-900">
                                     {order.metadata.location_details
                                       .contact_choice === "yes"
-                                      ? "✓ Oui, contact établi"
-                                      : "✗ Pas encore contacté"}
+                                      ? t.ordersPage.detail.contactYes
+                                      : t.ordersPage.detail.contactNo}
                                   </span>
                                 </div>
                               )}
                               {order.metadata.location_details.confirmed_at && (
                                 <div className="text-xs text-slate-500 mt-2">
-                                  Confirmé le{" "}
-                                  {new Date(
-                                    order.metadata.location_details.confirmed_at
-                                  ).toLocaleString("fr-FR")}
+                                  {t.ordersPage.detail.confirmedOn.replace(
+                                    "{date}",
+                                    new Date(
+                                      order.metadata.location_details
+                                        .confirmed_at,
+                                    ).toLocaleString(
+                                      language === "fr"
+                                        ? "fr-FR"
+                                        : language === "es"
+                                          ? "es-ES"
+                                          : "en-US",
+                                    ),
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1387,22 +1521,21 @@ export default function ProviderOrderDetailPage() {
                           </div>
                           <div>
                             <h3 className="font-bold text-slate-900 text-lg">
-                              Réponses aux instructions
+                              {t.ordersPage.detail.requirementAnswers}
                             </h3>
                             <p className="text-sm text-slate-600">
-                              Informations fournies par le client pour démarrer
-                              le travail
+                              {t.ordersPage.detail.requirementAnswersDesc}
                             </p>
                           </div>
                         </div>
 
                         <div className="space-y-4">
                           {Object.entries(
-                            order.metadata.requirements_answers
+                            order.metadata.requirements_answers,
                           ).map(([reqId, answer], index) => {
                             // Extract index from reqId (format: "req-0", "req-1", etc.)
                             const reqIndex = parseInt(
-                              reqId.replace("req-", "")
+                              reqId.replace("req-", ""),
                             );
 
                             // Get the requirement from service using the index
@@ -1422,20 +1555,24 @@ export default function ProviderOrderDetailPage() {
                                 <div className="mb-2">
                                   <div className="flex items-center gap-2 mb-2">
                                     <span className="inline-block px-2 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded">
-                                      Question {index + 1}
+                                      {t.ordersPage.detail.question.replace(
+                                        "{number}",
+                                        (index + 1).toString(),
+                                      )}
                                     </span>
                                     {requirement?.required && (
                                       <span className="text-red-600 text-xs font-bold">
-                                        * Requis
+                                        {t.ordersPage.detail.required}
                                       </span>
                                     )}
                                     {requirement?.type && (
                                       <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded">
                                         {requirement.type === "text" &&
-                                          "📝 Texte"}
-                                        {requirement.type === "url" && "🔗 URL"}
+                                          t.ordersPage.detail.textType}
+                                        {requirement.type === "url" &&
+                                          t.ordersPage.detail.urlType}
                                         {requirement.type === "file" &&
-                                          "📎 Fichier"}
+                                          t.ordersPage.detail.fileType}
                                       </span>
                                     )}
                                   </div>
@@ -1477,7 +1614,9 @@ export default function ProviderOrderDetailPage() {
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-slate-900 truncate">
-                                              {answer.name || "Fichier joint"}
+                                              {answer.name ||
+                                                t.ordersPage.detail
+                                                  .attachedFile}
                                             </p>
                                             <div className="flex items-center gap-2 mt-1">
                                               {answer.type && (
@@ -1487,7 +1626,10 @@ export default function ProviderOrderDetailPage() {
                                               )}
                                               {answer.compressed && (
                                                 <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
-                                                  ✓ Compressé
+                                                  {
+                                                    t.ordersPage.detail
+                                                      .compressed
+                                                  }
                                                 </span>
                                               )}
                                             </div>
@@ -1524,7 +1666,7 @@ export default function ProviderOrderDetailPage() {
                                             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex-shrink-0"
                                           >
                                             <Download className="w-4 h-4" />
-                                            Télécharger
+                                            {t.ordersPage.detail.download}
                                           </a>
                                         </div>
                                       </div>
@@ -1535,7 +1677,7 @@ export default function ProviderOrderDetailPage() {
                                     )
                                   ) : (
                                     <p className="text-slate-400 italic text-sm">
-                                      Aucune réponse fournie
+                                      {t.ordersPage.detail.noResponse}
                                     </p>
                                   )}
                                 </div>
@@ -1557,10 +1699,10 @@ export default function ProviderOrderDetailPage() {
                           </div>
                           <div>
                             <h3 className="font-bold text-slate-900 text-lg">
-                              Options supplémentaires
+                              {t.ordersPage.detail.extraOptions}
                             </h3>
                             <p className="text-sm text-slate-600">
-                              Extras commandés par le client
+                              {t.ordersPage.detail.extrasOrdered}
                             </p>
                           </div>
                         </div>
@@ -1586,8 +1728,10 @@ export default function ProviderOrderDetailPage() {
                                     </p>
                                     {extra.delivery_time_days > 0 && (
                                       <p className="text-xs text-slate-500">
-                                        +{extra.delivery_time_days} jour(s) de
-                                        délai
+                                        {t.ordersPage.detail.extraDays.replace(
+                                          "{count}",
+                                          extra.delivery_time_days.toString(),
+                                        )}
                                       </p>
                                     )}
                                   </div>
@@ -1596,7 +1740,7 @@ export default function ProviderOrderDetailPage() {
                                   +{(extra.price_cents / 100).toFixed(2)} €
                                 </span>
                               </div>
-                            )
+                            ),
                           )}
                         </div>
                       </div>
@@ -1613,7 +1757,7 @@ export default function ProviderOrderDetailPage() {
                     <Package className="w-4 h-4 text-white" />
                   </div>
                   <h2 className="text-lg font-bold text-white">
-                    Détails du Service
+                    {t.ordersPage.detail.serviceDetails}
                   </h2>
                 </div>
                 <span className="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded">
@@ -1641,10 +1785,10 @@ export default function ProviderOrderDetailPage() {
                 {!order.service?.cover_image && (
                   <div className="mb-4">
                     <h3 className="text-lg font-bold text-slate-900">
-                      Articles inclus
+                      {t.ordersPage.detail.includedItems}
                     </h3>
                     <p className="text-sm text-slate-500">
-                      Liste des éléments de la commande
+                      {t.ordersPage.detail.itemsList}
                     </p>
                   </div>
                 )}
@@ -1674,7 +1818,7 @@ export default function ProviderOrderDetailPage() {
                                   >
                                     + {ex.name}
                                   </span>
-                                )
+                                ),
                               )}
                             </div>
                           )}
@@ -1688,7 +1832,7 @@ export default function ProviderOrderDetailPage() {
                           {(
                             (item.unit_price_cents || item.subtotal_cents) / 100
                           ).toFixed(2)}{" "}
-                          € / unit
+                          € / {t.ordersPage.detail.unit}
                         </p>
                       </div>
                     </div>
@@ -1698,10 +1842,10 @@ export default function ProviderOrderDetailPage() {
                 <div className="mt-6 pt-6 border-t border-slate-100 flex justify-between items-end">
                   <div>
                     <p className="text-sm text-slate-500 font-medium">
-                      Total de la commande
+                      {t.ordersPage.detail.orderTotal}
                     </p>
                     <p className="text-xs text-slate-400">
-                      Taxes et frais inclus
+                      {t.ordersPage.detail.taxesIncluded}
                     </p>
                   </div>
                   <div className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-600">
@@ -1730,7 +1874,10 @@ export default function ProviderOrderDetailPage() {
                     >
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-bold text-slate-900">
-                          📦 Livraison #{delivery.delivery_number}
+                          {t.ordersPage.detail.deliveriesSection.deliveryNumber.replace(
+                            "{number}",
+                            delivery.delivery_number.toString(),
+                          )}
                         </span>
                         <span className="text-sm text-slate-600">
                           {formatShortDate(delivery.delivered_at)}
@@ -1750,7 +1897,7 @@ export default function ProviderOrderDetailPage() {
                             className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                           >
                             <Download className="w-4 h-4" />
-                            Télécharger
+                            {t.ordersPage.detail.download}
                           </a>
                         )}
                         {delivery.external_link && (
@@ -1761,7 +1908,7 @@ export default function ProviderOrderDetailPage() {
                             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                           >
                             <ExternalLink className="w-4 h-4" />
-                            Lien externe
+                            {t.ordersPage.detail.timeline.externalLink}
                           </a>
                         )}
                       </div>
@@ -1780,13 +1927,15 @@ export default function ProviderOrderDetailPage() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                   <CreditCard className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="font-bold text-white text-lg">Paiement</h3>
+                <h3 className="font-bold text-white text-lg">
+                  {t.ordersPage.detail.payment}
+                </h3>
               </div>
 
               <div className="p-6 space-y-4">
                 <div className="text-center py-2 border-t border-slate-100 mt-2 pt-4">
                   <p className="text-sm text-slate-500 font-medium mb-1 uppercase tracking-wider">
-                    Vos gains nets
+                    {t.ordersPage.detail.netEarnings}
                   </p>
                   <p className="text-3xl font-bold text-emerald-600 tracking-tight">
                     {(() => {
@@ -1812,7 +1961,7 @@ export default function ProviderOrderDetailPage() {
 
                       const earningsCents = Math.max(
                         0,
-                        order.total_cents - fee
+                        order.total_cents - fee,
                       );
 
                       // Correction logic based on specific request:
@@ -1833,12 +1982,13 @@ export default function ProviderOrderDetailPage() {
 
                 <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 flex items-center justify-between">
                   <span className="text-sm font-medium text-emerald-800">
-                    Statut du paiement
+                    {t.ordersPage.detail.paymentStatus}
                   </span>
                   <span className="flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-lg text-xs font-bold text-emerald-600 shadow-sm">
                     {order.payment_status === "succeeded" ? (
                       <>
-                        <CheckCircle className="w-3 h-3" /> PAYÉ
+                        <CheckCircle className="w-3 h-3" />{" "}
+                        {t.ordersPage.detail.paid}
                       </>
                     ) : (
                       order.payment_status.toUpperCase()
@@ -1854,7 +2004,9 @@ export default function ProviderOrderDetailPage() {
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                   <Clock className="w-4 h-4 text-white" />
                 </div>
-                <h3 className="font-bold text-white text-lg">Délai</h3>
+                <h3 className="font-bold text-white text-lg">
+                  {t.ordersPage.detail.deadline}
+                </h3>
               </div>
 
               <div className="p-6 space-y-4">
@@ -1862,16 +2014,20 @@ export default function ProviderOrderDetailPage() {
                   <Calendar className="w-5 h-5 text-slate-400" />
                   <div>
                     <p className="text-xs text-slate-500 font-semibold uppercase">
-                      Date limite
+                      {t.ordersPage.detail.limitDate}
                     </p>
                     <p className="text-sm font-bold text-slate-900">
                       {new Date(order.delivery_deadline).toLocaleDateString(
-                        "fr-FR",
+                        language === "fr"
+                          ? "fr-FR"
+                          : language === "es"
+                            ? "es-ES"
+                            : "en-US",
                         {
                           day: "numeric",
                           month: "long",
                           year: "numeric",
-                        }
+                        },
                       )}
                     </p>
                   </div>
@@ -1879,35 +2035,45 @@ export default function ProviderOrderDetailPage() {
 
                 <div className="bg-slate-900 rounded-xl p-4 text-center shadow-inner">
                   <p className="text-slate-400 text-xs font-medium uppercase mb-1">
-                    Temps restant
+                    {t.ordersPage.detail.timeRemaining}
                   </p>
                   <p className="text-white font-bold text-lg">
                     {(() => {
                       const remaining = Math.ceil(
                         (new Date(order.delivery_deadline).getTime() -
                           Date.now()) /
-                          (1000 * 60 * 60 * 24)
+                          (1000 * 60 * 60 * 24),
                       );
                       if (remaining < 0) {
                         return (
                           <span className="text-red-400">
-                            ⚠️ Retard de {Math.abs(remaining)}j
+                            {t.ordersPage.detail.delayDays.replace(
+                              "{count}",
+                              Math.abs(remaining).toString(),
+                            )}
                           </span>
                         );
                       } else if (remaining === 0) {
                         return (
                           <span className="text-orange-400 animate-pulse">
-                            🔥 À livrer aujourd'hui !
+                            {t.ordersPage.detail.deliverToday}
                           </span>
                         );
                       } else if (remaining <= 2) {
                         return (
                           <span className="text-orange-400">
-                            🔥 {remaining} jours !
+                            {t.ordersPage.detail.daysLeft.replace(
+                              "{count}",
+                              remaining.toString(),
+                            )}
                           </span>
                         );
                       } else {
-                        return <span>{remaining} jours</span>;
+                        return (
+                          <span>
+                            {remaining} {t.ordersPage.detail.days}
+                          </span>
+                        );
                       }
                     })()}
                   </p>
@@ -1927,18 +2093,6 @@ export default function ProviderOrderDetailPage() {
           )}
         </div>
       </div>
-
-      {/* Chat flottant */}
-      {order && currentUserId && order.client && (
-        <OrderChat
-          orderId={order.id}
-          currentUserId={currentUserId}
-          otherUserId={order.client_id}
-          otherUserName={`${order.client?.first_name || 'Client'} ${order.client?.last_name || ''}`}
-          otherUserAvatar={order.client?.avatar_url}
-          userRole="provider"
-        />
-      )}
     </div>
   );
 }

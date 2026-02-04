@@ -9,12 +9,15 @@ import { ServiceCard } from '@/components/service/ServiceCard';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 interface Props {
   services: Service[];
 }
 
 export function PopularTodaySection({ services }: Props) {
+  const { t } = useSafeLanguage();
+
   if (services.length === 0) {
     return null;
   }
@@ -26,16 +29,16 @@ export function PopularTodaySection({ services }: Props) {
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-200 rounded-full text-amber-700 text-sm font-semibold mb-4 shadow-sm">
               <TrendingUp className="w-4 h-4" />
-              Tendances du jour
+              {t.home.connected.popularToday.badge}
             </div>
             <h2 className="font-heading font-bold text-3xl lg:text-4xl text-slate-900 mb-2">
-              Populaire{' '}
+              {t.home.connected.popularToday.title}{' '}
               <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
-                Aujourd&apos;hui
+                {t.home.connected.popularToday.titleHighlight}
               </span>
             </h2>
             <p className="text-slate-600 text-lg">
-              Les services les plus demandés en ce moment
+              {t.home.connected.popularToday.subtitle}
             </p>
           </div>
           <Link href="/explorer" className="hidden md:block">
@@ -43,7 +46,7 @@ export function PopularTodaySection({ services }: Props) {
               variant="outline"
               className="border-2 border-amber-600 text-amber-600 hover:bg-amber-50"
             >
-              Explorer
+              {t.home.connected.popularToday.explore}
               <ArrowRight className="w-5 h-5" />
             </Button>
           </Link>

@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import {
   ArrowLeft,
   Edit,
@@ -112,6 +113,7 @@ function ExtraItem({
   isDark,
   formatCurrency,
 }: ExtraItemProps) {
+  const { t } = useSafeLanguage();
   const [extraDisplayPrice, setExtraDisplayPrice] = useState<number>(
     extra.price_cents / 100
   );
@@ -172,7 +174,7 @@ function ExtraItem({
           isDark ? "text-gray-400" : "text-gray-600"
         }`}
       >
-        Délai supplémentaire : +{extra.delivery_additional_days} jour(s)
+        {t.serviceView?.extra?.additionalDelay || "Délai supplémentaire"} : +{extra.delivery_additional_days} {t.serviceView?.info?.days || "jour(s)"}
       </div>
     </div>
   );
@@ -187,6 +189,7 @@ export default function ServiceViewPage({
   const router = useRouter();
   const routeParams = useParams();
   const { user } = useAuth();
+  const { t } = useSafeLanguage();
 
   // Use prop ID if provided, otherwise fall back to route params
   const serviceId = propServiceId || (routeParams?.id as string);
@@ -310,22 +313,22 @@ export default function ServiceViewPage({
   ) => {
     const messages = {
       published: {
-        title: "Publier le service",
-        message: `Voulez-vous vraiment publier "${
+        title: t.serviceView?.modals?.status?.published?.title || "Publier le service",
+        message: `${t.serviceView?.modals?.status?.published?.message || "Voulez-vous vraiment publier"} "${
           service?.title.fr || service?.title.en || "ce service"
-        }" ? Le service sera visible par tous les utilisateurs.`,
+        }" ? ${t.serviceList?.modals?.status?.published?.messageSuffix || "Le service sera visible par tous les utilisateurs."}`,
       },
       draft: {
-        title: "Mettre en brouillon",
-        message: `Voulez-vous vraiment mettre "${
+        title: t.serviceView?.modals?.status?.draft?.title || "Mettre en brouillon",
+        message: `${t.serviceView?.modals?.status?.draft?.message || "Voulez-vous vraiment mettre"} "${
           service?.title.fr || service?.title.en || "ce service"
-        }" en brouillon ? Le service ne sera plus visible publiquement.`,
+        }" ${t.serviceList?.modals?.status?.draft?.messageSuffix || "en brouillon ? Le service ne sera plus visible publiquement."}`,
       },
       archived: {
-        title: "Archiver le service",
-        message: `Voulez-vous vraiment archiver "${
+        title: t.serviceView?.modals?.status?.archived?.title || "Archiver le service",
+        message: `${t.serviceView?.modals?.status?.archived?.message || "Voulez-vous vraiment archiver"} "${
           service?.title.fr || service?.title.en || "ce service"
-        }" ? Le service sera masqué mais pourra être restauré.`,
+        }" ? ${t.serviceList?.modals?.status?.archived?.messageSuffix || "Le service sera masqué mais pourra être restauré."}`,
       },
     };
 
@@ -391,15 +394,15 @@ export default function ServiceViewPage({
   const getStatusBadge = (status: string) => {
     const config = {
       draft: {
-        label: "Brouillon",
+        label: t.serviceList?.stats?.draft || "Brouillon",
         color: "bg-gray-100 text-gray-800 border-gray-200",
       },
       published: {
-        label: "Publié",
+        label: t.serviceList?.stats?.published || "Publié",
         color: "bg-green-100 text-green-800 border-green-200",
       },
       archived: {
-        label: "Archivé",
+        label: t.serviceList?.stats?.archived || "Archivé",
         color: "bg-orange-100 text-orange-800 border-orange-200",
       },
     };
@@ -460,7 +463,7 @@ export default function ServiceViewPage({
               isDark ? "text-gray-400" : "text-gray-600"
             }`}
           >
-            Chargement du service...
+            {t.serviceView?.loading || "Chargement du service..."}
           </p>
         </div>
       </div>
@@ -473,17 +476,16 @@ export default function ServiceViewPage({
         <div className="text-center max-w-md w-full">
           <XCircle className="h-12 w-12 md:h-16 md:w-16 text-red-600 mx-auto mb-4" />
           <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-2">
-            Service non trouvé
+            {t.serviceView?.notFound?.title || "Service non trouvé"}
           </h2>
           <p className="text-gray-600 text-sm md:text-base mb-6">
-            Le service que vous recherchez n'existe pas ou vous n'y avez pas
-            accès.
+            {t.serviceView?.notFound?.description || "Le service que vous recherchez n'existe pas ou vous n'y avez pas accès."}
           </p>
           <button
             onClick={() => router.push("/Provider/TableauDeBord/Service")}
             className="bg-green-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-lg hover:bg-green-700 text-sm md:text-base w-full md:w-auto"
           >
-            Retour aux services
+            {t.serviceView?.notFound?.button || "Retour aux services"}
           </button>
         </div>
       </div>
@@ -527,7 +529,7 @@ export default function ServiceViewPage({
                     ? "text-gray-400 hover:text-white hover:bg-gray-700"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 }`}
-                title="Retour"
+                title={t.serviceView?.header?.back || "Retour"}
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -562,7 +564,7 @@ export default function ServiceViewPage({
                 className="flex items-center px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex-shrink-0"
               >
                 <Edit className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">Modifier</span>
+                <span className="hidden md:inline">{t.serviceView?.header?.edit || "Modifier"}</span>
               </button>
             </div>
           </div>
@@ -574,7 +576,7 @@ export default function ServiceViewPage({
                 isDark ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              Aperçu du service
+              {t.serviceView?.header?.preview || "Aperçu du service"}
             </p>
 
             <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
@@ -586,10 +588,10 @@ export default function ServiceViewPage({
                     ? "text-gray-300 hover:bg-gray-700"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
-                title="Voir la page publique"
+                title={t.serviceView?.header?.view || "Voir la page publique"}
               >
                 <Eye className="h-4 w-4 md:mr-1.5" />
-                <span className="hidden sm:inline">Voir</span>
+                <span className="hidden sm:inline">{t.serviceView?.header?.view || "Voir"}</span>
               </button>
 
               {/* Publier (si brouillon) */}
@@ -598,11 +600,11 @@ export default function ServiceViewPage({
                   onClick={() => requestStatusChange("published")}
                   disabled={actionLoading === "published"}
                   className="flex items-center px-2 py-1.5 md:px-3 md:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs md:text-sm font-medium disabled:opacity-50"
-                  title="Publier le service"
+                  title={t.serviceView?.header?.publish || "Publier le service"}
                 >
                   <Play className="h-4 w-4 md:mr-1.5" />
                   <span className="hidden sm:inline">
-                    {actionLoading === "published" ? "..." : "Publier"}
+                    {actionLoading === "published" ? "..." : t.serviceView?.header?.publish || "Publier"}
                   </span>
                 </button>
               )}
@@ -617,11 +619,11 @@ export default function ServiceViewPage({
                       ? "text-gray-300 hover:bg-gray-700"
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
-                  title="Mettre en brouillon"
+                  title={t.serviceView?.header?.draft || "Mettre en brouillon"}
                 >
                   <Edit className="h-4 w-4 md:mr-1.5" />
                   <span className="hidden sm:inline">
-                    {actionLoading === "draft" ? "..." : "Brouillon"}
+                    {actionLoading === "draft" ? "..." : t.serviceView?.header?.draft || "Brouillon"}
                   </span>
                 </button>
               )}
@@ -632,11 +634,11 @@ export default function ServiceViewPage({
                   onClick={() => requestStatusChange("draft")}
                   disabled={actionLoading === "draft"}
                   className="flex items-center px-2 py-1.5 md:px-3 md:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs md:text-sm font-medium disabled:opacity-50"
-                  title="Restaurer le service"
+                  title={t.serviceView?.header?.restore || "Restaurer le service"}
                 >
                   <ArchiveRestore className="h-4 w-4 md:mr-1.5" />
                   <span className="hidden sm:inline">
-                    {actionLoading === "draft" ? "..." : "Restaurer"}
+                    {actionLoading === "draft" ? "..." : t.serviceView?.header?.restore || "Restaurer"}
                   </span>
                 </button>
               ) : (
@@ -648,11 +650,11 @@ export default function ServiceViewPage({
                       ? "text-orange-400 hover:bg-gray-700"
                       : "text-orange-600 hover:bg-orange-50"
                   }`}
-                  title="Archiver le service"
+                  title={t.serviceView?.header?.archive || "Archiver le service"}
                 >
                   <Archive className="h-4 w-4 md:mr-1.5" />
                   <span className="hidden md:inline">
-                    {actionLoading === "archived" ? "..." : "Archiver"}
+                    {actionLoading === "archived" ? "..." : t.serviceView?.header?.archive || "Archiver"}
                   </span>
                 </button>
               )}
@@ -665,7 +667,7 @@ export default function ServiceViewPage({
                     ? "text-red-400 hover:bg-gray-700"
                     : "text-red-600 hover:bg-red-50"
                 }`}
-                title="Supprimer le service"
+                title={t.serviceView?.header?.delete || "Supprimer le service"}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -682,9 +684,9 @@ export default function ServiceViewPage({
           >
             <nav className="flex space-x-4 md:space-x-8 min-w-max">
               {[
-                { id: "overview", name: "Aperçu", icon: Eye },
-                { id: "content", name: "Contenu", icon: FileText },
-                { id: "media", name: "Médias", icon: ImageIcon },
+                { id: "overview", name: t.serviceView?.tabs?.overview || "Aperçu", icon: Eye },
+                { id: "content", name: t.serviceView?.tabs?.content || "Contenu", icon: FileText },
+                { id: "media", name: t.serviceView?.tabs?.media || "Médias", icon: ImageIcon },
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -735,7 +737,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Prix
+                    {t.serviceView?.info?.price || "Prix"}
                   </span>
                   <span
                     className={`text-xs md:text-sm font-medium ${
@@ -765,7 +767,7 @@ export default function ServiceViewPage({
                     }`}
                   >
                     <Clock className="h-3 w-3 md:h-4 md:w-4 mr-1" />
-                    {service.delivery_time_days} jour(s)
+                    {service.delivery_time_days} {t.serviceView?.info?.days || "jour(s)"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -781,7 +783,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-200" : "text-gray-900"
                     }`}
                   >
-                    {service.revisions_included} incluses
+                    {service.revisions_included} {t.serviceView?.info?.included || "incluses"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -799,10 +801,10 @@ export default function ServiceViewPage({
                   >
                     <MapPin className="h-3 w-3 md:h-4 md:w-4 mr-1" />
                     {service.location_type
-                      ?.map((t) =>
-                        t === "remote" ? "À distance" : "Sur place"
+                      ?.map((tType) =>
+                        tType === "remote" ? (t.serviceView?.labels?.remote || "À distance") : (t.serviceView?.labels?.onsite || "Sur place")
                       )
-                      .join(", ") || "À distance"}
+                      .join(", ") || (t.serviceView?.labels?.remote || "À distance")}
                   </span>
                 </div>
               </div>
@@ -830,7 +832,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Catégories
+                    {t.serviceView?.sections?.categories || "Catégories"}
                   </div>
                   <div className="flex flex-wrap gap-1 md:gap-2">
                     {service.categories.slice(0, 3).map((catId) => (
@@ -864,7 +866,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Tags
+                    {t.serviceView?.sections?.tags || "Tags"}
                   </div>
                   <div className="flex flex-wrap gap-1 md:gap-2">
                     {service.tags.slice(0, 4).map((tag, index) => (
@@ -917,7 +919,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Créé le
+                    {t.serviceView?.sections?.created || "Créé le"}
                   </span>
                   <span
                     className={`text-xs md:text-sm font-medium ${
@@ -933,7 +935,7 @@ export default function ServiceViewPage({
                       isDark ? "text-gray-400" : "text-gray-600"
                     }`}
                   >
-                    Modifié le
+                    {t.serviceView?.sections?.updated || "Modifié le"}
                   </span>
                   <span
                     className={`text-xs md:text-sm font-medium ${
@@ -954,7 +956,7 @@ export default function ServiceViewPage({
                   className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium flex items-center justify-center"
                 >
                   <Edit size={14} className="mr-1" />
-                  Modifier
+                  {t.serviceView?.header?.edit || "Modifier"}
                 </button>
                 {service.status === "draft" && (
                   <button
@@ -1037,7 +1039,7 @@ export default function ServiceViewPage({
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    Description
+                    {t.serviceView?.sections?.description || "Description"}
                   </h2>
                   <p
                     className={`text-sm md:text-base whitespace-pre-line ${
@@ -1046,7 +1048,7 @@ export default function ServiceViewPage({
                   >
                     {service.description.fr ||
                       service.description.en ||
-                      "Aucune description"}
+                      (t.serviceView?.sections?.noDescription || "Aucune description")}
                   </p>
                 </div>
 
@@ -1063,7 +1065,7 @@ export default function ServiceViewPage({
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    Détails du service
+                    {t.serviceView?.sections?.details || "Détails du service"}
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div>
@@ -1072,7 +1074,7 @@ export default function ServiceViewPage({
                           isDark ? "text-white" : "text-gray-900"
                         }`}
                       >
-                        Informations de base
+                        {t.serviceView?.sections?.basicInfo || "Informations de base"}
                       </h3>
                       <div className="space-y-2 md:space-y-3">
                         <div className="flex justify-between items-center">
@@ -1081,7 +1083,7 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Prix de base
+                            {t.serviceView?.sections?.basePrice || "Prix de base"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm ${
@@ -1106,14 +1108,14 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Délai de livraison
+                            {t.serviceView?.sections?.deliveryTime || "Délai de livraison"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm ${
                               isDark ? "text-gray-200 text-right" : "text-right"
                             }`}
                           >
-                            {service.delivery_time_days} jours
+                            {service.delivery_time_days} {t.serviceView?.info?.days || "jours"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -1122,7 +1124,7 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Révisions incluses
+                            {t.serviceView?.sections?.revisionsIncluded || "Révisions incluses"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm ${
@@ -1138,7 +1140,7 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Visibilité
+                            {t.serviceView?.sections?.visibility || "Visibilité"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm capitalize ${
@@ -1156,7 +1158,7 @@ export default function ServiceViewPage({
                           isDark ? "text-white" : "text-gray-900"
                         }`}
                       >
-                        Configuration
+                        {t.serviceView?.sections?.configuration || "Configuration"}
                       </h3>
                       <div className="space-y-2 md:space-y-3">
                         <div className="flex justify-between items-center">
@@ -1165,7 +1167,7 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Type de service
+                            {t.serviceView?.sections?.serviceType || "Type de service"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm text-right ${
@@ -1173,10 +1175,10 @@ export default function ServiceViewPage({
                             }`}
                           >
                             {service.location_type
-                              ?.map((t) =>
-                                t === "remote" ? "À distance" : "Sur place"
+                              ?.map((tType) =>
+                                tType === "remote" ? (t.serviceView?.labels?.remote || "À distance") : (t.serviceView?.labels?.onsite || "Sur place")
                               )
-                              .join(", ") || "À distance"}
+                              .join(", ") || (t.serviceView?.labels?.remote || "À distance")}
                           </span>
                         </div>
                         <div className="flex justify-between items-start">
@@ -1185,14 +1187,14 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Révisions max
+                            {t.serviceView?.sections?.maxRevisions || "Révisions max"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm text-right ${
                               isDark ? "text-gray-200" : ""
                             }`}
                           >
-                            {service.max_revisions || "Illimité"}
+                            {service.max_revisions || (t.serviceView?.sections?.unlimited || "Illimité")}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -1201,7 +1203,7 @@ export default function ServiceViewPage({
                               isDark ? "text-gray-400" : "text-gray-600"
                             }`}
                           >
-                            Devise affichée
+                            {t.serviceView?.sections?.displayCurrency || "Devise affichée"}
                           </span>
                           <span
                             className={`font-medium text-xs md:text-sm text-right ${
@@ -1230,7 +1232,7 @@ export default function ServiceViewPage({
                         isDark ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      Options supplémentaires ({service.extras.length})
+                      {t.serviceView?.sections?.extras || "Options supplémentaires"} ({service.extras.length})
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                       {service.extras.map((extra, index) => (
@@ -1325,7 +1327,7 @@ export default function ServiceViewPage({
                           isDark ? "text-gray-500" : "text-gray-500"
                         }`}
                       >
-                        Aucune FAQ définie
+                        {t.serviceView?.sections?.noFaq || "Aucune FAQ définie"}
                       </p>
                     </div>
                   )}
@@ -1344,7 +1346,7 @@ export default function ServiceViewPage({
                       isDark ? "text-white" : "text-gray-900"
                     }`}
                   >
-                    Exigences client ({service.requirements?.length || 0})
+                    {t.serviceView?.sections?.requirements || "Exigences client"} ({service.requirements?.length || 0})
                   </h2>
                   {service.requirements && service.requirements.length > 0 ? (
                     <div className="space-y-3 md:space-y-4">

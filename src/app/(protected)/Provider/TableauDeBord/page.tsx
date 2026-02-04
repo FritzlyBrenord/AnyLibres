@@ -30,6 +30,7 @@ import PaymentMethodCard from "@/components/provider/PaymentMethodCard";
 import AddPaymentMethodModal from "@/components/provider/AddPaymentMethodModal";
 import WithdrawalModal from "@/components/provider/WithdrawalModal";
 import { useConversations } from "@/hooks/useConversations";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 // Types
 interface PaymentMethod {
@@ -54,9 +55,11 @@ interface ConvertedAmountProps {
 }
 
 function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps) {
+  const { t } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
 
   useEffect(() => {
+    let isMounted = true;
     const convert = async () => {
       console.log('[TableauDeBord ConvertedAmount] 🔍 Conversion demandée:', {
         amountCents,
@@ -65,7 +68,7 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
       });
 
       if (selectedCurrency === 'USD') {
-        setDisplayAmount(amountCents / 100);
+        if (isMounted) setDisplayAmount(amountCents / 100);
         return;
       }
 
@@ -77,18 +80,26 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
         converted
       });
 
-      if (converted !== null) {
-        setDisplayAmount(converted);
-      } else {
-        console.error('[TableauDeBord ConvertedAmount] ❌ Conversion échouée - utilisation du montant USD');
+      if (isMounted) {
+        if (converted !== null) {
+          setDisplayAmount(converted);
+        } else {
+          console.error('[TableauDeBord ConvertedAmount] ❌ Conversion échouée - utilisation du montant USD');
+        }
       }
     };
+    
     convert();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [amountCents, selectedCurrency]);
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      const locale = t.lang === 'en' ? 'en-US' : t.lang === 'es' ? 'es-ES' : 'fr-FR';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -97,12 +108,14 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
     } catch {
       return `${displayAmount.toFixed(2)} ${selectedCurrency}`;
     }
-  }, [displayAmount, selectedCurrency]);
+  }, [displayAmount, selectedCurrency, t.lang]);
 
   return <>{formattedAmount}</>;
 }
 
 export default function ProviderDashboard() {
+  const { t } = useSafeLanguage();
+  const td = t.providerDashboard;
   const { user, loading } = useAuth();
   const router = useRouter();
   const { conversations, loading: conversationsLoading } = useConversations();
@@ -171,7 +184,7 @@ export default function ProviderDashboard() {
     }
     if (user?.first_name) return user.first_name;
     if (user?.username) return user.username;
-    return "Utilisateur";
+    return td.recentMessages.fallbackUser;
   };
 
   const userData = {
@@ -183,7 +196,7 @@ export default function ProviderDashboard() {
         user?.username || "default"
       }`,
     username: user?.username || "",
-    level: "Nouveau vendeur",
+    level: td.sellerLevel,
     successScore: "N/A",
     rating: reviewsStats.total_reviews > 0 
       ? reviewsStats.average_rating.toFixed(1) 
@@ -374,24 +387,24 @@ export default function ProviderDashboard() {
     const amount = parseFloat(withdrawalAmount);
 
     if (!amount || amount <= 0) {
-      setWithdrawalError("Veuillez entrer un montant valide");
+      setWithdrawalError(td.withdrawal.errors.invalidAmount);
       return false;
     }
 
     if (amount < WITHDRAWAL_CONFIG.MIN_AMOUNT_CENTS / 100) {
       setWithdrawalError(
-        `Le montant minimum est de ${
-          WITHDRAWAL_CONFIG.MIN_AMOUNT_CENTS / 100
-        } €`
+        t('providerDashboard.withdrawal.errors.minAmount', {
+          amount: `${WITHDRAWAL_CONFIG.MIN_AMOUNT_CENTS / 100} €`
+        })
       );
       return false;
     }
 
     if (amount > WITHDRAWAL_CONFIG.MAX_AMOUNT_CENTS / 100) {
       setWithdrawalError(
-        `Le montant maximum est de ${
-          WITHDRAWAL_CONFIG.MAX_AMOUNT_CENTS / 100
-        } €`
+        t('providerDashboard.withdrawal.errors.maxAmount', {
+          amount: `${WITHDRAWAL_CONFIG.MAX_AMOUNT_CENTS / 100} €`
+        })
       );
       return false;
     }
@@ -399,13 +412,15 @@ export default function ProviderDashboard() {
     const availableAmount = earnings.available_cents / 100;
     if (amount > availableAmount) {
       setWithdrawalError(
-        `Le montant maximum disponible est ${availableAmount.toFixed(2)} €`
+        t('providerDashboard.withdrawal.errors.insufficientFunds', {
+          amount: `${availableAmount.toFixed(2)} €`
+        })
       );
       return false;
     }
 
     if (!selectedPaymentMethod) {
-      setWithdrawalError("Veuillez sélectionner une méthode de paiement");
+      setWithdrawalError(td.withdrawal.errors.selectMethod);
       return false;
     }
 
@@ -423,7 +438,7 @@ export default function ProviderDashboard() {
 
     // Vérifier si un retrait est déjà en cours
     if (timeRemaining > 0) {
-      setWithdrawalError("Vous devez attendre 24h entre deux retraits");
+      setWithdrawalError(td.withdrawal.errors.wait24h);
       return;
     }
 
@@ -461,18 +476,18 @@ export default function ProviderDashboard() {
 
         // Afficher un message de succès
         alert(
-          `Retrait de ${parseFloat(withdrawalAmount).toFixed(
-            2
-          )} € effectué avec succès!`
+          t('providerDashboard.withdrawal.success', {
+            amount: `${parseFloat(withdrawalAmount).toFixed(2)} €`
+          })
         );
       } else {
         setWithdrawalError(
-          data.error || "Erreur lors de la demande de retrait"
+          data.error || td.withdrawal.errors.general
         );
       }
     } catch (error) {
       console.error("Error submitting withdrawal:", error);
-      setWithdrawalError("Erreur serveur lors de la demande de retrait");
+      setWithdrawalError(td.withdrawal.errors.server);
     } finally {
       setSubmittingWithdrawal(false);
     }
@@ -556,7 +571,7 @@ export default function ProviderDashboard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-16 h-16 text-emerald-400 animate-spin mx-auto mb-4" />
-          <p className="text-slate-200">Chargement de votre profil...</p>
+          <p className="text-slate-200">{td.loading}</p>
         </div>
       </div>
     );
@@ -568,7 +583,7 @@ export default function ProviderDashboard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-16 h-16 text-emerald-400 animate-spin mx-auto mb-4" />
-          <p className="text-slate-200">Redirection vers la connexion...</p>
+          <p className="text-slate-200">{td.redirecting}</p>
         </div>
       </div>
     );
@@ -581,17 +596,16 @@ export default function ProviderDashboard() {
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">
-            Vous n&apos;êtes pas encore prestataire
+            {td.notProvider.title}
           </h1>
           <p className="text-gray-600 mb-6">
-            Vous devez compléter votre inscription en tant que prestataire pour
-            accéder à ce tableau de bord.
+            {td.notProvider.description}
           </p>
           <button
             onClick={() => router.push("/Provider/Accueil")}
             className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors"
           >
-            Devenir prestataire maintenant
+            {td.notProvider.button}
           </button>
         </div>
       </div>
@@ -616,11 +630,10 @@ export default function ProviderDashboard() {
           <div className="text-center mb-12">
             <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 flex items-center justify-center gap-3">
               <Sparkles className="w-10 h-10 text-emerald-400" />
-              Bienvenue, {userData.name}
+              {t('providerDashboard.welcome', { name: userData.name })}
             </h1>
             <p className="text-lg lg:text-xl text-slate-300 max-w-2xl mx-auto">
-              Voici votre tableau de bord professionnel pour gérer votre
-              activité
+              {td.subtitle}
             </p>
           </div>
 
@@ -645,7 +658,7 @@ export default function ProviderDashboard() {
                     )}
                   </button>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">Solde disponible</p>
+                <p className="text-sm text-slate-400 mb-2">{td.stats.availableBalance}</p>
                 {showBalance ? (
                   <p className="text-3xl font-black text-white">
                     <ConvertedAmount amountCents={earnings.available_cents} selectedCurrency={selectedCurrency} />
@@ -658,7 +671,7 @@ export default function ProviderDashboard() {
                   className="mt-4 w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   <ArrowDownToLine className="w-4 h-4" />
-                  Retirer
+                  {td.stats.withdraw}
                 </button>
               </div>
             </div>
@@ -673,12 +686,12 @@ export default function ProviderDashboard() {
                   </div>
                   <TrendingUp className="w-5 h-5 text-purple-400" />
                 </div>
-                <p className="text-sm text-slate-400 mb-2">Total gagné</p>
+                <p className="text-sm text-slate-400 mb-2">{td.stats.totalEarned}</p>
                 <p className="text-3xl font-black text-white">
                   <ConvertedAmount amountCents={earnings.total_earned_cents} selectedCurrency={selectedCurrency} />
                 </p>
                 <p className="text-xs text-slate-400 mt-2">
-                  En attente: <ConvertedAmount amountCents={earnings.pending_cents} selectedCurrency={selectedCurrency} />
+                  {td.stats.pending} <ConvertedAmount amountCents={earnings.pending_cents} selectedCurrency={selectedCurrency} />
                 </p>
               </div>
             </div>
@@ -693,7 +706,7 @@ export default function ProviderDashboard() {
                   </div>
                   <CheckCircle2 className="w-5 h-5 text-blue-400" />
                 </div>
-                <p className="text-sm text-slate-400 mb-2">Commandes actives</p>
+                <p className="text-sm text-slate-400 mb-2">{td.stats.activeOrders}</p>
                 <p className="text-3xl font-black text-white">
                   {userData.activeOrders}
                 </p>
@@ -701,7 +714,7 @@ export default function ProviderDashboard() {
                   onClick={() => router.push("/Provider/TableauDeBord/Order")}
                   className="mt-4 w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-colors"
                 >
-                  Voir tout
+                  {td.stats.viewAll}
                 </button>
               </div>
             </div>
@@ -723,12 +736,12 @@ export default function ProviderDashboard() {
                     ))}
                   </div>
                 </div>
-                <p className="text-sm text-slate-400 mb-2">Notation</p>
+                <p className="text-sm text-slate-400 mb-2">{td.stats.rating}</p>
                 <p className="text-3xl font-black text-white">
                   {userData.rating}
                 </p>
                 <p className="text-xs text-slate-400 mt-2">
-                  Taux de réponse: {userData.responseRate}
+                  {td.stats.responseRate} {userData.responseRate}
                 </p>
               </div>
             </div>
@@ -744,14 +757,14 @@ export default function ProviderDashboard() {
                     <MessageSquare className="w-5 h-5 text-emerald-400" />
                   </div>
                   <h2 className="text-xl font-bold text-white">
-                    Messages récents
+                    {td.recentMessages.title}
                   </h2>
                 </div>
                 <button
                   onClick={() => router.push("/messages")}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
                 >
-                  Voir tout
+                  {td.recentMessages.viewAll}
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -759,12 +772,12 @@ export default function ProviderDashboard() {
               {recentConversations.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-                  <p className="text-slate-400">Aucun message récent</p>
+                  <p className="text-slate-400">{td.recentMessages.noMessages}</p>
                   <button
                     onClick={() => router.push("/messages")}
                     className="mt-4 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors"
                   >
-                    Voir tous les messages
+                    {td.recentMessages.viewAllButton}
                   </button>
                 </div>
               ) : (
@@ -779,11 +792,13 @@ export default function ProviderDashboard() {
                       const diffInHours = Math.floor(diffInMs / 3600000);
                       const diffInDays = Math.floor(diffInMs / 86400000);
 
-                      if (diffInMinutes < 1) return "À l'instant";
-                      if (diffInMinutes < 60) return `Il y a ${diffInMinutes} min`;
-                      if (diffInHours < 24) return `Il y a ${diffInHours}h`;
-                      if (diffInDays < 7) return `Il y a ${diffInDays}j`;
-                      return messageDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                      if (diffInMinutes < 1) return td.recentMessages.relativeTime.justNow;
+                      if (diffInMinutes < 60) return t('providerDashboard.recentMessages.relativeTime.minutes', { count: diffInMinutes });
+                      if (diffInHours < 24) return t('providerDashboard.recentMessages.relativeTime.hours', { count: diffInHours });
+                      if (diffInDays < 7) return t('providerDashboard.recentMessages.relativeTime.days', { count: diffInDays });
+                      
+                      const locale = t.lang === 'en' ? 'en-US' : t.lang === 'es' ? 'es-ES' : 'fr-FR';
+                      return messageDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
                     };
 
                     return (
@@ -794,20 +809,20 @@ export default function ProviderDashboard() {
                       >
                         <img
                           src={conversation.other_participant_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conversation.other_participant_name || 'User'}`}
-                          alt={conversation.other_participant_name || "Utilisateur"}
+                          alt={conversation.other_participant_name || td.recentMessages.fallbackUser}
                           className="w-12 h-12 rounded-full border-2 border-emerald-500/30"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <h3 className="font-semibold text-white text-sm">
-                              {conversation.other_participant_name || "Utilisateur"}
+                              {conversation.other_participant_name || td.recentMessages.fallbackUser}
                             </h3>
                             <span className="text-xs text-slate-400">
                               {getRelativeTime(conversation.last_message_at)}
                             </span>
                           </div>
                           <p className="text-sm text-slate-300 line-clamp-1 group-hover:text-white transition-colors">
-                            {conversation.last_message_text || "Aucun message"}
+                            {conversation.last_message_text || td.recentMessages.noMessageText}
                           </p>
                         </div>
                       </div>
@@ -824,7 +839,7 @@ export default function ProviderDashboard() {
                   <Sparkles className="w-5 h-5 text-purple-400" />
                 </div>
                 <h2 className="text-xl font-bold text-white">
-                  Actions rapides
+                  {td.quickActions.title}
                 </h2>
               </div>
 
@@ -841,10 +856,10 @@ export default function ProviderDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-white text-sm">
-                        Voir Analytiques
+                        {td.quickActions.analytics.title}
                       </p>
                       <p className="text-xs text-slate-400">
-                        Performance & statistiques
+                        {td.quickActions.analytics.subtitle}
                       </p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
@@ -861,9 +876,9 @@ export default function ProviderDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-white text-sm">
-                        Gérer Services
+                        {td.quickActions.services.title}
                       </p>
-                      <p className="text-xs text-slate-400">Créer & modifier</p>
+                      <p className="text-xs text-slate-400">{td.quickActions.services.subtitle}</p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
                   </div>
@@ -879,10 +894,10 @@ export default function ProviderDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-white text-sm">
-                        Messages
+                        {td.quickActions.messages.title}
                       </p>
                       <p className="text-xs text-slate-400">
-                        Communiquer avec clients
+                        {td.quickActions.messages.subtitle}
                       </p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
@@ -899,10 +914,11 @@ export default function ProviderDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-white text-sm">
-                        Retirer gains
+                        {td.quickActions.withdrawGains.title}
                       </p>
                       <p className="text-xs text-emerald-100">
-                        <ConvertedAmount amountCents={earnings.available_cents} selectedCurrency={selectedCurrency} /> disponible
+                        {td.quickActions.withdrawGains.available.replace('{amount}', '')}
+                        <ConvertedAmount amountCents={earnings.available_cents} selectedCurrency={selectedCurrency} />
                       </p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-white" />
@@ -961,9 +977,13 @@ export default function ProviderDashboard() {
             // Mettre à jour le statut des retraits
             await checkWithdrawalStatus();
 
-            alert(`Retrait de ${amount.toFixed(2)} € effectué avec succès!`);
+            alert(
+              t('providerDashboard.withdrawal.success', {
+                amount: `${amount.toFixed(2)} ${selectedCurrency === 'EUR' ? '€' : selectedCurrency === 'USD' ? '$' : selectedCurrency}`
+              })
+            );
           } else {
-            throw new Error(data.error || "Erreur lors de la demande de retrait");
+            throw new Error(data.error || td.withdrawal.errors.general);
           }
         }}
         ConvertedAmountComponent={ConvertedAmount}

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface AdminBalance {
   id: string | null;
@@ -125,6 +126,7 @@ export function AdminBalanceSection({
   isDark = false,
   systemRevenue,
 }: AdminBalanceSectionProps) {
+  const { language, t } = useLanguage();
   const { formatAmount } = useCurrency();
   const [balance, setBalance] = useState<AdminBalance | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,14 +170,14 @@ export function AdminBalanceSection({
       if (data.success) {
         setBalance(data.balance);
         if (!silent) {
-          setSuccess("Balance synchronisée");
+          setSuccess(t('admin.finance.balanceStats.syncSuccess'));
           setTimeout(() => setSuccess(""), 2000);
         }
       } else if (!silent) {
-        setError(data.error || "Erreur de synchronisation");
+        setError(data.error || t('admin.finance.balanceStats.syncError'));
       }
     } catch (err) {
-      if (!silent) setError("Erreur de synchronisation");
+      if (!silent) setError(t('admin.finance.balanceStats.syncError'));
       console.error(err);
     } finally {
       if (!silent) setSyncing(false);
@@ -268,14 +270,14 @@ export function AdminBalanceSection({
   // Effectuer un don
   const handleDonate = async () => {
     if (!selectedRecipient || !donationAmount || parseFloat(donationAmount) <= 0) {
-      setError("Veuillez sélectionner un destinataire et saisir un montant");
+      setError(t('admin.donation.errorAllFields'));
       return;
     }
 
     const amountCents = Math.round(parseFloat(donationAmount) * 100);
 
     if (balance && amountCents > balance.available_cents) {
-      setError("Solde insuffisant");
+      setError(t('admin.finance.balanceStats.withdrawInsufficientFunds'));
       return;
     }
 
@@ -289,7 +291,7 @@ export function AdminBalanceSection({
           recipient_id: selectedRecipient.id,
           recipient_type: recipientType,
           amount_cents: amountCents,
-          reason: donationReason || `Don à ${recipientType}`,
+          reason: donationReason || t('admin.donation.reasonDefault', { type: recipientType === 'client' ? t('admin.donation.client') : t('admin.donation.provider') }),
         }),
       });
 
@@ -300,7 +302,10 @@ export function AdminBalanceSection({
           [selectedRecipient.first_name, selectedRecipient.last_name].filter(Boolean).join(" ") ||
           selectedRecipient.email;
 
-        setSuccess(`Don de ${formatAmount(parseFloat(donationAmount))} envoyé à ${recipientName}`);
+        setSuccess(t('admin.donation.successWithDetails', { 
+          amount: formatAmount(parseFloat(donationAmount)), 
+          name: recipientName 
+        }));
         setDonationAmount("");
         setDonationReason("");
         setSelectedRecipient(null);
@@ -313,10 +318,10 @@ export function AdminBalanceSection({
 
         setTimeout(() => setSuccess(""), 3000);
       } else {
-        setError(data.error || "Erreur lors du don");
+        setError(data.error || t('admin.donation.errorGeneric'));
       }
     } catch (err) {
-      setError("Erreur lors du don");
+      setError(t('admin.donation.errorGeneric'));
       console.error(err);
     } finally {
       setDonating(false);
@@ -326,14 +331,14 @@ export function AdminBalanceSection({
   // Effectuer un retrait
   const handleWithdraw = async () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
-      setError("Montant invalide");
+      setError(t('admin.finance.balanceStats.withdrawInvalidAmount'));
       return;
     }
 
     const amountCents = Math.round(parseFloat(withdrawAmount) * 100);
 
     if (balance && amountCents > balance.available_cents) {
-      setError("Solde insuffisant");
+      setError(t('admin.finance.balanceStats.withdrawInsufficientFunds'));
       return;
     }
 
@@ -346,22 +351,22 @@ export function AdminBalanceSection({
         body: JSON.stringify({
           action: "withdraw",
           amount_cents: amountCents,
-          reason: withdrawReason || "Retrait administrateur",
+          reason: withdrawReason || t('admin.finance.balanceStats.withdrawDefaultReason'),
         }),
       });
       const data = await response.json();
       if (data.success) {
         setBalance(data.balance);
-        setSuccess(`Retrait de ${formatAmount(parseFloat(withdrawAmount))} effectué`);
+        setSuccess(t('admin.finance.balanceStats.withdrawSuccess', { amount: formatAmount(parseFloat(withdrawAmount)) }));
         setShowWithdrawModal(false);
         setWithdrawAmount("");
         setWithdrawReason("");
         setTimeout(() => setSuccess(""), 3000);
       } else {
-        setError(data.error || "Erreur lors du retrait");
+        setError(data.error || t('admin.finance.balanceStats.withdrawError'));
       }
     } catch (err) {
-      setError("Erreur lors du retrait");
+      setError(t('admin.finance.balanceStats.withdrawError'));
       console.error(err);
     } finally {
       setWithdrawing(false);
@@ -373,8 +378,9 @@ export function AdminBalanceSection({
   };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "Jamais";
-    return new Date(dateStr).toLocaleDateString("fr-FR", {
+    if (!dateStr) return t('admin.finance.balanceStats.neverSynced');
+    const locales = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' };
+    return new Date(dateStr).toLocaleDateString(locales[language] || 'fr-FR', {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -392,9 +398,17 @@ export function AdminBalanceSection({
       } rounded-2xl shadow-lg border overflow-hidden mb-8`}
     >
       {/* Header avec toggle */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setShowPanel(!showPanel)}
-        className={`w-full p-6 flex items-center justify-between transition-colors ${
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setShowPanel(!showPanel);
+          }
+        }}
+        className={`w-full p-6 flex items-center justify-between transition-colors cursor-pointer ${
           isDark ? "hover:bg-gray-700/50" : "hover:bg-gray-50"
         }`}
       >
@@ -404,10 +418,10 @@ export function AdminBalanceSection({
           </div>
           <div className="text-left">
             <h3 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-              Solde Administrateur
+              {t('admin.finance.balanceStats.cardTitle')}
             </h3>
             <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-              Gérer votre solde, faire des dons et retraits
+              {t('admin.finance.balanceStats.cardSubtitle')}
             </p>
           </div>
         </div>
@@ -417,7 +431,7 @@ export function AdminBalanceSection({
           {!loading && balance && (
             <div className="text-right mr-4">
               <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                Solde disponible
+                {t('admin.finance.balanceStats.availableBalance')}
               </p>
               <p className={`text-2xl font-bold ${
                 balance.available_cents > 0 ? "text-green-500" : isDark ? "text-gray-400" : "text-gray-600"
@@ -447,7 +461,7 @@ export function AdminBalanceSection({
             <ChevronDown className={`w-6 h-6 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
           )}
         </div>
-      </button>
+      </div>
 
       {/* Contenu du panneau */}
       <AnimatePresence>
@@ -500,7 +514,7 @@ export function AdminBalanceSection({
                 <div className="space-y-4 mt-6">
                   {/* Section Statistiques */}
                   <CollapsibleSection
-                    title="Statistiques du Solde"
+                    title={t('admin.finance.balanceStats.title')}
                     icon={DollarSign}
                     iconColor="text-green-500"
                     defaultOpen={true}
@@ -513,7 +527,7 @@ export function AdminBalanceSection({
                       }`}>
                         <div className="flex items-center gap-2 mb-2">
                           <DollarSign className={`w-4 h-4 ${isDark ? "text-green-400" : "text-green-600"}`} />
-                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Disponible</p>
+                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t('admin.finance.balanceStats.available')}</p>
                         </div>
                         <p className={`text-xl font-bold ${isDark ? "text-green-400" : "text-green-600"}`}>
                           {showBalance ? formatCurrency(balance?.available_cents || 0) : "••••••"}
@@ -526,7 +540,7 @@ export function AdminBalanceSection({
                       }`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Gift className={`w-4 h-4 ${isDark ? "text-pink-400" : "text-pink-600"}`} />
-                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Donné</p>
+                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t('admin.finance.balanceStats.donated')}</p>
                         </div>
                         <p className={`text-xl font-bold ${isDark ? "text-pink-400" : "text-pink-600"}`}>
                           {showBalance ? formatCurrency(balance?.total_donated_cents || 0) : "••••••"}
@@ -539,7 +553,7 @@ export function AdminBalanceSection({
                       }`}>
                         <div className="flex items-center gap-2 mb-2">
                           <TrendingDown className={`w-4 h-4 ${isDark ? "text-orange-400" : "text-orange-600"}`} />
-                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Remboursé</p>
+                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t('admin.finance.balanceStats.refunded')}</p>
                         </div>
                         <p className={`text-xl font-bold ${isDark ? "text-orange-400" : "text-orange-600"}`}>
                           {showBalance ? formatCurrency(balance?.total_refunded_cents || 0) : "••••••"}
@@ -552,7 +566,7 @@ export function AdminBalanceSection({
                       }`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Download className={`w-4 h-4 ${isDark ? "text-blue-400" : "text-blue-600"}`} />
-                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Retiré</p>
+                          <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t('admin.finance.balanceStats.withdrawn')}</p>
                         </div>
                         <p className={`text-xl font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>
                           {showBalance ? formatCurrency(balance?.total_withdrawn_cents || 0) : "••••••"}
@@ -567,7 +581,7 @@ export function AdminBalanceSection({
                       <div className="flex items-center gap-2">
                         <Clock className={`w-4 h-4 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
                         <span className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                          Synchro: {formatDate(balance?.metadata?.last_sync)}
+                          {t('admin.finance.balanceStats.syncedAt')} {formatDate(balance?.metadata?.last_sync)}
                         </span>
                       </div>
                       <div className="flex gap-2">
@@ -581,7 +595,7 @@ export function AdminBalanceSection({
                           } disabled:opacity-50`}
                         >
                           {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                          Sync
+                          {t('admin.finance.balanceStats.sync')}
                         </button>
                         <button
                           onClick={() => setShowWithdrawModal(true)}
@@ -593,7 +607,7 @@ export function AdminBalanceSection({
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                           <Download className="w-3 h-3" />
-                          Retirer
+                          {t('admin.finance.balanceStats.withdraw')}
                         </button>
                       </div>
                     </div>
@@ -601,7 +615,7 @@ export function AdminBalanceSection({
 
                   {/* Section Faire un Don */}
                   <CollapsibleSection
-                    title="Faire un Don"
+                    title={t('admin.donation.title')}
                     icon={Heart}
                     iconColor="text-pink-500"
                     defaultOpen={false}
@@ -611,8 +625,8 @@ export function AdminBalanceSection({
                       {/* Type de destinataire */}
                       <div className="flex gap-2">
                         {[
-                          { value: "client", label: "Client", icon: User },
-                          { value: "provider", label: "Prestataire", icon: Users },
+                          { value: "client", label: t('admin.donation.client'), icon: User },
+                          { value: "provider", label: t('admin.donation.provider'), icon: Users },
                         ].map((type) => {
                           const Icon = type.icon;
                           return (
@@ -650,7 +664,7 @@ export function AdminBalanceSection({
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Chercher par nom ou email..."
+                          placeholder={t('admin.donation.searchPlaceholder')}
                           className={`w-full pl-9 pr-9 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                             isDark
                               ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -735,7 +749,7 @@ export function AdminBalanceSection({
                           min="0.01"
                           value={donationAmount}
                           onChange={(e) => setDonationAmount(e.target.value)}
-                          placeholder="Montant (€)"
+                          placeholder={t('admin.donation.amount')}
                           className={`px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                             isDark
                               ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -746,7 +760,7 @@ export function AdminBalanceSection({
                           type="text"
                           value={donationReason}
                           onChange={(e) => setDonationReason(e.target.value)}
-                          placeholder="Raison (optionnel)"
+                          placeholder={t('admin.donation.reason')}
                           className={`px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                             isDark
                               ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -766,14 +780,14 @@ export function AdminBalanceSection({
                         ) : (
                           <Heart className="w-4 h-4" />
                         )}
-                        Envoyer le don
+                        {t('admin.donation.send')}
                       </button>
                     </div>
                   </CollapsibleSection>
 
                   {/* Section Historique des Dons */}
                   <CollapsibleSection
-                    title="Historique des Dons"
+                    title={t('admin.donation.historyTitle')}
                     icon={History}
                     iconColor="text-purple-500"
                     defaultOpen={false}
@@ -786,7 +800,7 @@ export function AdminBalanceSection({
                     ) : donations.length === 0 ? (
                       <div className={`text-center py-8 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                         <Heart className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Aucun don effectué</p>
+                        <p className="text-sm">{t('admin.donation.noHistory')}</p>
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -854,11 +868,11 @@ export function AdminBalanceSection({
               } p-6`}
             >
               <h3 className={`text-xl font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>
-                Effectuer un Retrait
+                {t('admin.finance.balanceStats.withdrawModalTitle')}
               </h3>
 
               <div className={`mb-4 p-4 rounded-xl ${isDark ? "bg-gray-700/50" : "bg-gray-100"}`}>
-                <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>Solde disponible</p>
+                <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>{t('admin.finance.balanceStats.availableBalance')}</p>
                 <p className="text-2xl font-bold text-green-500">
                   {formatCurrency(balance?.available_cents || 0)}
                 </p>
@@ -872,7 +886,7 @@ export function AdminBalanceSection({
                   max={(balance?.available_cents || 0) / 100}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="Montant (€)"
+                  placeholder={t('admin.finance.balanceStats.withdrawAmountLabel')}
                   className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     isDark
                       ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -883,7 +897,7 @@ export function AdminBalanceSection({
                   type="text"
                   value={withdrawReason}
                   onChange={(e) => setWithdrawReason(e.target.value)}
-                  placeholder="Raison (optionnel)"
+                  placeholder={t('admin.finance.balanceStats.withdrawReasonLabel')}
                   className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     isDark
                       ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -901,7 +915,7 @@ export function AdminBalanceSection({
                       : "border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  Annuler
+                  {t('admin.finance.balanceStats.cancel')}
                 </button>
                 <button
                   onClick={handleWithdraw}
@@ -909,7 +923,7 @@ export function AdminBalanceSection({
                   className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {withdrawing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Retirer
+                  {t('admin.finance.balanceStats.withdraw')}
                 </button>
               </div>
             </motion.div>

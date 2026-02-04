@@ -12,9 +12,11 @@ import {
   RefreshCw,
   Eye,
   Calendar,
+  Lock,
 } from 'lucide-react';
 import { useLanguageContext } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface Withdrawal {
   id: string;
@@ -38,6 +40,10 @@ interface WithdrawalManagementProps {
 
 export default function WithdrawalManagement({ isDark }: WithdrawalManagementProps) {
   const { t } = useLanguageContext();
+  const { hasPermission } = usePermissions();
+
+  const canViewDetails = hasPermission('withdrawals.details.view');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
 
@@ -128,19 +134,19 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-400', icon: Clock },
-      processing: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-400', icon: RefreshCw },
-      completed: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-400', icon: CheckCircle },
-      failed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-400', icon: XCircle },
-      cancelled: { bg: 'bg-gray-100 dark:bg-gray-900/30', text: 'text-gray-800 dark:text-gray-400', icon: XCircle },
+      pending: { bg: 'bg-amber-500/10', text: 'text-amber-500', icon: Clock },
+      processing: { bg: 'bg-blue-500/10', text: 'text-blue-500', icon: RefreshCw },
+      completed: { bg: 'bg-green-500/10', text: 'text-green-500', icon: CheckCircle },
+      failed: { bg: 'bg-red-500/10', text: 'text-red-500', icon: XCircle },
+      cancelled: { bg: 'bg-slate-500/10', text: 'text-slate-500', icon: XCircle },
     };
 
     const badge = badges[status as keyof typeof badges] || badges.pending;
     const Icon = badge.icon;
 
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-        <Icon className="w-3 h-3" />
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${badge.bg} ${badge.text}`}>
+        <Icon className="w-3.5 h-3.5" />
         {tAny.admin?.withdrawalManagement?.status?.[status] || status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
@@ -165,45 +171,51 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
     <div>
       {/* Header & Stats */}
       <div className="p-6">
-        <div className={`rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="p-6">
-            <h2 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <div className={`rounded-3xl shadow-xl border overflow-hidden ${isDark ? 'bg-slate-800/40 border-white/5 backdrop-blur-sm' : 'bg-white border-slate-200'}`}>
+          <div className="p-8">
+            <h2 className={`text-2xl font-black mb-8 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {tAny.admin?.withdrawalManagement?.title || 'Gestion des Retraits'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.pending || 'En attente'}</span>
-                  <Clock className="w-4 h-4 text-amber-500" />
+              <div className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isDark ? 'bg-slate-800/60 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{tAny.admin?.withdrawalManagement?.stats?.pending || 'En attente'}</span>
+                  <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                    <Clock className="w-4 h-4 text-amber-500" />
+                  </div>
                 </div>
-                <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {stats.totalPending}
                 </div>
-                <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className={`text-sm font-bold mt-1 ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
                   {formatCurrency(stats.totalAmountPending)}
                 </div>
               </div>
 
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.completed || 'Complétés'}</span>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
+              <div className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isDark ? 'bg-slate-800/60 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{tAny.admin?.withdrawalManagement?.stats?.completed || 'Complétés'}</span>
+                  <div className={`p-2 rounded-lg ${isDark ? 'bg-green-500/10' : 'bg-green-50'}`}>
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  </div>
                 </div>
-                <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {stats.totalCompleted}
                 </div>
-                <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className={`text-sm font-bold mt-1 ${isDark ? 'text-green-400/80' : 'text-green-600'}`}>
                   {formatCurrency(stats.totalAmountCompleted)}
                 </div>
               </div>
 
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tAny.admin?.withdrawalManagement?.stats?.failed || 'Échoués'}</span>
-                  <XCircle className="w-4 h-4 text-red-500" />
+              <div className={`p-5 rounded-2xl border transition-all hover:shadow-md ${isDark ? 'bg-slate-800/60 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{tAny.admin?.withdrawalManagement?.stats?.failed || 'Échoués'}</span>
+                  <div className={`p-2 rounded-lg ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  </div>
                 </div>
-                <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {stats.totalFailed}
                 </div>
               </div>
@@ -222,11 +234,11 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
               placeholder={tAny.admin?.withdrawalManagement?.search || "Rechercher par nom ou email..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${
+              className={`w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all focus:ring-2 focus:ring-indigo-500 ${
                 isDark
-                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-              } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  ? 'bg-slate-800 border-white/10 text-white placeholder-slate-500'
+                  : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
+              }`}
             />
           </div>
 
@@ -235,12 +247,12 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
               <button
                 key={filter}
                 onClick={() => setFilterStatus(filter as any)}
-                className={`px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                className={`px-5 py-3 rounded-xl font-bold text-xs transition-all shadow-sm ${
                   filterStatus === filter
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-indigo-600 text-white shadow-indigo-500/20'
                     : isDark
-                    ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-white/5'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
                 {filter === 'all' ? (tAny.admin?.withdrawalManagement?.filters?.all || 'Tous') : (tAny.admin?.withdrawalManagement?.filters?.[filter] || filter.charAt(0).toUpperCase() + filter.slice(1))}
@@ -250,40 +262,40 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
 
           <button
             onClick={fetchWithdrawals}
-            className={`px-4 py-2.5 rounded-lg font-medium transition-colors ${
+            className={`p-3 rounded-xl transition-all shadow-sm ${
               isDark
-                ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-white/5'
+                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="px-6 pb-6">
-        <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className="px-6 pb-8">
+        <div className={`rounded-3xl shadow-xl border overflow-hidden ${isDark ? 'bg-slate-800/40 border-white/5 backdrop-blur-sm' : 'bg-white border-slate-200'}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={isDark ? 'bg-gray-900/50' : 'bg-gray-50'}>
+              <thead className={isDark ? 'bg-slate-900/40' : 'bg-slate-50'}>
                 <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.provider || 'Prestataire'}
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.amount || 'Montant'}
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.method || 'Méthode'}
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.status || 'Statut'}
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.requestDate || 'Date demande'}
                   </th>
-                  <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <th className={`px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {tAny.admin?.withdrawalManagement?.table?.actions || 'Actions'}
                   </th>
                 </tr>
@@ -306,18 +318,18 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
                 ) : (
                   filteredWithdrawals.map((withdrawal) => (
                     <tr key={withdrawal.id} className={isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-5 whitespace-nowrap">
                         <div>
-                          <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          <div className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             {withdrawal.provider_name}
                           </div>
-                          <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <div className={`text-xs font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             {withdrawal.provider_email}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className={`text-sm font-black ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                           {formatCurrency(withdrawal.amount_cents, withdrawal.currency)}
                         </div>
                       </td>
@@ -336,15 +348,18 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <button
-                          onClick={() => handleViewDetails(withdrawal)}
+                          onClick={() => canViewDetails && handleViewDetails(withdrawal)}
+                          disabled={!canViewDetails}
                           className={`p-2 rounded-lg transition-colors ${
-                            isDark
+                            !canViewDetails
+                              ? 'text-gray-400 cursor-not-allowed'
+                              : isDark
                               ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
                               : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                           }`}
-                          title="Voir détails"
+                          title={!canViewDetails ? "Permission manquante" : "Voir détails"}
                         >
-                          <Eye className="w-4 h-4" />
+                          {canViewDetails ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                         </button>
                       </td>
                     </tr>
@@ -358,16 +373,16 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
 
       {/* Modal de détails du retrait */}
       {showDetailsModal && selectedWithdrawal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-            isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border ${
+            isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'
           }`}>
             {/* Header */}
-            <div className={`sticky top-0 px-6 py-4 border-b ${
-              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            <div className={`sticky top-0 px-8 py-6 border-b z-10 ${
+              isDark ? 'bg-slate-900/80 backdrop-blur-md border-white/10' : 'bg-white/80 backdrop-blur-md border-slate-100'
             }`}>
               <div className="flex items-center justify-between">
-                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {tAny.admin?.withdrawalManagement?.modal?.title || 'Détails du retrait'}
                 </h3>
                 <button
@@ -523,16 +538,16 @@ export default function WithdrawalManagement({ isDark }: WithdrawalManagementPro
             </div>
 
             {/* Footer */}
-            <div className={`sticky bottom-0 px-6 py-4 border-t ${
-              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            <div className={`sticky bottom-0 px-8 py-6 border-t z-10 ${
+              isDark ? 'bg-slate-900/80 backdrop-blur-md border-white/10' : 'bg-white/80 backdrop-blur-md border-slate-100'
             }`}>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setShowDetailsModal(false)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-8 py-3 rounded-xl font-black text-sm transition-all shadow-sm ${
                     isDark
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-white/5'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   {tAny.admin?.withdrawalManagement?.modal?.close || 'Fermer'}

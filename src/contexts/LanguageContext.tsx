@@ -5,13 +5,13 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Language, getTranslation } from '@/i18n/translations';
+import { Language, getTranslation, getT } from '@/i18n/translations';
 import { MultiLangText } from '@/types';
 
 interface LanguageContextType {
   language: Language;
   changeLanguage: (lang: Language) => void;
-  t: ReturnType<typeof getTranslation>;
+  t: any; // Type hybride (fonction + objet)
   getText: (text: MultiLangText | string) => string;
 }
 
@@ -47,7 +47,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return text[language] || text.fr || text.en || text.es || '';
   };
 
-  const t = getTranslation(language);
+  const t = getT(getTranslation(language));
 
   // IMPORTANT: Toujours rendre le Provider, même lors du premier rendu
   // pour éviter l'erreur "useLanguage must be used within a LanguageProvider"

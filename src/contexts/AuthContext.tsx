@@ -40,11 +40,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        setUser(null);
+        // No auth user, but maybe root session?
+        if (typeof window !== 'undefined' && localStorage.getItem('anylibre_root_session') === 'true') {
+          setUser({
+            id: '00000000-0000-0000-0000-000000000000',
+            email: 'root@anylibre.com',
+            display_name: 'Root Super Admin',
+            role: 'super_admin'
+          } as unknown as Profile);
+        } else {
+          setUser(null);
+        }
       }
     } catch (error) {
       console.error('Error fetching user:', error);
-      setUser(null);
+      // Fallback: Check if we are in a Root Session
+      if (typeof window !== 'undefined' && localStorage.getItem('anylibre_root_session') === 'true') {
+        setUser({
+          id: '00000000-0000-0000-0000-000000000000',
+          email: 'root@anylibre.com',
+          display_name: 'Root Super Admin',
+          role: 'super_admin'
+        } as unknown as Profile);
+      } else {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -73,6 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    
+    // Clear Root Session serverside cookie
+    await fetch('/api/auth/signout', { method: 'POST' }).catch(() => {});
+    
+    localStorage.removeItem('anylibre_root_session');
     setUser(null);
   };
 

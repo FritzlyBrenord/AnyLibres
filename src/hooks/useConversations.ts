@@ -4,7 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Conversation } from '@/types/messaging';
 
-export function useConversations() {
+interface UseConversationsOptions {
+  adminMode?: boolean;
+}
+
+export function useConversations(options: UseConversationsOptions = {}) {
+  const { adminMode = false } = options;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +21,11 @@ export function useConversations() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/messages/conversations');
+      const apiUrl = adminMode
+        ? '/api/admin/messages/conversations'
+        : '/api/messages/conversations';
+
+      const response = await fetch(apiUrl);
       const data = await response.json();
 
       if (data.success) {
@@ -31,7 +40,7 @@ export function useConversations() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminMode]);
 
   // Écouter les changements en temps réel
   useEffect(() => {
@@ -51,8 +60,15 @@ export function useConversations() {
         },
         (payload) => {
           console.log('Conversation change:', payload);
-          // Recharger les conversations
-          loadConversations();
+          if (payload.eventType === 'INSERT') {
+            const newConv = payload.new as Conversation;
+            setConversations(prev => [newConv, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedConv = payload.new as Conversation;
+            setConversations(prev => prev.map(c => c.id === updatedConv.id ? { ...c, ...updatedConv } : c));
+          } else {
+            loadConversations();
+          }
         }
       )
       .subscribe();
@@ -68,8 +84,9 @@ export function useConversations() {
           table: 'messages',
         },
         (payload) => {
-          console.log('New message:', payload);
-          // Recharger les conversations
+          console.log('New message for conversations list:', payload);
+          // On recharge quand même pour avoir les infos formatées (nom, avatar, etc)
+          // mais on pourrait optimiser si on avait toutes les infos dans le payload
           loadConversations();
         }
       )

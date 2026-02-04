@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import {
   User,
   Mail,
@@ -27,6 +28,12 @@ import {
   Award,
   Briefcase,
   Globe,
+  Key,
+  Verified,
+  Bell,
+  Zap,
+  Activity,
+  TrendingUp,
 } from "lucide-react";
 
 interface ProfileData {
@@ -50,6 +57,7 @@ interface ProfileData {
 export default function ProfilePage() {
   const router = useRouter();
   const { user: authUser, loading: authLoading, refreshUser } = useAuth();
+  const { t, language } = useSafeLanguage();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,13 +135,13 @@ export default function ProfilePage() {
         setProfile(data.data.profile);
         setEditing(false);
         await refreshUser();
-        alert("Profil mis à jour avec succès!");
+        alert(t.profile.success);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error saving profile:", error);
-      alert("Erreur lors de la sauvegarde");
+      alert(t.profile.error);
     } finally {
       setSaving(false);
     }
@@ -141,12 +149,12 @@ export default function ProfilePage() {
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
+      alert(t.profile.security.passwordError);
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      alert("Le mot de passe doit contenir au moins 8 caractères");
+      alert(t.profile.security.passwordLength);
       return;
     }
 
@@ -170,9 +178,9 @@ export default function ProfilePage() {
           newPassword: "",
           confirmPassword: "",
         });
-        alert("Mot de passe modifié avec succès!");
+        alert(t.profile.security.passwordSuccess);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error changing password:", error);
@@ -187,7 +195,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("La taille du fichier ne doit pas dépasser 5 MB");
+      alert(t.profile.security.uploadError);
       return;
     }
 
@@ -206,9 +214,9 @@ export default function ProfilePage() {
       if (data.success) {
         setProfile({ ...profile!, avatar_url: data.data.avatar_url });
         await refreshUser();
-        alert("Photo mise à jour avec succès!");
+        alert(t.profile.security.uploadSuccess);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error uploading photo:", error);
@@ -227,11 +235,9 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(
-          "Email de vérification envoyé! Vérifiez votre boîte de réception."
-        );
+        alert(t.profile.security.verifySent);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error sending verification:", error);
@@ -241,16 +247,24 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/20">
-        <Loader2 className="w-12 h-12 animate-spin text-purple-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-100 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Profil introuvable</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-10 h-10 text-slate-400" />
+          </div>
+          <p className="text-slate-600 font-medium">{t.profile.notFound}</p>
+        </div>
       </div>
     );
   }
@@ -262,34 +276,24 @@ export default function ProfilePage() {
       (profile.bio ? 20 : 0) +
       (profile.avatar_url ? 20 : 0) +
       (profile.location ? 10 : 0) +
-      (profile.website ? 5 : 0)
+      (profile.website ? 5 : 0),
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/20">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       <Header variant="solid" />
 
-      <main className="flex-1 pt-24 pb-16">
+      <main className="pt-16 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header Section */}
-          <div className="relative bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 rounded-3xl overflow-hidden mb-8 shadow-2xl">
-            <div className="absolute inset-0 bg-black/10"></div>
-            <div className="absolute inset-0 opacity-20">
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(circle at 2px 2px, white 1.5px, transparent 0)",
-                  backgroundSize: "40px 40px",
-                }}
-              />
-            </div>
-
-            <div className="relative px-8 py-12">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                {/* Photo de profil */}
+          {/* Profile Header */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+            <div className="relative p-8">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
+                {/* Avatar Section */}
                 <div className="relative group">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-white/30 shadow-2xl">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-white/30 shadow-2xl bg-gradient-to-br from-slate-100 to-slate-200">
                     {profile.avatar_url ? (
                       <img
                         src={profile.avatar_url}
@@ -297,82 +301,102 @@ export default function ProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                        <User className="w-16 h-16 text-white" />
+                      <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <User className="w-16 h-16 text-slate-400" />
+                      </div>
+                    )}
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer rounded-2xl">
+                      <div className="text-center">
+                        <Camera className="w-8 h-8 text-white mx-auto mb-2" />
+                        <span className="text-white text-sm font-medium">
+                          Update
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                        disabled={uploadingPhoto}
+                      />
+                    </label>
+                    {uploadingPhoto && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl">
+                        <Loader2 className="w-8 h-8 text-white animate-spin" />
                       </div>
                     )}
                   </div>
-
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl">
-                    <Camera className="w-8 h-8 text-white" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      disabled={uploadingPhoto}
-                    />
-                  </label>
-
-                  {uploadingPhoto && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl">
-                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  {profile.email_verified && (
+                    <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-400 p-2 rounded-full shadow-lg">
+                      <Verified className="w-5 h-5 text-white" />
                     </div>
                   )}
                 </div>
 
-                {/* Informations principales */}
-                <div className="flex-1 text-white">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-4xl font-bold">
+                {/* Profile Info */}
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 justify-center lg:justify-start">
+                    <h1 className="text-3xl lg:text-4xl font-bold text-white">
                       {profile.display_name ||
                         `${profile.first_name} ${profile.last_name}` ||
-                        "Utilisateur"}
+                        t.messages.userDefault}
                     </h1>
-                    {profile.email_verified && (
-                      <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-full p-2">
-                        <Crown className="w-5 h-5 text-yellow-300" />
+                    {completionPercentage === 100 && (
+                      <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                        <Star className="w-4 h-4 text-yellow-300" />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-white/90">
+                      <Mail className="w-5 h-5" />
+                      <span className="font-medium">{profile.email}</span>
+                    </div>
+                    {profile.phone && (
+                      <div className="flex items-center gap-2 text-white/90">
+                        <Phone className="w-5 h-5" />
+                        <span className="font-medium">{profile.phone}</span>
+                      </div>
+                    )}
+                    {profile.location && (
+                      <div className="flex items-center gap-2 text-white/90">
+                        <MapPin className="w-5 h-5" />
+                        <span className="font-medium">{profile.location}</span>
                       </div>
                     )}
                   </div>
 
                   {profile.bio && (
-                    <p className="text-white/90 text-lg mb-4 max-w-2xl">
-                      {profile.bio}
+                    <p className="text-white/80 whitespace-pre-line break-words break-all leading-relaxed max-w-full ">
+                      {profile.bio.substring(0, 100)}...
                     </p>
                   )}
-
-                  <div className="flex flex-wrap items-center gap-4 text-sm">
-                    {profile.location && (
-                      <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                        <MapPin className="w-4 h-4" />
-                        {profile.location}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-                      <Calendar className="w-4 h-4" />
-                      Membre depuis{" "}
-                      {new Date(profile.created_at).toLocaleDateString(
-                        "fr-FR",
-                        { month: "long", year: "numeric" }
-                      )}
-                    </div>
-                  </div>
                 </div>
 
-                {/* Statistiques */}
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                  <div className="text-center mb-3">
-                    <div className="text-3xl font-bold text-white mb-1">
+                {/* Stats Card */}
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6 shadow-xl">
+                  <div className="text-center">
+                    <div className="inline-flex items-center gap-2 mb-3">
+                      <Activity className="w-5 h-5 text-blue-200" />
+                      <span className="text-white/80 text-sm font-medium">
+                        Profile Strength
+                      </span>
+                    </div>
+                    <div className="text-4xl font-bold text-white mb-2">
                       {completionPercentage}%
                     </div>
-                    <div className="text-white/80 text-sm">Profil complété</div>
-                  </div>
-                  <div className="w-32 h-2 bg-white/20 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-yellow-400 to-yellow-200 transition-all duration-500"
-                      style={{ width: `${completionPercentage}%` }}
-                    />
+                    <div className="w-32 h-2 bg-white/20 rounded-full overflow-hidden mx-auto">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-700"
+                        style={{ width: `${completionPercentage}%` }}
+                      />
+                    </div>
+                    <div className="text-white/60 text-sm mt-2">
+                      {completionPercentage === 100
+                        ? "Perfect Profile"
+                        : `${100 - completionPercentage}% to complete`}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -380,33 +404,40 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Colonne principale */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Informations personnelles */}
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-8 py-6 border-b border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                      <User className="w-6 h-6 text-purple-600" />
-                      Informations personnelles
-                    </h2>
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Personal Information Card */}
+              <div className="bg-white rounded-xl shadow-lg border border-slate-200">
+                <div className="border-b border-slate-100">
+                  <div className="flex items-center justify-between p-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        Personal Information
+                      </h2>
+                      <p className="text-slate-500 text-sm mt-1">
+                        Manage your personal details
+                      </p>
+                    </div>
                     {!editing && (
                       <button
                         onClick={() => setEditing(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg"
                       >
                         <Edit3 className="w-4 h-4" />
-                        Modifier
+                        Edit Profile
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div className="p-8">
+                <div className="p-6">
                   <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Prénom
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        First Name
                       </label>
                       {editing ? (
                         <input
@@ -416,20 +447,27 @@ export default function ProfilePage() {
                             setFormData({
                               ...formData,
                               first_name: e.target.value,
+                              display_name:
+                                !formData.display_name && e.target.value
+                                  ? e.target.value
+                                  : formData.display_name,
                             })
                           }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Enter first name"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.first_name || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.first_name || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Nom
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Last Name
                       </label>
                       {editing ? (
                         <input
@@ -441,18 +479,21 @@ export default function ProfilePage() {
                               last_name: e.target.value,
                             })
                           }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Enter last name"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.last_name || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.last_name || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Nom d&apos;affichage
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Display Name
                       </label>
                       {editing ? (
                         <input
@@ -464,18 +505,21 @@ export default function ProfilePage() {
                               display_name: e.target.value,
                             })
                           }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Choose a display name"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.display_name || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.display_name || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Téléphone
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Phone Number
                       </label>
                       {editing ? (
                         <input
@@ -484,18 +528,21 @@ export default function ProfilePage() {
                           onChange={(e) =>
                             setFormData({ ...formData, phone: e.target.value })
                           }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="+1 (555) 123-4567"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.phone || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.phone || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Localisation
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Location
                       </label>
                       {editing ? (
                         <input
@@ -507,19 +554,21 @@ export default function ProfilePage() {
                               location: e.target.value,
                             })
                           }
-                          placeholder="Ville, Pays"
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="City, Country"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.location || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.location || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Site web
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Website
                       </label>
                       {editing ? (
                         <input
@@ -531,19 +580,21 @@ export default function ProfilePage() {
                               website: e.target.value,
                             })
                           }
-                          placeholder="https://..."
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="https://example.com"
                         />
                       ) : (
-                        <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900 font-medium">
-                          {profile.website || "Non renseigné"}
-                        </p>
+                        <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-slate-900 font-medium">
+                            {profile.website || "Not provided"}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <div className="mt-6 space-y-2">
+                    <label className="text-sm font-medium text-slate-700">
                       Bio
                     </label>
                     {editing ? (
@@ -553,38 +604,40 @@ export default function ProfilePage() {
                           setFormData({ ...formData, bio: e.target.value })
                         }
                         rows={4}
-                        placeholder="Parlez-nous de vous..."
-                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all"
+                        placeholder="Tell us about yourself..."
                       />
                     ) : (
-                      <p className="px-4 py-3 bg-slate-50 rounded-xl text-slate-900">
-                        {profile.bio || "Aucune bio"}
-                      </p>
+                      <div className="px-4 py-3 bg-slate-50 rounded-lg border border-slate-200 min-h-[100px]">
+                        <p className=" text-slate-900 whitespace-pre-line break-words break-all leading-relaxed max-w-full ">
+                          {profile.bio || "No bio provided"}
+                        </p>
+                      </div>
                     )}
                   </div>
 
                   {editing && (
-                    <div className="flex gap-4 mt-6">
+                    <div className="flex gap-3 mt-8 pt-6 border-t border-slate-100">
                       <button
                         onClick={() => setEditing(false)}
-                        className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl hover:border-slate-400 transition-colors"
+                        className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:border-slate-400 transition-all duration-300"
                       >
-                        Annuler
+                        Cancel
                       </button>
                       <button
                         onClick={handleSaveProfile}
                         disabled={saving}
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {saving ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Enregistrement...
+                            Saving...
                           </>
                         ) : (
                           <>
                             <Check className="w-5 h-5" />
-                            Sauvegarder
+                            Save Changes
                           </>
                         )}
                       </button>
@@ -593,103 +646,116 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Sécurité */}
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-b border-slate-200">
-                  <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                    <Lock className="w-6 h-6 text-green-600" />
-                    Sécurité
-                  </h2>
+              {/* Security Card */}
+              <div className="bg-white rounded-xl shadow-lg border border-slate-200">
+                <div className="border-b border-slate-100">
+                  <div className="p-6">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-red-600" />
+                      </div>
+                      Security & Privacy
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-1">
+                      Manage your account security settings
+                    </p>
+                  </div>
                 </div>
 
-                <div className="p-8 space-y-6">
-                  {/* Email */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div className="p-6 space-y-6">
+                  {/* Email Verification */}
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Mail className="w-6 h-6 text-purple-600" />
+                      <div className="w-12 h-12 bg-white rounded-lg border border-blue-200 flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">
                           {profile.email}
                         </p>
-                        <p className="text-sm text-slate-600">Adresse email</p>
+                        <p className="text-sm text-slate-600">Email Address</p>
                       </div>
                     </div>
                     {profile.email_verified ? (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span className="text-sm font-medium">Vérifié</span>
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        <span className="text-emerald-700 font-medium text-sm">
+                          Verified
+                        </span>
                       </div>
                     ) : (
                       <button
                         onClick={handleVerifyEmail}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                        className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 shadow-md"
                       >
-                        Vérifier
+                        Verify Email
                       </button>
                     )}
                   </div>
 
-                  {/* Téléphone */}
+                  {/* Phone Verification */}
                   {profile.phone && (
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-200">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Phone className="w-6 h-6 text-blue-600" />
+                        <div className="w-12 h-12 bg-white rounded-lg border border-slate-300 flex items-center justify-center">
+                          <Phone className="w-6 h-6 text-slate-600" />
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900">
                             {profile.phone}
                           </p>
-                          <p className="text-sm text-slate-600">
-                            Numéro de téléphone
-                          </p>
+                          <p className="text-sm text-slate-600">Phone Number</p>
                         </div>
                       </div>
                       {profile.phone_verified ? (
-                        <div className="flex items-center gap-2 text-green-600">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="text-sm font-medium">Vérifié</span>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <span className="text-emerald-700 font-medium text-sm">
+                            Verified
+                          </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-orange-600">
-                          <AlertCircle className="w-5 h-5" />
-                          <span className="text-sm font-medium">
-                            Non vérifié
+                        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                          <span className="text-amber-700 font-medium text-sm">
+                            Not Verified
                           </span>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Mot de passe */}
+                  {/* Password Change */}
                   <div>
                     {!editingPassword ? (
                       <button
                         onClick={() => setEditingPassword(true)}
-                        className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-200 hover:border-slate-300 transition-all duration-300 group"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                            <Lock className="w-6 h-6 text-red-600" />
+                          <div className="w-12 h-12 bg-white rounded-lg border border-slate-300 flex items-center justify-center group-hover:border-slate-400 transition-colors">
+                            <Key className="w-6 h-6 text-slate-600" />
                           </div>
                           <div className="text-left">
                             <p className="font-semibold text-slate-900">
-                              Mot de passe
+                              Password
                             </p>
                             <p className="text-sm text-slate-600">
-                              Dernière modification il y a 30 jours
+                              Last changed recently
                             </p>
                           </div>
                         </div>
-                        <Edit3 className="w-5 h-5 text-slate-400" />
+                        <div className="px-4 py-2 bg-white border border-slate-300 rounded-lg group-hover:border-slate-400 transition-colors">
+                          <span className="text-slate-700 font-medium text-sm">
+                            Change
+                          </span>
+                        </div>
                       </button>
                     ) : (
-                      <div className="space-y-4 p-4 bg-slate-50 rounded-xl">
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
-                            Mot de passe actuel
+                      <div className="space-y-4 p-6 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">
+                            Current Password
                           </label>
                           <div className="relative">
                             <input
@@ -701,14 +767,15 @@ export default function ProfilePage() {
                                   currentPassword: e.target.value,
                                 })
                               }
-                              className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none pr-12"
+                              placeholder="Enter current password"
                             />
                             <button
                               type="button"
                               onClick={() =>
                                 setShowCurrentPassword(!showCurrentPassword)
                               }
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                             >
                               {showCurrentPassword ? (
                                 <EyeOff className="w-5 h-5" />
@@ -719,76 +786,80 @@ export default function ProfilePage() {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
-                            Nouveau mot de passe
-                          </label>
-                          <div className="relative">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">
+                              New Password
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showNewPassword ? "text" : "password"}
+                                value={passwordData.newPassword}
+                                onChange={(e) =>
+                                  setPasswordData({
+                                    ...passwordData,
+                                    newPassword: e.target.value,
+                                  })
+                                }
+                                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none pr-12"
+                                placeholder="Enter new password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowNewPassword(!showNewPassword)
+                                }
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                              >
+                                {showNewPassword ? (
+                                  <EyeOff className="w-5 h-5" />
+                                ) : (
+                                  <Eye className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">
+                              Confirm Password
+                            </label>
                             <input
-                              type={showNewPassword ? "text" : "password"}
-                              value={passwordData.newPassword}
+                              type="password"
+                              value={passwordData.confirmPassword}
                               onChange={(e) =>
                                 setPasswordData({
                                   ...passwordData,
-                                  newPassword: e.target.value,
+                                  confirmPassword: e.target.value,
                                 })
                               }
-                              className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                              className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                              placeholder="Confirm new password"
                             />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setShowNewPassword(!showNewPassword)
-                              }
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                            >
-                              {showNewPassword ? (
-                                <EyeOff className="w-5 h-5" />
-                              ) : (
-                                <Eye className="w-5 h-5" />
-                              )}
-                            </button>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-2">
-                            Confirmer le mot de passe
-                          </label>
-                          <input
-                            type="password"
-                            value={passwordData.confirmPassword}
-                            onChange={(e) =>
-                              setPasswordData({
-                                ...passwordData,
-                                confirmPassword: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </div>
-
-                        <div className="flex gap-4">
+                        <div className="flex gap-3 pt-4">
                           <button
                             onClick={() => setEditingPassword(false)}
-                            className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl hover:border-slate-400 transition-colors"
+                            className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:border-slate-400 transition-all duration-300"
                           >
-                            Annuler
+                            Cancel
                           </button>
                           <button
                             onClick={handleChangePassword}
                             disabled={saving}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-xl hover:from-red-700 hover:to-orange-700 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
                           >
                             {saving ? (
                               <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Modification...
+                                Updating...
                               </>
                             ) : (
                               <>
                                 <Lock className="w-5 h-5" />
-                                Modifier le mot de passe
+                                Update Password
                               </>
                             )}
                           </button>
@@ -800,95 +871,204 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Colonne latérale */}
-            <div className="space-y-6">
-              {/* Badges de vérification */}
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl border-2 border-yellow-200/50 p-6">
+            {/* Right Column */}
+            <div className="space-y-8">
+              {/* Verification Status */}
+              <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl shadow-lg border border-slate-200 p-6">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-yellow-600" />
-                  Vérifications
+                  <Verified className="w-5 h-5 text-blue-600" />
+                  Verification Status
                 </h3>
                 <div className="space-y-3">
-                  <div
-                    className={`flex items-center justify-between p-3 rounded-xl ${
-                      profile.email_verified ? "bg-green-100" : "bg-slate-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Mail
-                        className={`w-5 h-5 ${
-                          profile.email_verified
-                            ? "text-green-600"
-                            : "text-slate-400"
-                        }`}
-                      />
-                      <span className="text-sm font-medium">Email</span>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${profile.email_verified ? "bg-emerald-100" : "bg-slate-100"}`}
+                      >
+                        <Mail
+                          className={`w-4 h-4 ${profile.email_verified ? "text-emerald-600" : "text-slate-400"}`}
+                        />
+                      </div>
+                      <span className="font-medium text-slate-900">Email</span>
                     </div>
                     {profile.email_verified ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <div className="flex items-center gap-1.5 text-emerald-600">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-sm font-medium">Verified</span>
+                      </div>
                     ) : (
-                      <X className="w-5 h-5 text-slate-400" />
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <X className="w-4 h-4" />
+                        <span className="text-sm font-medium">Pending</span>
+                      </div>
                     )}
                   </div>
 
-                  <div
-                    className={`flex items-center justify-between p-3 rounded-xl ${
-                      profile.phone_verified ? "bg-green-100" : "bg-slate-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Phone
-                        className={`w-5 h-5 ${
-                          profile.phone_verified
-                            ? "text-green-600"
-                            : "text-slate-400"
-                        }`}
-                      />
-                      <span className="text-sm font-medium">Téléphone</span>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-300">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${profile.phone_verified ? "bg-emerald-100" : "bg-slate-100"}`}
+                      >
+                        <Phone
+                          className={`w-4 h-4 ${profile.phone_verified ? "text-emerald-600" : "text-slate-400"}`}
+                        />
+                      </div>
+                      <span className="font-medium text-slate-900">Phone</span>
                     </div>
                     {profile.phone_verified ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <div className="flex items-center gap-1.5 text-emerald-600">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-sm font-medium">Verified</span>
+                      </div>
                     ) : (
-                      <X className="w-5 h-5 text-slate-400" />
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <X className="w-4 h-4" />
+                        <span className="text-sm font-medium">Unverified</span>
+                      </div>
                     )}
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      Security Score
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {(profile.email_verified ? 50 : 0) +
+                        (profile.phone_verified ? 50 : 0)}
+                      %
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-700"
+                      style={{
+                        width: `${(profile.email_verified ? 50 : 0) + (profile.phone_verified ? 50 : 0)}%`,
+                      }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Suggestions */}
+              {/* Profile Tips */}
               {completionPercentage < 100 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">
-                    Complétez votre profil
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl shadow-lg border border-amber-200 p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-amber-600" />
+                    Complete Your Profile
                   </h3>
-                  <ul className="space-y-3 text-sm text-slate-700">
+                  <div className="space-y-4">
                     {!profile.avatar_url && (
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                        <span>Ajoutez une photo de profil</span>
-                      </li>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                          <Camera className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900 text-sm">
+                            Add profile photo
+                          </p>
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            Upload a photo to personalize your account
+                          </p>
+                        </div>
+                      </div>
                     )}
                     {!profile.bio && (
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                        <span>Rédigez une bio</span>
-                      </li>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900 text-sm">
+                            Write a bio
+                          </p>
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            Tell others about yourself
+                          </p>
+                        </div>
+                      </div>
                     )}
                     {!profile.phone && (
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                        <span>Ajoutez votre numéro de téléphone</span>
-                      </li>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                          <Phone className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900 text-sm">
+                            Add phone number
+                          </p>
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            For account recovery and security
+                          </p>
+                        </div>
+                      </div>
                     )}
                     {!profile.email_verified && (
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                        <span>Vérifiez votre adresse email</span>
-                      </li>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                          <Shield className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900 text-sm">
+                            Verify email
+                          </p>
+                          <p className="text-slate-600 text-xs mt-0.5">
+                            Secure your account and access all features
+                          </p>
+                        </div>
+                      </div>
                     )}
-                  </ul>
+                  </div>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-md"
+                  >
+                    Complete Profile
+                  </button>
                 </div>
               )}
+
+              {/* Account Info */}
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl shadow-lg border border-slate-200 p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-6">
+                  Account Information
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Member Since</span>
+                    <span className="font-medium text-slate-900">
+                      {new Date(profile.created_at).toLocaleDateString(
+                        language === "en"
+                          ? "en-US"
+                          : language === "es"
+                            ? "es-ES"
+                            : "fr-FR",
+                        { month: "long", year: "numeric" },
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Last Updated</span>
+                    <span className="font-medium text-slate-900">
+                      {new Date(profile.updated_at).toLocaleDateString(
+                        language === "en"
+                          ? "en-US"
+                          : language === "es"
+                            ? "es-ES"
+                            : "fr-FR",
+                        { month: "short", day: "numeric" },
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Profile ID</span>
+                    <span className="font-mono text-sm text-slate-900 bg-slate-200 px-2 py-1 rounded">
+                      {profile.id.substring(0, 8)}...
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

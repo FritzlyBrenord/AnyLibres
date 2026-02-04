@@ -100,8 +100,12 @@ export async function GET(
       : null;
 
     // Ajouter le client et le service au résultat
+    // IMPORTANT: Convertir dispute d'un array à un objet unique
     const enrichedOrder = {
       ...order,
+      dispute: Array.isArray(order.dispute) && order.dispute.length > 0
+        ? order.dispute[0]
+        : order.dispute,
       service: service,
       service_info: service ? {
         revisions_included: service.revisions_included || 0,
@@ -117,6 +121,12 @@ export async function GET(
     };
 
     console.log('✅ Commande récupérée avec succès');
+    console.log('🔍 Dispute transformé:', {
+      wasArray: Array.isArray(order.dispute),
+      isNowObject: !Array.isArray(enrichedOrder.dispute),
+      hasSessionStatus: !!enrichedOrder.dispute?.session_status,
+      sessionStatus: enrichedOrder.dispute?.session_status
+    });
 
     return NextResponse.json({
       success: true,

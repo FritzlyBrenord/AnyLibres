@@ -27,6 +27,9 @@ import {
 import MediationChatRoom from "@/components/dispute/MediationChatRoom";
 import { useAuth } from "@/contexts/AuthContext";
 import AdminOrderDetail from "./AdminOrderDetail";
+import { useLanguageContext } from "@/contexts/LanguageContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
+
 
 interface DisputeDetailModalProps {
   dispute: any;
@@ -42,6 +45,9 @@ export default function DisputeDetailModal({
   onUpdate,
 }: DisputeDetailModalProps) {
   const { user } = useAuth();
+  const { t } = useLanguageContext();
+  const { hasPermission } = usePermissions();
+
   const [activeTab, setActiveTab] = useState<"details" | "chat" | "resolution">("details");
   const [resolutionNote, setResolutionNote] = useState("");
   const [processing, setProcessing] = useState(false);
@@ -66,16 +72,16 @@ export default function DisputeDetailModal({
   const handleReopen = async () => {
     let newDetails = dispute.details;
     const isMeeting = dispute.details?.includes("[DEMANDE DE RÉUNION]");
-    
     if (isMeeting) {
-        const newDate = prompt("⚠️ Litige Réunion : Veuillez saisir une NOUVELLE date/heure pour réouvrir (Format: YYYY-MM-DD HH:MM)", "");
+        const newDate = prompt(t.admin.disputeManagement.modal.prompts.newDate, "");
         if (!newDate) return;
         
         const baseComplaint = (dispute.details || "").split(/\[DEMANDE DE RÉUNION\]/)[0].trim();
         newDetails = `${baseComplaint}\n\n[DEMANDE DE RÉUNION]: ${newDate}`;
     } else {
-        if (!confirm("Voulez-vous vraiment réouvrir ce litige ?")) return;
+        if (!confirm(t.admin.disputeManagement.modal.prompts.confirmReopen)) return;
     }
+
 
     setProcessing(true);
     try {
@@ -93,7 +99,8 @@ export default function DisputeDetailModal({
             throw new Error(errorData.error || "Erreur réouverture");
         }
         
-        alert("✅ Litige réouvert avec succès !");
+        alert(t.admin.disputeManagement.modal.alerts.reopenSuccess);
+
         onUpdate();
         onClose();
     } catch (e: any) {
@@ -104,9 +111,10 @@ export default function DisputeDetailModal({
   };
 
   const handleStartAnalysis = async () => {
-    if (!confirm("Voulez-vous lancer une session de médiation pour ce litige ? Les deux parties seront invitées à rejoindre.")) {
+    if (!confirm(t.admin.disputeManagement.modal.prompts.confirmMediation)) {
       return;
     }
+
     
     setProcessing(true);
     try {
@@ -126,7 +134,8 @@ export default function DisputeDetailModal({
             throw new Error(data.error || "Erreur lors du démarrage de la médiation");
         }
         
-        alert("✅ Session de médiation lancée ! Les parties ont été notifiées.");
+        alert(t.admin.disputeManagement.modal.alerts.mediationStarted);
+
         onUpdate();
         onClose();
     } catch (e: any) {
@@ -139,11 +148,12 @@ export default function DisputeDetailModal({
 
   const handleResolve = async (action: 'refund_client' | 'release_provider' | 'dismiss' | 'cancel_dispute' | 'change_meeting_date') => {
       if (!resolutionNote && !['cancel_dispute', 'change_meeting_date', 'dismiss'].includes(action)) {
-          alert("Veuillez ajouter une note de résolution expliquant votre décision.");
+          alert(t.admin.disputeManagement.modal.prompts.addNote);
           return;
       }
       
-      if (action !== 'change_meeting_date' && !confirm("Êtes-vous sûr de vouloir appliquer cette décision ? Cette action est irréversible.")) return;
+      if (action !== 'change_meeting_date' && !confirm(t.admin.disputeManagement.modal.prompts.confirmDecision)) return;
+
 
       setProcessing(true);
       try {
@@ -161,7 +171,8 @@ export default function DisputeDetailModal({
                   throw new Error(errJson.error || "Erreur annulation");
               }
           } else if (action === 'change_meeting_date') {
-              const newDate = prompt("Entrez la nouvelle date/heure (Format: YYYY-MM-DD HH:MM)", "");
+              const newDate = prompt(t.admin.disputeManagement.modal.prompts.enterNewDate, "");
+
               if (!newDate) {
                   setProcessing(false);
                   return;
@@ -182,7 +193,8 @@ export default function DisputeDetailModal({
 
               if (!res.ok) throw new Error("Erreur mise à jour date");
               dispute.details = updatedDetails;
-              alert("✅ Date de réunion mise à jour !");
+              alert(t.admin.disputeManagement.modal.alerts.dateUpdated);
+
           } else {
              const disputeRes = await fetch('/api/admin/disputes/update', {
                  method: 'POST',
@@ -213,10 +225,11 @@ export default function DisputeDetailModal({
              if (!orderRes.ok) throw new Error("Erreur mise à jour statut commande");
 
              if (action === 'refund_client') {
-                 alert("✅ Remboursement validé. La commande est maintenant 'Remboursée'.");
+                 alert(t.admin.disputeManagement.modal.alerts.refundValidated);
              } else {
-                 alert("✅ Fonds libérés. La commande est maintenant 'Terminée'.");
+                 alert(t.admin.disputeManagement.modal.alerts.fundsReleased);
              }
+
           }
 
           onUpdate();
@@ -248,11 +261,12 @@ export default function DisputeDetailModal({
                    </div>
                    <div>
                        <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
-                          Litige #{dispute.id.slice(0, 8)}
+                          {t.admin.disputeManagement.modal.title}{dispute.id.slice(0, 8)}
                        </h2>
                        <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                          Commande #{dispute.order_id.slice(0, 8)} • Ouvert le {new Date(dispute.created_at).toLocaleDateString()}
+                          {t.admin.disputeManagement.modal.order}{dispute.order_id.slice(0, 8)} • {t.admin.disputeManagement.modal.openedOn} {new Date(dispute.created_at).toLocaleDateString()}
                        </p>
+
                    </div>
                </div>
                
@@ -264,9 +278,10 @@ export default function DisputeDetailModal({
                    }`}>
                        {dispute.status === 'open' ? <AlertTriangle className="w-4 h-4"/> : 
                         dispute.status === 'resolved' ? <CheckCircle className="w-4 h-4"/> : <Clock className="w-4 h-4"/>}
-                       {dispute.status === 'open' ? 'Ouvert' :
-                        dispute.status === 'under_analysis' ? 'En Analyse' :
-                        dispute.status === 'resolved' ? 'Résolu' : 'Annulé'}
+                       {dispute.status === 'open' ? t.admin.disputeManagement.status.open :
+                        dispute.status === 'under_analysis' ? t.admin.disputeManagement.status.under_analysis :
+                        dispute.status === 'resolved' ? t.admin.disputeManagement.status.resolved : t.admin.disputeManagement.status.cancelled}
+
                    </div>
 
                    <button 
@@ -318,8 +333,9 @@ export default function DisputeDetailModal({
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-left ${activeTab === 'details' ? 'bg-purple-600 text-white shadow-lg' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
                   >
                       <FileText className="w-5 h-5" />
-                      Détails
+                      {t.admin.disputeManagement.modal.tabs.details}
                   </button>
+
                   
                   {/* Conversations et Résolution uniquement si ouvert */}
                   {(dispute.status === 'open' || dispute.status === 'under_analysis') && (
@@ -329,20 +345,23 @@ export default function DisputeDetailModal({
                               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-left ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
                           >
                               <MessageSquare className="w-5 h-5" />
-                              Conversation
+                              {t.admin.disputeManagement.modal.tabs.chat}
                           </button>
+
                           <button 
                               onClick={() => setActiveTab('resolution')}
                               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-left ${activeTab === 'resolution' ? 'bg-purple-600 text-white shadow-lg' : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-white hover:shadow-sm'}`}
                           >
                               <Shield className="w-5 h-5" />
-                              Résolution
+                              {t.admin.disputeManagement.modal.tabs.resolution}
                           </button>
+
                       </>
                   )}
                   
                   <div className={`mt-8 p-4 rounded-xl ${isDark ? "bg-gray-800" : "bg-white shadow-sm"}`}>
-                      <h4 className={`text-xs font-bold uppercase mb-3 ${isDark ? "text-gray-500" : "text-gray-400"}`}>Actions Rapides</h4>
+                      <h4 className={`text-xs font-bold uppercase mb-3 ${isDark ? "text-gray-500" : "text-gray-400"}`}>{t.admin.disputeManagement.modal.actions.quickActions}</h4>
+
                       {dispute.status === 'open' && (
                           <button 
                               onClick={handleStartAnalysis}
@@ -350,8 +369,9 @@ export default function DisputeDetailModal({
                               className="w-full py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200 transition-colors flex items-center justify-center gap-2"
                           >
                               {processing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Shield className="w-4 h-4" />}
-                              Lancer la médiation
+                              {t.admin.disputeManagement.modal.actions.startMediation}
                           </button>
+
                       )}
                       {dispute.status === 'cancelled' && (
                           <button 
@@ -360,8 +380,9 @@ export default function DisputeDetailModal({
                               className="w-full py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold hover:bg-green-200 transition-colors flex items-center justify-center gap-2"
                           >
                               {processing ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4" />}
-                              Réouvrir le litige
+                              {t.admin.disputeManagement.modal.actions.reopen}
                           </button>
+
                       )}
                       {(dispute.status === 'open' || dispute.status === 'under_analysis') && (
                           <button 
@@ -369,8 +390,9 @@ export default function DisputeDetailModal({
                               className="w-full py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 transition-colors flex items-center justify-center gap-2 mt-2"
                           >
                               <MessageSquare className="w-4 h-4" />
-                              Superviser la Médiation
+                              {t.admin.disputeManagement.modal.actions.supervise}
                           </button>
+
                       )}
                   </div>
               </div>
@@ -407,15 +429,18 @@ export default function DisputeDetailModal({
                                 )}
                                 <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-red-900"}`}>
                                 <AlertTriangle className="w-5 h-5 text-red-500" />
-                                Informations du Problème
+                                {t.admin.disputeManagement.modal.details.problemInfo}
                             </h3>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <p className={`text-sm font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>Motif déclaré</p>
+                                    <p className={`text-sm font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.reason}</p>
+
                                     <p className={`text-lg font-bold ${isDark ? "text-white" : "text-gray-900"}`}>{dispute.reason}</p>
                                 </div>
                                 <div>
-                                    <p className={`text-sm font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>Ouvert par</p>
+                                    <p className={`text-sm font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.openedBy}</p>
+
                                     <div className="flex items-center gap-3">
                                         {dispute.opener?.avatar_url ? (
                                            <img src={dispute.opener.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
@@ -429,13 +454,15 @@ export default function DisputeDetailModal({
                                                 {dispute.opener?.first_name} {dispute.opener?.last_name}
                                             </p>
                                             <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                                                {dispute.opener?.email || "Email masqué"} • <span className="capitalize">{dispute.opener?.role || "Utilisateur"}</span>
+                                                {dispute.opener?.email || t.admin.disputeManagement.modal.details.emailHidden} • <span className="capitalize">{dispute.opener?.role || "Utilisateur"}</span>
                                             </p>
+
                                         </div>
                                     </div>
                                 </div>
                                 <div className="col-span-2">
-                                    <p className={`text-sm font-medium mb-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>Description détaillée</p>
+                                    <p className={`text-sm font-medium mb-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.description}</p>
+
                                     <div className={`p-4 rounded-xl ${isDark ? "bg-gray-900 text-gray-300" : "bg-white text-gray-700"} border border-gray-200 dark:border-gray-700 whitespace-pre-wrap leading-relaxed`}>
                                         {(() => {
                                             const details = dispute.details || "";
@@ -448,27 +475,31 @@ export default function DisputeDetailModal({
                                                     <div className="space-y-4">
                                                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg">
                                                             <p className="font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2 mb-1">
-                                                                📅 Réunion demandée :
+                                                                {t.admin.disputeManagement.modal.details.meetingRequested}
                                                             </p>
+
                                                             <p className="text-amber-700 dark:text-amber-300">{meeting}</p>
                                                         </div>
                                                         {complaint && (
                                                             <div>
-                                                                <p className="font-bold mb-1">Plainte :</p>
+                                                                <p className="font-bold mb-1">{t.admin.disputeManagement.modal.details.complaint}</p>
                                                                 <p>{complaint}</p>
                                                             </div>
                                                         )}
+
                                                     </div>
                                                 );
                                             }
-                                            return details || "Aucun détail fourni.";
+                                            return details || t.admin.disputeManagement.modal.details.noDetails;
                                         })()}
                                     </div>
+
                                 </div>
 
                                 {dispute.resolution_note && (
                                     <div className="col-span-2">
-                                        <p className={`text-sm font-medium mb-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>Note de résolution</p>
+                                        <p className={`text-sm font-medium mb-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.resolutionNote}</p>
+
                                         <div className={`p-4 rounded-xl ${isDark ? "bg-purple-900/20 text-purple-200" : "bg-purple-50 text-purple-800"} border border-purple-100 dark:border-purple-800 italic`}>
                                             "{dispute.resolution_note}"
                                         </div>
@@ -479,21 +510,25 @@ export default function DisputeDetailModal({
 
                         {/* Order Info */}
                         <div>
-                            <h3 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>Commande Concernée</h3>
+                            <h3 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-gray-900"}`}>{t.admin.disputeManagement.modal.details.orderConcerned}</h3>
+
                             <div className={`p-6 rounded-2xl border ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <p className={`text-2xl font-bold font-mono ${isDark ? "text-white" : "text-gray-900"}`}>
                                             {(dispute.order?.total_cents / 100).toFixed(2)} {dispute.order?.currency}
                                         </p>
-                                        <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>Montant total</p>
+                                        <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.totalAmount}</p>
                                     </div>
-                                    <button 
-                                        onClick={() => setShowOrderDetail(true)}
-                                        className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-                                    >
-                                        Voir la commande <ExternalLink className="w-3 h-3"/>
-                                    </button>
+                                    {hasPermission('orders.details.full') && (
+                                        <button 
+                                            onClick={() => setShowOrderDetail(true)}
+                                            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                                        >
+                                            {t.admin.disputeManagement.modal.details.viewOrder} <ExternalLink className="w-3 h-3"/>
+                                        </button>
+                                    )}
+
                                 </div>
                                 
                                 <div className="mt-6 flex items-center gap-8">
@@ -502,7 +537,8 @@ export default function DisputeDetailModal({
                                             <User className="w-5 h-5 text-gray-600"/>
                                         </div>
                                         <div>
-                                            <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Client</p>
+                                            <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.client}</p>
+
                                             <p className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
                                                 {dispute.order?.client?.first_name} {dispute.order?.client?.last_name}
                                             </p>
@@ -514,7 +550,8 @@ export default function DisputeDetailModal({
                                             <User className="w-5 h-5 text-purple-600"/>
                                         </div>
                                         <div>
-                                            <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>Prestataire</p>
+                                            <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{t.admin.disputeManagement.modal.details.provider}</p>
+
                                             <p className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
                                                 {dispute.order?.provider?.profile?.first_name} {dispute.order?.provider?.profile?.last_name}
                                             </p>
@@ -549,10 +586,11 @@ export default function DisputeDetailModal({
                 {/* RESOLUTION TAB */}
                 {activeTab === 'resolution' && (
                     <div className="animate-fade-in max-w-2xl mx-auto py-4">
-                         <h3 className={`text-2xl font-bold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>Résolution du Litige</h3>
+                         <h3 className={`text-2xl font-bold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>{t.admin.disputeManagement.modal.actions.resolveTitle}</h3>
                          <p className={`mb-8 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-                             Veuillez examiner les preuves et décider de l'issue du litige. Cette action est finale.
+                             {t.admin.disputeManagement.modal.actions.resolveDesc}
                          </p>
+
 
                          <div className="space-y-6">
                              {/* Détection du type de litige pour affichage adapté */}
@@ -565,12 +603,13 @@ export default function DisputeDetailModal({
                                          <div className="grid grid-cols-1 gap-4">
                                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
                                                 <h4 className="font-bold text-amber-900 mb-1 flex items-center gap-2">
-                                                    📅 Gestion de la Réunion
+                                                    {t.admin.disputeManagement.modal.actions.meetingManagement}
                                                 </h4>
                                                 <p className="text-sm text-amber-800">
-                                                    Ce litige contient une demande de réunion. Vous pouvez confirmer, reporter ou annuler cette demande.
+                                                    {t.admin.disputeManagement.modal.actions.meetingManagementDesc}
                                                 </p>
                                             </div>
+
 
                                             <button 
                                                 disabled={processing}
@@ -580,10 +619,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-blue-200 rounded-lg text-blue-700"><CheckCircle className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-blue-900">Confirmer la réunion</h4>
-                                                        <p className="text-sm text-blue-700">Valider le créneau et informer les parties.</p>
+                                                        <h4 className="font-bold text-blue-900">{t.admin.disputeManagement.modal.actions.confirmMeeting}</h4>
+                                                        <p className="text-sm text-blue-700">{t.admin.disputeManagement.modal.actions.confirmMeetingDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
 
                                             <button 
@@ -594,10 +634,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-purple-200 rounded-lg text-purple-700"><RefreshCw className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-purple-900">Modifier la date de réunion</h4>
-                                                        <p className="text-sm text-purple-700">Proposer un nouveau créneau au client et au prestataire.</p>
+                                                        <h4 className="font-bold text-purple-900">{t.admin.disputeManagement.modal.actions.changeDate}</h4>
+                                                        <p className="text-sm text-purple-700">{t.admin.disputeManagement.modal.actions.changeDateDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
 
                                             <button 
@@ -608,10 +649,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-red-200 rounded-lg text-red-700"><Ban className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-red-900">Annuler la demande / Fermer litige</h4>
-                                                        <p className="text-sm text-red-700">Rejeter la demande de réunion et clore le litige.</p>
+                                                        <h4 className="font-bold text-red-900">{t.admin.disputeManagement.modal.actions.cancelRequest}</h4>
+                                                        <p className="text-sm text-red-700">{t.admin.disputeManagement.modal.actions.cancelRequestDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
                                          </div>
                                      );
@@ -622,12 +664,13 @@ export default function DisputeDetailModal({
                                      <>
                                         <div>
                                             <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                                                Note de résolution (Visible par les utilisateurs)
+                                                {t.admin.disputeManagement.modal.actions.resolutionNoteLabel}
                                             </label>
                                             <textarea 
                                                 className={`w-full p-4 rounded-xl border h-32 focus:ring-2 focus:ring-purple-500 outline-none transition-all ${isDark ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
-                                                placeholder="Expliquez la décision et la répartition des fonds..."
+                                                placeholder={t.admin.disputeManagement.modal.actions.resolutionNotePlaceholder}
                                                 value={resolutionNote}
+
                                                 onChange={(e) => setResolutionNote(e.target.value)}
                                             />
                                         </div>
@@ -641,10 +684,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-green-200 rounded-lg text-green-700"><DollarSign className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-green-900">Accepter le Remboursement</h4>
-                                                        <p className="text-sm text-green-700">Restituer l'intégralité des fonds au client.</p>
+                                                        <h4 className="font-bold text-green-900">{t.admin.disputeManagement.modal.actions.refundClient}</h4>
+                                                        <p className="text-sm text-green-700">{t.admin.disputeManagement.modal.actions.refundClientDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
 
                                             <button 
@@ -655,10 +699,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-blue-200 rounded-lg text-blue-700"><Shield className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-blue-900">Libérer les Fonds (Refuser remboursement)</h4>
-                                                        <p className="text-sm text-blue-700">Valider la commande et payer le prestataire.</p>
+                                                        <h4 className="font-bold text-blue-900">{t.admin.disputeManagement.modal.actions.releaseProvider}</h4>
+                                                        <p className="text-sm text-blue-700">{t.admin.disputeManagement.modal.actions.releaseProviderDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
 
                                             <button 
@@ -669,10 +714,11 @@ export default function DisputeDetailModal({
                                                 <div className="flex items-center gap-4">
                                                     <div className="p-2 bg-gray-200 rounded-lg text-gray-700"><Ban className="w-5 h-5"/></div>
                                                     <div className="text-left">
-                                                        <h4 className="font-bold text-gray-900">Annuler / Fermer sans action</h4>
-                                                        <p className="text-sm text-gray-600">Rejeter le litige et laisser la commande en l'état.</p>
+                                                        <h4 className="font-bold text-gray-900">{t.admin.disputeManagement.modal.actions.closeNoAction}</h4>
+                                                        <p className="text-sm text-gray-600">{t.admin.disputeManagement.modal.actions.closeNoActionDesc}</p>
                                                     </div>
                                                 </div>
+
                                             </button>
                                         </div>
                                      </>

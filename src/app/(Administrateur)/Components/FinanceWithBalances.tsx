@@ -10,23 +10,21 @@ import Finance from './Finance';
 import BalanceManagement from './BalanceManagement';
 import PaymentReleaseRules from './PaymentReleaseRules';
 import WithdrawalManagement from './WithdrawalManagement';
-import { useLanguageContext } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/hooks/useLanguage';
 
 interface FinanceWithBalancesProps {
   isDark: boolean;
 }
 
 export default function FinanceWithBalances({ isDark }: FinanceWithBalancesProps) {
-  const { t } = useLanguageContext();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tAny = t as Record<string, any>;
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'balances' | 'withdrawals' | 'security'>('overview');
 
   const tabs = [
-    { id: 'overview', label: tAny.admin?.financeWithBalances?.tabs?.overview || 'Vue d\'ensemble', icon: Wallet },
-    { id: 'balances', label: tAny.admin?.financeWithBalances?.tabs?.balances || 'Gestion Soldes', icon: Users },
-    { id: 'withdrawals', label: tAny.admin?.financeWithBalances?.tabs?.withdrawals || 'Retraits', icon: FileText },
-    { id: 'security', label: tAny.admin?.financeWithBalances?.tabs?.security || 'Sécurité & Règles', icon: ShieldCheck },
+    { id: 'overview', label: t('admin.financeWithBalances.tabs.overview'), icon: Wallet },
+    { id: 'balances', label: t('admin.financeWithBalances.tabs.balances'), icon: Users },
+    { id: 'withdrawals', label: t('admin.financeWithBalances.tabs.withdrawals'), icon: FileText },
+    { id: 'security', label: t('admin.financeWithBalances.tabs.security'), icon: ShieldCheck },
   ];
 
   return (

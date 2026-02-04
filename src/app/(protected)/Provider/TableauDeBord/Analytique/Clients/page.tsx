@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import HeaderProvider from "@/components/layout/HeaderProvider";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
 import {
   PieChart,
@@ -65,7 +66,7 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      return new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -80,6 +81,7 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
 }
 
 export default function AnalyticsClients() {
+  const { t, language } = useSafeLanguage();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -202,7 +204,7 @@ export default function AnalyticsClients() {
               <div className="absolute inset-0 border-4 border-purple-200 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
             </div>
-            <p className="text-gray-600 font-medium">Chargement des clients...</p>
+            <p className="text-gray-600 font-medium">{t.analytics.clientsPage.loading}</p>
           </div>
         </div>
       </div>
@@ -224,10 +226,10 @@ export default function AnalyticsClients() {
 
   // Distribution des clients par nombre de commandes
   const orderDistribution = [
-    { name: '1 commande', value: clients.filter(c => c.orders_count === 1).length, color: '#ef4444' },
-    { name: '2-3 commandes', value: clients.filter(c => c.orders_count >= 2 && c.orders_count <= 3).length, color: '#f59e0b' },
-    { name: '4-5 commandes', value: clients.filter(c => c.orders_count >= 4 && c.orders_count <= 5).length, color: '#10b981' },
-    { name: '6+ commandes', value: clients.filter(c => c.orders_count >= 6).length, color: '#8b5cf6' }
+    { name: t.analytics.clientsPage.distribution.legend.one, value: clients.filter(c => c.orders_count === 1).length, color: '#ef4444' },
+    { name: t.analytics.clientsPage.distribution.legend.twoToThree, value: clients.filter(c => c.orders_count >= 2 && c.orders_count <= 3).length, color: '#f59e0b' },
+    { name: t.analytics.clientsPage.distribution.legend.fourToFive, value: clients.filter(c => c.orders_count >= 4 && c.orders_count <= 5).length, color: '#10b981' },
+    { name: t.analytics.clientsPage.distribution.legend.sixPlus, value: clients.filter(c => c.orders_count >= 6).length, color: '#8b5cf6' }
   ].filter(d => d.value > 0);
 
   // Stats pour graphique valeur moyenne par commande
@@ -250,11 +252,11 @@ export default function AnalyticsClients() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Analyse Clients
+                {t.analytics.clientsPage.title}
               </h1>
               <p className="text-gray-600 flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                Comprenez qui sont vos clients et comment les fidéliser
+                {t.analytics.clientsPage.subtitle}
               </p>
             </div>
             <button
@@ -263,7 +265,7 @@ export default function AnalyticsClients() {
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="font-medium text-gray-700">Actualiser</span>
+              <span className="font-medium text-gray-700">{t.analytics.clientsPage.refresh}</span>
             </button>
           </div>
         </div>
@@ -276,9 +278,9 @@ export default function AnalyticsClients() {
                 <Users className="w-6 h-6 text-purple-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Clients Uniques</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.clientsPage.kpi.uniqueClients}</p>
             <p className="text-4xl font-bold text-gray-900">{totalUniqueClients}</p>
-            <p className="text-xs text-gray-400 mt-1">Total de clients</p>
+            <p className="text-xs text-gray-400 mt-1">{t.analytics.clientsPage.kpi.totalClients}</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
@@ -287,9 +289,9 @@ export default function AnalyticsClients() {
                 <Repeat className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Taux de Fidélisation</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.clientsPage.kpi.retentionRate}</p>
             <p className="text-4xl font-bold text-gray-900">{repeatRate}%</p>
-            <p className="text-xs text-gray-400 mt-1">{repeatClientsCount} clients récurrents</p>
+            <p className="text-xs text-gray-400 mt-1">{t.analytics.clientsPage.kpi.recurringClients.replace('{count}', repeatClientsCount.toString())}</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
@@ -298,9 +300,9 @@ export default function AnalyticsClients() {
                 <DollarSign className="w-6 h-6 text-green-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Revenus Totaux</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.clientsPage.kpi.totalRevenue}</p>
             <p className="text-4xl font-bold text-gray-900"><ConvertedAmount amountCents={totalRevenue} selectedCurrency={selectedCurrency} /></p>
-            <p className="text-xs text-gray-400 mt-1">Tous les clients</p>
+            <p className="text-xs text-gray-400 mt-1">{t.analytics.clientsPage.kpi.allClients}</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
@@ -309,9 +311,9 @@ export default function AnalyticsClients() {
                 <ShoppingBag className="w-6 h-6 text-orange-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Valeur Moy. Commande</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.clientsPage.kpi.avgOrderValue}</p>
             <p className="text-4xl font-bold text-gray-900"><ConvertedAmount amountCents={avgOrderValue} selectedCurrency={selectedCurrency} /></p>
-            <p className="text-xs text-gray-400 mt-1">Par commande</p>
+            <p className="text-xs text-gray-400 mt-1">{t.analytics.clientsPage.kpi.perOrder}</p>
           </div>
         </div>
 
@@ -319,8 +321,8 @@ export default function AnalyticsClients() {
         <div className="grid lg:grid-cols-3 gap-8 mb-8">
           {/* Distribution des clients */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Distribution Clients</h3>
-            <p className="text-sm text-gray-500 mb-6">Par nombre de commandes</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">{t.analytics.clientsPage.distribution.title}</h3>
+            <p className="text-sm text-gray-500 mb-6">{t.analytics.clientsPage.distribution.subtitle}</p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -364,8 +366,8 @@ export default function AnalyticsClients() {
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Valeur Moyenne par Client</h3>
-                <p className="text-sm text-gray-500">Top 8 clients par dépense moyenne</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{t.analytics.clientsPage.avgValueChart.title}</h3>
+                <p className="text-sm text-gray-500">{t.analytics.clientsPage.avgValueChart.subtitle}</p>
               </div>
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
@@ -383,7 +385,7 @@ export default function AnalyticsClients() {
                     axisLine={false}
                     tickLine={false}
                     tick={{fill: '#64748b', fontSize: 12}}
-                    tickFormatter={(value) => `${value}€`}
+                    tickFormatter={(value) => `${value} ${selectedCurrency === 'USD' ? '$' : selectedCurrency}`}
                   />
                   <Tooltip
                     contentStyle={{
@@ -391,7 +393,7 @@ export default function AnalyticsClients() {
                       border: 'none',
                       boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
                     }}
-                    formatter={(value: any) => [`${value.toFixed(2)} €`, 'Valeur moy.']}
+                    formatter={(value: any) => [`${value.toFixed(2)} ${selectedCurrency === 'USD' ? '$' : selectedCurrency}`, t.analytics.clientsPage.avgValueChart.label]}
                   />
                   <Bar dataKey="valeur" fill="#10b981" radius={[8, 8, 0, 0]} />
                 </BarChart>
@@ -409,9 +411,9 @@ export default function AnalyticsClients() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
                     <Crown className="w-5 h-5 text-yellow-500" />
-                    Top Clients par Dépenses
+                    {t.analytics.clientsPage.topSpenders.title}
                   </h3>
-                  <p className="text-sm text-gray-500">Clients qui dépensent le plus</p>
+                  <p className="text-sm text-gray-500">{t.analytics.clientsPage.topSpenders.subtitle}</p>
                 </div>
               </div>
             </div>
@@ -419,10 +421,10 @@ export default function AnalyticsClients() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Client ID</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Commandes</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Total</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.topSpenders.table.rank}</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.topSpenders.table.clientId}</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.topSpenders.table.orders}</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.topSpenders.table.total}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -455,7 +457,7 @@ export default function AnalyticsClients() {
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
                         <Users className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                        <p className="text-sm">Aucun client trouvé</p>
+                        <p className="text-sm">{t.analytics.clientsPage.topSpenders.empty}</p>
                       </td>
                     </tr>
                   )}
@@ -471,9 +473,9 @@ export default function AnalyticsClients() {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
                     <Activity className="w-5 h-5 text-blue-500" />
-                    Clients les Plus Actifs
+                    {t.analytics.clientsPage.mostActive.title}
                   </h3>
-                  <p className="text-sm text-gray-500">Par nombre de commandes</p>
+                  <p className="text-sm text-gray-500">{t.analytics.clientsPage.mostActive.subtitle}</p>
                 </div>
               </div>
             </div>
@@ -481,10 +483,10 @@ export default function AnalyticsClients() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Client ID</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Commandes</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Moy./Cmd</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.mostActive.table.rank}</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.mostActive.table.clientId}</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.mostActive.table.orders}</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.mostActive.table.avgPerOrder}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -517,7 +519,7 @@ export default function AnalyticsClients() {
                     <tr>
                       <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
                         <Users className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                        <p className="text-sm">Aucun client trouvé</p>
+                        <p className="text-sm">{t.analytics.clientsPage.mostActive.empty}</p>
                       </td>
                     </tr>
                   )}
@@ -534,12 +536,12 @@ export default function AnalyticsClients() {
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-green-500" />
-                  Clients Récurrents
+                  {t.analytics.clientsPage.recurring.title}
                 </h3>
-                <p className="text-sm text-gray-500">Clients ayant commandé 2 fois ou plus</p>
+                <p className="text-sm text-gray-500">{t.analytics.clientsPage.recurring.subtitle}</p>
               </div>
               <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg">
-                <span className="font-semibold">{repeatClientsCount}</span> clients fidèles
+                <span className="font-semibold">{t.analytics.clientsPage.recurring.loyalClients.replace('{count}', repeatClientsCount.toString())}</span>
               </div>
             </div>
           </div>
@@ -547,11 +549,11 @@ export default function AnalyticsClients() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Client ID</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Commandes</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Total Dépensé</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">Valeur Moy.</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.recurring.table.rank}</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.recurring.table.clientId}</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.recurring.table.orders}</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.recurring.table.totalSpent}</th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase">{t.analytics.clientsPage.recurring.table.avgValue}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -593,7 +595,7 @@ export default function AnalyticsClients() {
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
                       <Repeat className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                      <p className="text-sm">Aucun client récurrent pour le moment</p>
+                      <p className="text-sm">{t.analytics.clientsPage.recurring.empty}</p>
                     </td>
                   </tr>
                 )}

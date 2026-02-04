@@ -28,6 +28,8 @@ import {
 import { useLanguageContext } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/hooks/useCurrency';
 
+import { usePermissions } from '@/contexts/PermissionsContext';
+
 interface ProviderBalance {
   id: string;
   provider_id: string;
@@ -53,6 +55,13 @@ interface BalanceManagementProps {
 export default function BalanceManagement({ isDark }: BalanceManagementProps) {
   const { t } = useLanguageContext();
   const { convertFromUSD, formatAmount } = useCurrency();
+  const { hasPermission } = usePermissions();
+  
+  const canRelease = hasPermission('finance.balances.release');
+  const canFreeze = hasPermission('finance.balances.freeze');
+  const canViewHistory = hasPermission('finance.balances.view_history');
+  const canEditLimits = hasPermission('finance.balances.edit_limits');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
 
@@ -517,9 +526,9 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               setShowReleaseModal(true);
                             }}
-                            disabled={balance.pending_cents === 0}
+                            disabled={balance.pending_cents === 0 || !canRelease}
                             className={`p-2 rounded-lg transition-colors ${
-                              balance.pending_cents > 0
+                              (balance.pending_cents > 0 && canRelease)
                                 ? isDark
                                   ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
                                   : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -527,7 +536,7 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                                 ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             }`}
-                            title="Libérer fonds"
+                            title={!canRelease ? "Permission manquante" : "Libérer fonds"}
                           >
                             <Unlock className="w-4 h-4" />
                           </button>
@@ -537,12 +546,15 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               setShowFreezeModal(true);
                             }}
+                            disabled={!canFreeze}
                             className={`p-2 rounded-lg transition-colors ${
+                              !canFreeze ? 'opacity-50 cursor-not-allowed' : ''
+                            } ${
                               isDark
                                 ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50'
                                 : 'bg-red-100 text-red-700 hover:bg-red-200'
                             }`}
-                            title={(balance.Account_gele || balance.is_frozen) ? 'Dégeler' : 'Geler'}
+                            title={!canFreeze ? "Permission manquante" : (balance.Account_gele || balance.is_frozen) ? 'Dégeler' : 'Geler'}
                           >
                             {(balance.Account_gele || balance.is_frozen) ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                           </button>
@@ -552,7 +564,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               setShowAdjustModal(true);
                             }}
+                            disabled={!canEditLimits}
                             className={`p-2 rounded-lg transition-colors ${
+                              !canEditLimits ? 'opacity-50 cursor-not-allowed' : ''
+                            } ${
                               isDark
                                 ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
                                 : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -567,7 +582,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               setShowResetTimerModal(true);
                             }}
+                            disabled={!canEditLimits}
                             className={`p-2 rounded-lg transition-colors ${
+                              !canEditLimits ? 'opacity-50 cursor-not-allowed' : ''
+                            } ${
                               isDark
                                 ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50'
                                 : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
@@ -582,7 +600,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               setShowCustomLimitModal(true);
                             }}
+                            disabled={!canEditLimits}
                             className={`p-2 rounded-lg transition-colors ${
+                              !canEditLimits ? 'opacity-50 cursor-not-allowed' : ''
+                            } ${
                               isDark
                                 ? 'bg-amber-900/30 text-amber-400 hover:bg-amber-900/50'
                                 : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
@@ -597,7 +618,10 @@ export default function BalanceManagement({ isDark }: BalanceManagementProps) {
                               setSelectedBalance(balance);
                               fetchHistory(balance.provider_id);
                             }}
+                            disabled={!canViewHistory}
                             className={`p-2 rounded-lg transition-colors ${
+                              !canViewHistory ? 'opacity-50 cursor-not-allowed' : ''
+                            } ${
                               isDark
                                 ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

@@ -22,46 +22,22 @@ import HeaderProvider from "@/components/layout/HeaderProvider";
 import { experienceLevels } from "@/utils/Data/Service/Service";
 import LocationSelect from "@/utils/Localisation/LocationSelectionner";
 import { convertFromUSD, convertToUSD } from "@/utils/lib/currencyConversion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
-// Options de disponibilité
-const availabilityOptions = [
-  { value: "available", label: "Disponible maintenant" },
-  { value: "busy", label: "Occupé (peut accepter des projets)" },
-  { value: "offline", label: "Hors ligne" },
-];
 
-// Options de temps de réponse
-const responseTimeOptions = [
-  { value: 1, label: "Moins d'1 heure" },
-  { value: 2, label: "1-2 heures" },
-  { value: 6, label: "2-6 heures" },
-  { value: 12, label: "6-12 heures" },
-  { value: 24, label: "Moins de 24 heures" },
-  { value: 48, label: "1-2 jours" },
-  { value: 72, label: "2-3 jours" },
-];
 
-// Options de langues
-const languageOptions = [
-  { code: "fr", label: "Français" },
-  { code: "en", label: "Anglais" },
-  { code: "es", label: "Espagnol" },
-  { code: "de", label: "Allemand" },
-  { code: "it", label: "Italien" },
-  { code: "pt", label: "Portugais" },
-  { code: "ar", label: "Arabe" },
-  { code: "zh", label: "Chinois" },
-  { code: "ja", label: "Japonais" },
-  { code: "ru", label: "Russe" },
-];
 
-// Niveaux de langues
-const languageLevels = [
-  { value: "native", label: "Langue maternelle" },
-  { value: "fluent", label: "Courant" },
-  { value: "intermediate", label: "Intermédiaire" },
-  { value: "basic", label: "Basique" },
-];
+// Les options seront localisées dans le composant
+interface Option {
+  value: string | number;
+  label: string;
+}
+
+interface LangOption {
+  code: string;
+  label: string;
+}
+
 
 interface Language {
   code: string;
@@ -111,8 +87,10 @@ export default function EditProviderProfile() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState<string>('USD');
+  const { language, t } = useSafeLanguage();
 
   // États pour les prix affichés dans la devise sélectionnée
+
   const [displayHourlyRate, setDisplayHourlyRate] = useState<number | null>(null);
   const [displayStartingPrice, setDisplayStartingPrice] = useState<number | null>(null);
 
@@ -175,11 +153,12 @@ export default function EditProviderProfile() {
             // L'API normalise déjà les tableaux JSONB
             setFormData(data.data);
           } else {
-            setError("Impossible de charger votre profil");
+            setError(t?.providerEdit?.messages?.errorLoad || "Impossible de charger votre profil");
           }
         } catch {
-          setError("Erreur lors du chargement");
+          setError(t?.providerEdit?.messages?.errorLoadGeneral || "Erreur lors du chargement");
         } finally {
+
           setLoading(false);
         }
       }
@@ -232,7 +211,7 @@ export default function EditProviderProfile() {
       if (displayHourlyRate !== null) {
         const converted = await convertToUSD(displayHourlyRate, selectedCurrency);
         if (converted === null) {
-          setError(`Impossible de convertir le tarif horaire en USD`);
+          setError(t?.providerEdit?.messages?.convertError || `Impossible de convertir le tarif horaire en USD`);
           setSaving(false);
           return;
         }
@@ -243,12 +222,13 @@ export default function EditProviderProfile() {
       if (displayStartingPrice !== null) {
         const converted = await convertToUSD(displayStartingPrice, selectedCurrency);
         if (converted === null) {
-          setError(`Impossible de convertir le prix de départ en USD`);
+          setError(t?.providerEdit?.messages?.convertError || `Impossible de convertir le prix de départ en USD`);
           setSaving(false);
           return;
         }
         startingPriceInUSD = converted;
       }
+
     }
 
     const dataToSend = {
@@ -280,12 +260,13 @@ export default function EditProviderProfile() {
         }, 2000);
       } else {
         console.error("❌ Erreur API:", data.error);
-        setError(data.error || "Erreur lors de la mise à jour");
+        setError(data.error || t?.providerEdit?.messages?.errorUpdate || "Erreur lors de la mise à jour");
       }
     } catch (err) {
       console.error("💥 Erreur catch:", err);
-      setError("Erreur serveur - Vérifiez la console");
+      setError(t?.providerEdit?.messages?.errorServer || "Erreur serveur - Vérifiez la console");
     } finally {
+
       setSaving(false);
     }
   };
@@ -301,7 +282,9 @@ export default function EditProviderProfile() {
     }));
   };
 
-  if (loading || authLoading) {
+  const isReady = t && t.providerEdit;
+
+  if (loading || authLoading || !isReady) {
     return (
       <div className="min-h-screen bg-slate-50">
         <HeaderProvider />
@@ -311,6 +294,44 @@ export default function EditProviderProfile() {
       </div>
     );
   }
+
+  // Options localisées
+  const availabilityOptions = [
+    { value: "available", label: t.providerForm?.availability?.available || "Disponible maintenant" },
+    { value: "busy", label: t.providerForm?.availability?.busy || "Occupé" },
+    { value: "offline", label: t.providerForm?.availability?.unavailable || "Hors ligne" },
+  ];
+
+  const responseTimeOptions = [
+    { value: 1, label: t.providerForm?.responseTime?.lessThan1 || "Moins d'1 heure" },
+    { value: 2, label: t.providerForm?.responseTime?.["1to2"] || "1-2 heures" },
+    { value: 6, label: t.providerForm?.responseTime?.["2to6"] || "2-6 heures" },
+    { value: 12, label: t.providerForm?.responseTime?.["6to12"] || "6-12 heures" },
+    { value: 24, label: t.providerForm?.responseTime?.lessThan24 || "Moins de 24 heures" },
+    { value: 48, label: t.providerForm?.responseTime?.["1to2days"] || "1-2 jours" },
+    { value: 72, label: t.providerForm?.responseTime?.["2to3days"] || "2-3 jours" },
+  ];
+
+  const languageOptions = [
+    { code: "fr", label: t.providerForm?.languages?.fr || "Français" },
+    { code: "en", label: t.providerForm?.languages?.en || "Anglais" },
+    { code: "es", label: t.providerForm?.languages?.es || "Espagnol" },
+    { code: "de", label: t.providerForm?.languages?.de || "Allemand" },
+    { code: "it", label: t.providerForm?.languages?.it || "Italien" },
+    { code: "pt", label: t.providerForm?.languages?.pt || "Portugais" },
+    { code: "ar", label: t.providerForm?.languages?.ar || "Arabe" },
+    { code: "zh", label: t.providerForm?.languages?.zh || "Chinois" },
+    { code: "ja", label: t.providerForm?.languages?.ja || "Japonais" },
+    { code: "ru", label: t.providerForm?.languages?.ru || "Russe" },
+  ];
+
+  const languageLevels = [
+    { value: "native", label: t.providerForm?.languageLevels?.native || "Langue maternelle" },
+    { value: "fluent", label: t.providerForm?.languageLevels?.fluent || "Courant" },
+    { value: "intermediate", label: t.providerForm?.languageLevels?.intermediate || "Intermédiaire" },
+    { value: "basic", label: t.providerForm?.languageLevels?.basic || "Basique" },
+  ];
+
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -324,25 +345,27 @@ export default function EditProviderProfile() {
             className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Retour</span>
+            <span className="text-sm font-medium">{t.providerEdit.back}</span>
           </button>
 
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Modifier mon profil professionnel
+            {t.providerEdit.title}
           </h1>
           <p className="text-slate-600">
-            Mettez à jour vos informations pour attirer plus de clients
+            {t.providerEdit.subtitle}
           </p>
         </div>
+
 
         {/* Messages */}
         {showSuccess && (
           <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <p className="text-emerald-800 font-medium">
-              Profil mis à jour avec succès !
+              {t.providerEdit.messages.success}
             </p>
           </div>
+
         )}
 
         {error && (
@@ -361,14 +384,14 @@ export default function EditProviderProfile() {
                 <User className="w-5 h-5 text-slate-700" />
               </div>
               <h2 className="text-xl font-bold text-slate-900">
-                Informations personnelles
+                {t.providerEdit.sections.personal}
               </h2>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Prénom
+                  {t.providerEdit.labels.firstName}
                 </label>
                 <input
                   type="text"
@@ -382,7 +405,7 @@ export default function EditProviderProfile() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Nom
+                  {t.providerEdit.labels.lastName}
                 </label>
                 <input
                   type="text"
@@ -396,7 +419,7 @@ export default function EditProviderProfile() {
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Nom d&apos;affichage
+                  {t.providerEdit.labels.displayName}
                 </label>
                 <input
                   type="text"
@@ -417,7 +440,7 @@ export default function EditProviderProfile() {
                 <Briefcase className="w-5 h-5 text-slate-700" />
               </div>
               <h2 className="text-xl font-bold text-slate-900">
-                Informations professionnelles
+                {t.providerEdit.sections.professional}
               </h2>
             </div>
 
@@ -425,7 +448,7 @@ export default function EditProviderProfile() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Nom de l&apos;entreprise
+                    {t.providerEdit.labels.companyName}
                   </label>
                   <input
                     type="text"
@@ -437,7 +460,7 @@ export default function EditProviderProfile() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Profession
+                    {t.providerEdit.labels.profession}
                   </label>
                   <input
                     type="text"
@@ -451,37 +474,38 @@ export default function EditProviderProfile() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Slogan / Titre professionnel
+                  {t.providerEdit.labels.tagline}
                 </label>
                 <input
                   type="text"
                   value={formData.tagline}
                   onChange={(e) => updateField("tagline", e.target.value)}
-                  placeholder="Ex: Expert en développement web depuis 10 ans"
+                  placeholder={t.providerEdit.labels.taglinePlaceholder}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  À propos de moi
+                  {t.providerEdit.labels.about}
                 </label>
                 <textarea
                   value={formData.about}
                   onChange={(e) => updateField("about", e.target.value)}
                   rows={6}
-                  placeholder="Décrivez votre expérience, vos compétences et ce qui vous distingue..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all resize-none"
+                  placeholder={t.providerEdit.labels.aboutPlaceholder}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all resize-y min-h-[120px]"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  Niveau d&apos;expérience
+                  {t.providerEdit.labels.experience}
                 </label>
+
                 <div className="grid grid-cols-2 gap-3">
-                  {experienceLevels.map((level, index) => (
+                  {t.providerEdit.labels.experienceLevels.map((level: string, index: number) => (
                     <button
                       key={level}
                       type="button"
@@ -503,7 +527,7 @@ export default function EditProviderProfile() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    Tarif horaire ({selectedCurrency})
+                    {t.providerEdit.labels.hourlyRate} ({selectedCurrency})
                   </label>
                   <input
                     type="number"
@@ -522,14 +546,14 @@ export default function EditProviderProfile() {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    💱 Les prix sont stockés en USD et affichés dans la devise sélectionnée
+                    {t.providerEdit.messages.converting}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                     <Star className="w-4 h-4" />
-                    Prix de départ ({selectedCurrency})
+                    {t.providerEdit.labels.startingPrice} ({selectedCurrency})
                   </label>
                   <input
                     type="number"
@@ -548,9 +572,10 @@ export default function EditProviderProfile() {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    💱 Les prix sont stockés en USD et affichés dans la devise sélectionnée
+                    {t.providerEdit.messages.converting}
                   </p>
                 </div>
+
               </div>
             </div>
           </div>
@@ -561,15 +586,15 @@ export default function EditProviderProfile() {
               <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-slate-700" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Localisation</h2>
+              <h2 className="text-xl font-bold text-slate-900">{t.providerEdit.sections.location}</h2>
             </div>
 
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
               <p className="text-sm text-slate-600">
-                Indiquez votre localisation pour aider les clients à vous trouver.
-                Ces informations seront visibles sur votre profil.
+                {t.providerEdit.labels.locationHint}
               </p>
             </div>
+
 
             <LocationSelect
               value={formData.location}
@@ -585,14 +610,14 @@ export default function EditProviderProfile() {
                 <Globe className="w-5 h-5 text-slate-700" />
               </div>
               <h2 className="text-xl font-bold text-slate-900">
-                Liens professionnels
+                {t.providerEdit.sections.links}
               </h2>
             </div>
 
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Disponibilité
+                  {t.providerEdit.labels.availability}
                 </label>
                 <div className="space-y-2">
                   {availabilityOptions.map((option) => (
@@ -614,7 +639,7 @@ export default function EditProviderProfile() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Temps de réponse moyen
+                  {t.providerEdit.labels.responseTime}
                 </label>
                 <select
                   value={formData.response_time_hours || 24}
@@ -638,14 +663,14 @@ export default function EditProviderProfile() {
                 <Award className="w-5 h-5 text-slate-700" />
               </div>
               <h2 className="text-xl font-bold text-slate-900">
-                Compétences & Langues
+                {t.providerEdit.sections.skills}
               </h2>
             </div>
 
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Compétences
+                  {t.providerEdit.labels.skills}
                 </label>
                 <input
                   type="text"
@@ -656,17 +681,17 @@ export default function EditProviderProfile() {
                       e.target.value ? e.target.value.split(",").map((s) => s.trim()).filter(s => s) : []
                     )
                   }
-                  placeholder="JavaScript, React, Node.js, etc."
+                  placeholder={t.providerEdit.labels.skillsPlaceholder}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                 />
                 <p className="text-xs text-slate-500 mt-2">
-                  Séparez les compétences par des virgules
+                  {t.providerEdit.labels.skillsHint}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Langues
+                  {t.providerEdit.labels.languages}
                 </label>
                 <div className="space-y-3">
                   {Array.isArray(formData.languages) && formData.languages.length > 0 ? (
@@ -690,7 +715,6 @@ export default function EditProviderProfile() {
                             </option>
                           ))}
                         </select>
-
                         <select
                           value={lang.level}
                           onChange={(e) => {
@@ -721,9 +745,10 @@ export default function EditProviderProfile() {
                     ))
                   ) : (
                     <div className="text-sm text-slate-500 p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
-                      Aucune langue configurée
+                      {t.providerEdit.labels.noLanguages}
                     </div>
                   )}
+
 
                   <button
                     type="button"
@@ -733,13 +758,14 @@ export default function EditProviderProfile() {
                     }}
                     className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors text-sm"
                   >
-                    + Ajouter une langue
+                    {t.providerEdit.buttons.addLanguage}
                   </button>
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Sélectionnez vos langues et votre niveau de maîtrise
+                  {t.providerEdit.labels.languagesHint}
                 </p>
               </div>
+
             </div>
           </div>
 
@@ -750,8 +776,9 @@ export default function EditProviderProfile() {
               onClick={() => router.back()}
               className="px-6 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors"
             >
-              Annuler
+              {t.providerEdit.buttons.cancel}
             </button>
+
 
             <button
               type="submit"
@@ -761,14 +788,15 @@ export default function EditProviderProfile() {
               {saving ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Enregistrement...
+                  {t.providerEdit.buttons.saving}
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Enregistrer les modifications
+                  {t.providerEdit.buttons.save}
                 </>
               )}
+
             </button>
           </div>
         </form>

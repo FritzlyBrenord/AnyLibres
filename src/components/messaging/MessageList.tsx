@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import type { Message } from "@/types/messaging";
 import { MessageContextMenu } from "./MessageContextMenu";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
+import { TranslatedMessageText } from "./TranslatedMessageText";
 
 interface MessageListProps {
   messages: Message[];
@@ -23,6 +25,9 @@ interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onArchiveMessage?: (messageId: string) => void;
   onReplyMessage?: (messageId: string) => void;
+  isAutoTranslateActive?: boolean;
+  targetLanguage?: string;
+  isDark?: boolean;
 }
 
 export function MessageList({
@@ -33,11 +38,16 @@ export function MessageList({
   onDeleteMessage,
   onArchiveMessage,
   onReplyMessage,
+  isAutoTranslateActive = false,
+  targetLanguage = "fr",
+  isDark = false,
 }: MessageListProps) {
+  const { t, language } = useSafeLanguage();
+
   // Formater l'heure
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString("fr-FR", {
+    return date.toLocaleTimeString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -72,15 +82,15 @@ export function MessageList({
             poster={thumbnail_url}
             className="max-w-xs rounded-lg"
           >
-            Votre navigateur ne supporte pas la vidéo.
+            {t('messages.videoNotSupported')}
           </video>
         );
 
       case "audio":
         return (
-          <div className="flex items-center gap-3 bg-slate-100 rounded-lg p-3 max-w-xs">
-            <Music className="w-8 h-8 text-purple-600 flex-shrink-0" />
-            <audio src={url} controls className="flex-1 min-w-0" />
+          <div className={`flex items-center gap-3 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-100'} rounded-lg p-3 max-w-xs`}>
+            <Music className={`w-8 h-8 ${isDark ? 'text-purple-400' : 'text-purple-600'} flex-shrink-0`} />
+            <audio src={url} controls className={`flex-1 min-w-0 ${isDark ? 'invert grayscale opacity-70' : ''}`} />
           </div>
         );
 
@@ -90,14 +100,14 @@ export function MessageList({
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-slate-100 hover:bg-slate-200 rounded-lg p-3 max-w-xs transition-colors"
+            className={`flex items-center gap-3 ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-slate-100 hover:bg-slate-200'} rounded-lg p-3 max-w-xs transition-colors`}
           >
-            <FileText className="w-8 h-8 text-purple-600 flex-shrink-0" />
+            <FileText className={`w-8 h-8 ${isDark ? 'text-purple-400' : 'text-purple-600'} flex-shrink-0`} />
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-slate-900 truncate">
+              <p className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-900'} truncate`}>
                 {name}
               </p>
-              <p className="text-xs text-slate-500">Document</p>
+              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{t('messages.attachDocument')}</p>
             </div>
             <Download className="w-5 h-5 text-slate-400 flex-shrink-0" />
           </a>
@@ -113,7 +123,7 @@ export function MessageList({
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Chargement des messages...</p>
+          <p className="text-slate-600">{t('messages.loadingMessages')}</p>
         </div>
       </div>
     );
@@ -121,16 +131,16 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className={`flex-1 flex items-center justify-center p-8 ${isDark ? 'bg-slate-900' : ''}`}>
         <div className="text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-8 h-8 text-slate-400" />
+          <div className={`w-16 h-16 ${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            <User className={`w-8 h-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
           </div>
-          <p className="text-slate-600 font-medium">
-            Aucun message pour le moment
+          <p className={`${isDark ? 'text-slate-300' : 'text-slate-600'} font-medium`}>
+            {t('messages.noMessageYet')}
           </p>
-          <p className="text-slate-500 text-sm mt-1">
-            Envoyez un message pour commencer la conversation
+          <p className={`${isDark ? 'text-slate-500' : 'text-slate-500'} text-sm mt-1`}>
+            {t('messages.startConversation')}
           </p>
         </div>
       </div>
@@ -146,7 +156,8 @@ export function MessageList({
           `${message.sender?.first_name || ""} ${
             message.sender?.last_name || ""
           }`.trim() ||
-          "Utilisateur";
+          (message.sender as any)?.email ||
+          t('messages.userDefault');
 
         return (
           <div
@@ -165,8 +176,8 @@ export function MessageList({
                     className="w-8 h-8 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                  <div className={`w-8 h-8 rounded-full ${isDark ? 'bg-slate-800 ring-2 ring-slate-800' : 'bg-slate-200'} flex items-center justify-center`}>
+                    <User className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-500'}`} />
                   </div>
                 )}
               </div>
@@ -178,7 +189,7 @@ export function MessageList({
             >
               {/* Sender Name (pour les messages des autres) */}
               {!isOwn && (
-                <p className="text-xs text-slate-600 mb-1 px-1">{senderName}</p>
+                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'} mb-1 px-1`}>{senderName}</p>
               )}
 
               {/* Message Content */}
@@ -186,8 +197,8 @@ export function MessageList({
                 <div
                   className={`rounded-2xl p-3 flex-1 ${
                     isOwn
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                      : "bg-slate-100 text-slate-900"
+                      ? isDark ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/10" : "bg-slate-800 text-white"
+                      : isDark ? "bg-slate-800 text-slate-200 border border-slate-700 shadow-lg" : "bg-slate-100 text-slate-900"
                   }`}
                 >
                   {/* Attachments */}
@@ -199,11 +210,14 @@ export function MessageList({
                     </div>
                   )}
 
-                  {/* Text */}
+                  {/* Text with Translation Support */}
                   {message.text && (
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {message.text}
-                    </p>
+                    <TranslatedMessageText
+                      text={message.text}
+                      isOwn={isOwn}
+                      isAutoTranslateActive={isAutoTranslateActive}
+                      targetLanguage={targetLanguage}
+                    />
                   )}
 
                   {/* Time + Read Status */}
@@ -213,8 +227,8 @@ export function MessageList({
                     }`}
                   >
                     <span
-                      className={`text-xs ${
-                        isOwn ? "text-white/70" : "text-slate-500"
+                      className={`text-[10px] ${
+                        isOwn ? "text-white/70" : isDark ? "text-slate-500" : "text-slate-500"
                       }`}
                     >
                       {formatTime(message.created_at)}
@@ -241,7 +255,7 @@ export function MessageList({
                         isOwn ? "text-white/60" : "text-slate-400"
                       }`}
                     >
-                      modifié
+                      {t('messages.edited')}
                     </p>
                   )}
                 </div>

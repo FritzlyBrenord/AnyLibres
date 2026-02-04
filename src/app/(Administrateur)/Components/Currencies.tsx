@@ -12,7 +12,9 @@ import {
   X,
   Star,
   TrendingUp,
+  Lock,
 } from 'lucide-react';
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 // ============================================================================
 // Types
@@ -41,6 +43,13 @@ interface Currency {
 // ============================================================================
 
 function Currencies() {
+  const { hasPermission } = usePermissions();
+
+  const canAdd = hasPermission('currencies.add');
+  const canEdit = hasPermission('currencies.edit');
+  const canDelete = hasPermission('currencies.delete');
+  const canUpdateRates = hasPermission('currencies.update_rates');
+
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -239,13 +248,19 @@ function Currencies() {
         <div className="flex gap-3">
           <button
             onClick={handleUpdateRates}
-            disabled={updating}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            disabled={updating || !canUpdateRates}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+               !canUpdateRates 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500' 
+                : 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50'
+            }`}
+            title={!canUpdateRates ? "Permission manquante" : "Mettre à jour les taux"}
           >
-            <RefreshCw className={`w-4 h-4 ${updating ? 'animate-spin' : ''}`} />
+            {!canUpdateRates ? <Lock className="w-4 h-4"/> : <RefreshCw className={`w-4 h-4 ${updating ? 'animate-spin' : ''}`} />}
             {updating ? 'Mise à jour...' : 'Mettre à jour les taux'}
           </button>
 
+          {canAdd && (
           <button
             onClick={() => setShowAddForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -253,6 +268,7 @@ function Currencies() {
             <Plus className="w-4 h-4" />
             Ajouter une devise
           </button>
+          )}
         </div>
       </div>
 
@@ -631,16 +647,28 @@ function Currencies() {
                       setFormData(currency);
                       setShowAddForm(false);
                     }}
-                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                    disabled={!canEdit}
+                    className={`transition-colors ${
+                      canEdit 
+                        ? "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        : "text-gray-400 cursor-not-allowed"
+                    }`}
+                    title={!canEdit ? "Permission manquante" : "Modifier"}
                   >
-                    <Edit className="w-4 h-4" />
+                    {canEdit ? <Edit className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                   </button>
                   {!currency.is_default && (
                     <button
                       onClick={() => handleDelete(currency.id)}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                      disabled={!canDelete}
+                      className={`transition-colors ${
+                        canDelete
+                          ? "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          : "text-gray-400 cursor-not-allowed"
+                      }`}
+                      title={!canDelete ? "Permission manquante" : "Supprimer"}
                     >
-                      <Trash2 className="w-4 h-4" />
+                       {canDelete ? <Trash2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                     </button>
                   )}
                 </td>

@@ -28,11 +28,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Récupérer toutes les conversations où l'utilisateur est participant
+    // Récupérer toutes les conversations où l'utilisateur est participant et ayant au moins un message
     const { data: conversations, error: conversationsError } = await supabase
       .from('conversations')
       .select('*')
       .contains('participants', [profile.id])
+      .not('last_message_at', 'is', null)
       .order('updated_at', { ascending: false });
 
     if (conversationsError) {
@@ -63,13 +64,14 @@ export async function GET() {
         // Récupérer les infos de l'autre participant
         const { data: otherProfile } = await supabase
           .from('profiles')
-          .select('id, display_name, first_name, last_name, avatar_url')
+          .select('id, display_name, first_name, last_name, avatar_url, email, role')
           .eq('id', otherParticipantId)
           .single();
 
         const otherName =
           otherProfile?.display_name ||
           `${otherProfile?.first_name || ''} ${otherProfile?.last_name || ''}`.trim() ||
+          otherProfile?.email ||
           'Utilisateur';
 
         return {
@@ -77,6 +79,8 @@ export async function GET() {
           other_participant: otherProfile,
           other_participant_name: otherName,
           other_participant_avatar: otherProfile?.avatar_url,
+          other_participant_email: otherProfile?.email,
+          other_participant_role: otherProfile?.role,
         };
       })
     );

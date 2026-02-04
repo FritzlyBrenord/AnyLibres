@@ -9,12 +9,15 @@ import { ServiceCard } from '@/components/service/ServiceCard';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 interface Props {
   services: Service[];
 }
 
 export function RecommendationsSection({ services }: Props) {
+  const { t } = useSafeLanguage();
+
   if (services.length === 0) {
     return null;
   }
@@ -26,16 +29,16 @@ export function RecommendationsSection({ services }: Props) {
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200 rounded-full text-purple-700 text-sm font-semibold mb-4 shadow-sm">
               <Sparkles className="w-4 h-4" />
-              Recommandé pour vous
+              {t.home.connected.recommendations.badge}
             </div>
             <h2 className="font-heading font-bold text-3xl lg:text-4xl text-slate-900 mb-2">
-              Services Sélectionnés{' '}
+              {t.home.connected.recommendations.title}{' '}
               <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Juste Pour Vous
+                {t.home.connected.recommendations.titleHighlight}
               </span>
             </h2>
             <p className="text-slate-600 text-lg">
-              Basé sur vos recherches et vos intérêts
+              {t.home.connected.recommendations.subtitle}
             </p>
           </div>
           <Link href="/search" className="hidden md:block">
@@ -43,7 +46,7 @@ export function RecommendationsSection({ services }: Props) {
               variant="outline"
               className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
             >
-              Voir tout
+              {t.home.connected.viewAll}
               <ArrowRight className="w-5 h-5" />
             </Button>
           </Link>
@@ -67,7 +70,7 @@ export function RecommendationsSection({ services }: Props) {
               variant="outline"
               className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50"
             >
-              Voir tous les services
+              {t.home.connected.recommendations.viewAllServices}
               <ArrowRight className="w-5 h-5" />
             </Button>
           </Link>

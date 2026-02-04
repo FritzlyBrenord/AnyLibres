@@ -3,16 +3,24 @@
 // Suggestions intelligentes compactes en temps réel
 // ============================================================================
 
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, X, TrendingUp, Zap, Type, Hash, DollarSign } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  X,
+  TrendingUp,
+  Zap,
+  Type,
+  Hash,
+  DollarSign,
+} from "lucide-react";
 
 interface QuickSuggestion {
   id: string;
   text: string;
-  type: 'service' | 'letter' | 'number' | 'price' | 'recent';
+  type: "service" | "letter" | "number" | "price" | "recent";
   icon?: React.ReactNode;
 }
 
@@ -23,12 +31,12 @@ interface QuickSearchBarProps {
 }
 
 export function QuickSearchBar({
-  placeholder = 'Logo, site web, marketing...',
-  className = '',
+  placeholder = "Logo, site web, marketing...",
+  className = "",
   onSearch,
 }: QuickSearchBarProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<QuickSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -37,12 +45,12 @@ export function QuickSearchBar({
 
   // Charger les recherches récentes
   useEffect(() => {
-    const saved = localStorage.getItem('recentSearches');
+    const saved = localStorage.getItem("recentSearches");
     if (saved) {
       try {
         setRecentSearches(JSON.parse(saved));
       } catch (e) {
-        console.error('Error loading recent searches:', e);
+        console.error("Error loading recent searches:", e);
       }
     }
   }, []);
@@ -50,90 +58,109 @@ export function QuickSearchBar({
   // Fermer suggestions si clic en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Générer suggestions rapides
-  const generateQuickSuggestions = useCallback(async (query: string) => {
-    if (query.length === 0) {
-      // Afficher les recherches récentes
-      const recent: QuickSuggestion[] = recentSearches.slice(0, 3).map((text, i) => ({
-        id: `recent-${i}`,
-        text,
-        type: 'recent',
-        icon: <TrendingUp className="w-4 h-4 text-slate-400" />,
-      }));
-      setSuggestions(recent);
-      return;
-    }
-
-    const newSuggestions: QuickSuggestion[] = [];
-
-    // 1. Analyse par lettre unique
-    if (query.length === 1) {
-      const char = query.toUpperCase();
-      if (/^[A-Z]$/.test(char)) {
-        newSuggestions.push({
-          id: `letter-${char}`,
-          text: `Services commençant par "${char}"`,
-          type: 'letter',
-          icon: <Type className="w-4 h-4 text-blue-500" />,
-        });
-      } else if (/^\d$/.test(char)) {
-        newSuggestions.push({
-          id: `number-${char}`,
-          text: `Prix autour de ${char}0€`,
-          type: 'number',
-          icon: <Hash className="w-4 h-4 text-green-500" />,
-        });
+  const generateQuickSuggestions = useCallback(
+    async (query: string) => {
+      if (query.length === 0) {
+        // Afficher les recherches récentes
+        const recent: QuickSuggestion[] = recentSearches
+          .slice(0, 3)
+          .map((text, i) => ({
+            id: `recent-${i}`,
+            text,
+            type: "recent",
+            icon: <TrendingUp className="w-4 h-4 text-slate-400" />,
+          }));
+        setSuggestions(recent);
+        return;
       }
-    }
 
-    // 2. Détection de prix
-    const priceMatch = query.match(/(\d+)/);
-    if (priceMatch) {
-      const price = parseInt(priceMatch[1]);
-      newSuggestions.push({
-        id: `price-${price}`,
-        text: `Services autour de ${price}€`,
-        type: 'price',
-        icon: <DollarSign className="w-4 h-4 text-green-500" />,
-      });
-    }
+      const newSuggestions: QuickSuggestion[] = [];
 
-    // 3. Appel API pour suggestions réelles (limité à 3 pour la rapidité)
-    if (query.length >= 2) {
-      try {
-        const response = await fetch(`/api/services/suggest?q=${encodeURIComponent(query)}&limit=3`);
-        if (response.ok) {
-          const data = await response.json();
-
-          // Ajouter les services
-          if (data.services && data.services.length > 0) {
-            data.services.slice(0, 3).forEach((service: any, index: number) => {
-              const titleMatch = service.title?.toString().toLowerCase().includes(query.toLowerCase());
-              newSuggestions.push({
-                id: `service-${service.id}`,
-                text: service.title?.toString() || 'Service',
-                type: 'service',
-                icon: <Zap className={`w-4 h-4 ${titleMatch ? 'text-yellow-500' : 'text-slate-400'}`} />,
-              });
-            });
-          }
+      // 1. Analyse par lettre unique
+      if (query.length === 1) {
+        const char = query.toUpperCase();
+        if (/^[A-Z]$/.test(char)) {
+          newSuggestions.push({
+            id: `letter-${char}`,
+            text: `Services commençant par "${char}"`,
+            type: "letter",
+            icon: <Type className="w-4 h-4 text-blue-500" />,
+          });
+        } else if (/^\d$/.test(char)) {
+          newSuggestions.push({
+            id: `number-${char}`,
+            text: `Prix autour de ${char}0€`,
+            type: "number",
+            icon: <Hash className="w-4 h-4 text-green-500" />,
+          });
         }
-      } catch (error) {
-        console.error('Error fetching quick suggestions:', error);
       }
-    }
 
-    setSuggestions(newSuggestions.slice(0, 5)); // Limiter à 5 suggestions max
-  }, [recentSearches]);
+      // 2. Détection de prix
+      const priceMatch = query.match(/(\d+)/);
+      if (priceMatch) {
+        const price = parseInt(priceMatch[1]);
+        newSuggestions.push({
+          id: `price-${price}`,
+          text: `Services autour de ${price}€`,
+          type: "price",
+          icon: <DollarSign className="w-4 h-4 text-green-500" />,
+        });
+      }
+
+      // 3. Appel API pour suggestions réelles (limité à 3 pour la rapidité)
+      if (query.length >= 2) {
+        try {
+          const response = await fetch(
+            `/api/services/suggest?q=${encodeURIComponent(query)}&limit=3`,
+          );
+          if (response.ok) {
+            const data = await response.json();
+
+            // Ajouter les services
+            if (data.services && data.services.length > 0) {
+              data.services
+                .slice(0, 3)
+                .forEach((service: any, index: number) => {
+                  const titleMatch = service.title
+                    ?.toString()
+                    .toLowerCase()
+                    .includes(query.toLowerCase());
+                  newSuggestions.push({
+                    id: `service-${service.id}`,
+                    text: service.title?.toString() || "Service",
+                    type: "service",
+                    icon: (
+                      <Zap
+                        className={`w-4 h-4 ${titleMatch ? "text-yellow-500" : "text-slate-400"}`}
+                      />
+                    ),
+                  });
+                });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching quick suggestions:", error);
+        }
+      }
+
+      setSuggestions(newSuggestions.slice(0, 5)); // Limiter à 5 suggestions max
+    },
+    [recentSearches],
+  );
 
   // Debounce pour les suggestions
   useEffect(() => {
@@ -148,9 +175,12 @@ export function QuickSearchBar({
 
   const saveRecentSearch = (query: string) => {
     if (!query.trim()) return;
-    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5); // Top 5
+    const updated = [query, ...recentSearches.filter((s) => s !== query)].slice(
+      0,
+      5,
+    ); // Top 5
     setRecentSearches(updated);
-    localStorage.setItem('recentSearches', JSON.stringify(updated));
+    localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
 
   const handleSearch = (e?: React.FormEvent, customQuery?: string) => {
@@ -170,16 +200,18 @@ export function QuickSearchBar({
   };
 
   const handleSuggestionClick = (suggestion: QuickSuggestion) => {
-    if (suggestion.type === 'letter') {
+    if (suggestion.type === "letter") {
       const letter = suggestion.text.match(/["']([A-Z])["']/)?.[1];
       if (letter) {
         router.push(`/search?letter=${letter}&startsWith=true`);
       }
-    } else if (suggestion.type === 'price' || suggestion.type === 'number') {
+    } else if (suggestion.type === "price" || suggestion.type === "number") {
       const price = suggestion.text.match(/(\d+)/)?.[1];
       if (price) {
         const priceNum = parseInt(price);
-        router.push(`/search?minPrice=${priceNum * 0.8}&maxPrice=${priceNum * 1.2}`);
+        router.push(
+          `/search?minPrice=${priceNum * 0.8}&maxPrice=${priceNum * 1.2}`,
+        );
       }
     } else {
       setSearchQuery(suggestion.text);
@@ -189,7 +221,7 @@ export function QuickSearchBar({
   };
 
   return (
-    <div ref={searchRef} className={`relative ${className}`}>
+    <div ref={searchRef} className={`relative w-[400px] ${className}`}>
       <form onSubmit={handleSearch} className="relative w-full group">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
         <input
@@ -200,7 +232,7 @@ export function QuickSearchBar({
           onFocus={() => {
             setShowSuggestions(true);
             if (searchQuery.length === 0) {
-              generateQuickSuggestions('');
+              generateQuickSuggestions("");
             }
           }}
           placeholder={placeholder}
@@ -210,7 +242,7 @@ export function QuickSearchBar({
           <button
             type="button"
             onClick={() => {
-              setSearchQuery('');
+              setSearchQuery("");
               inputRef.current?.focus();
             }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -236,12 +268,14 @@ export function QuickSearchBar({
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left group/item"
               >
                 <div className="flex-shrink-0">
-                  {suggestion.icon || <Search className="w-4 h-4 text-slate-400" />}
+                  {suggestion.icon || (
+                    <Search className="w-4 h-4 text-slate-400" />
+                  )}
                 </div>
                 <span className="text-sm text-slate-700 group-hover/item:text-slate-900 truncate flex-1">
                   {suggestion.text}
                 </span>
-                {suggestion.type === 'service' && (
+                {suggestion.type === "service" && (
                   <div className="flex-shrink-0 text-xs text-slate-400">
                     Appuyez sur Entrée
                   </div>
@@ -257,24 +291,27 @@ export function QuickSearchBar({
 
 // Version Mobile compacte
 export function QuickSearchBarMobile({
-  placeholder = 'Rechercher...',
+  placeholder = "Rechercher...",
   onSearch,
 }: {
   placeholder?: string;
   onSearch?: (query: string) => void;
 }) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
     // Sauvegarder dans les recherches récentes
-    const saved = localStorage.getItem('recentSearches');
+    const saved = localStorage.getItem("recentSearches");
     const recent = saved ? JSON.parse(saved) : [];
-    const updated = [searchQuery, ...recent.filter((s: string) => s !== searchQuery)].slice(0, 5);
-    localStorage.setItem('recentSearches', JSON.stringify(updated));
+    const updated = [
+      searchQuery,
+      ...recent.filter((s: string) => s !== searchQuery),
+    ].slice(0, 5);
+    localStorage.setItem("recentSearches", JSON.stringify(updated));
 
     if (onSearch) {
       onSearch(searchQuery);
@@ -297,7 +334,7 @@ export function QuickSearchBarMobile({
       {searchQuery && (
         <button
           type="button"
-          onClick={() => setSearchQuery('')}
+          onClick={() => setSearchQuery("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
         >
           <X className="w-5 h-5" />

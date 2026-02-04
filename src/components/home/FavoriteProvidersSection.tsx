@@ -8,8 +8,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, Star, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 export function FavoriteProvidersSection() {
+  const { t } = useSafeLanguage();
   // Récupère les prestataires populaires puis complète avec leurs stats
   const [providers, setProviders] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,12 +92,12 @@ export function FavoriteProvidersSection() {
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-full text-red-700 text-sm font-semibold mb-4">
               <Heart className="w-4 h-4 fill-current" />
-              Vos favoris
+              {t.home.connected.favoriteProviders.badge}
             </div>
             <h2 className="font-heading font-bold text-3xl lg:text-4xl text-slate-900 mb-2">
-              Prestataires que{" "}
+              {t.home.connected.favoriteProviders.title}{" "}
               <span className="bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-                Vous Aimez
+                {t.home.connected.favoriteProviders.titleHighlight}
               </span>
             </h2>
           </div>
@@ -114,7 +116,7 @@ export function FavoriteProvidersSection() {
                   {provider.profile?.display_name
                     ? provider.profile.display_name.slice(0, 2).toUpperCase()
                     : provider.company_name?.slice(0, 2).toUpperCase() || "PR"}
-                </div>
+              </div>
                 <div>
                   <h3 className="font-semibold text-lg text-slate-900 group-hover:text-purple-600 transition-colors">
                     {provider.profile?.display_name || provider.company_name}
@@ -131,13 +133,13 @@ export function FavoriteProvidersSection() {
                       </span>
                     </div>
                     <span className="text-slate-500">
-                      • {provider.stats?.total_services ?? 0} services
+                      • {provider.stats?.total_services ?? 0} {t.home.connected.favoriteProviders.services}
                     </span>
                   </div>
                 </div>
               </div>
               <Button variant="outline" className="w-full">
-                Voir le profil
+                {t.home.connected.favoriteProviders.viewProfile}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>

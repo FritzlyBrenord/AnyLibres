@@ -9,6 +9,8 @@ export interface Profile {
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
+  email?: string;
+  role?: string;
 }
 
 export interface Conversation {
@@ -28,6 +30,8 @@ export interface Conversation {
   other_participant?: Profile;
   other_participant_name?: string;
   other_participant_avatar?: string;
+  other_participant_email?: string;
+  other_participant_role?: string;
 }
 
 export type MessageType =

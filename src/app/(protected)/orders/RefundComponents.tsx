@@ -12,15 +12,17 @@ import {
   XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const REFUND_REASONS = [
-  { value: "client_request", label: "Demande du client" },
-  { value: "quality_issue", label: "Problème de qualité" },
-  { value: "not_delivered", label: "Non livré" },
-  { value: "order_cancelled", label: "Commande annulée" },
-  { value: "payment_error", label: "Erreur de paiement" },
-  { value: "duplicate_payment", label: "Paiement dupliqué" },
-  { value: "other", label: "Autre" },
+  { value: "client_request", label: "client_request" },
+  { value: "quality_issue", label: "quality_issue" },
+  { value: "not_delivered", label: "not_delivered" },
+  { value: "order_cancelled", label: "order_cancelled" },
+  { value: "payment_error", label: "payment_error" },
+  { value: "duplicate_payment", label: "duplicate_payment" },
+  { value: "other", label: "other" },
 ];
 
 interface RefundRequest {
@@ -51,6 +53,8 @@ export function RefundModal({
   onClose,
   onSuccess,
 }: RefundModalProps) {
+  const { t } = useSafeLanguage();
+  const { formatAmount } = useCurrency();
   const [amount, setAmount] = useState(orderTotal);
   const [reason, setReason] = useState("client_request");
   const [details, setDetails] = useState("");
@@ -65,17 +69,17 @@ export function RefundModal({
     // Validation du montant
     const amountCents = Math.round(amount * 100);
     if (!amount || amount <= 0 || isNaN(amount)) {
-      setError("Le montant doit être supérieur à 0");
+      setError(t('orders.refunds.validation.minAmount'));
       setLoading(false);
       return;
     }
     if (amountCents <= 0) {
-      setError("Le montant en cents doit être supérieur à 0");
+      setError(t('orders.refunds.validation.minAmount'));
       setLoading(false);
       return;
     }
     if (amount > orderTotal) {
-      setError(`Le montant ne peut pas dépasser ${orderTotal.toFixed(2)} €`);
+      setError(t('orders.refunds.validation.maxAmount', { amount: orderTotal.toFixed(2) }));
       setLoading(false);
       return;
     }
@@ -108,20 +112,20 @@ export function RefundModal({
         data = text ? JSON.parse(text) : {};
       } catch (parseError) {
         console.error("Failed to parse response:", parseError);
-        setError("Erreur lors de la lecture de la réponse du serveur");
+        setError(t('orders.refunds.validation.readError'));
         return;
       }
 
       if (!response.ok) {
         // Afficher le message détaillé si disponible
-        const errorMessage = data.details || data.error || "Erreur lors de la création de la demande";
+        const errorMessage = data.details || data.error || t('orders.refunds.validation.genericError');
         setError(errorMessage);
         console.error("Refund API error:", data);
         return;
       }
 
       if (!data.success) {
-        setError(data.error || "Erreur lors de la création de la demande");
+        setError(data.error || t('orders.refunds.validation.genericError'));
         console.error("Refund API returned error:", data);
         return;
       }
@@ -130,7 +134,7 @@ export function RefundModal({
       onClose();
     } catch (err) {
       console.error("Refund request error:", err);
-      setError("Erreur lors de la création de la demande");
+      setError(t('orders.refunds.validation.genericError'));
     } finally {
       setLoading(false);
     }
@@ -153,7 +157,7 @@ export function RefundModal({
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Demander un remboursement
+                {t('orders.refunds.title')}
               </h2>
               <button
                 onClick={onClose}
@@ -167,10 +171,10 @@ export function RefundModal({
               {/* Montant */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant à rembourser (€)
+                  {t('orders.amount')}
                 </label>
                 <div className="relative">
-                  <input
+                   <input
                     type="number"
                     step="0.01"
                     max={orderTotal}
@@ -179,7 +183,7 @@ export function RefundModal({
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                   <span className="absolute right-3 top-2.5 text-gray-500">
-                    max: €{orderTotal.toFixed(2)}
+                    {t('orders.refunds.labels.max')}: {formatAmount(orderTotal)}
                   </span>
                 </div>
               </div>
@@ -187,7 +191,7 @@ export function RefundModal({
               {/* Raison */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Raison du remboursement
+                  {t('orders.detail.disputeReason')}
                 </label>
                 <select
                   value={reason}
@@ -196,7 +200,7 @@ export function RefundModal({
                 >
                   {REFUND_REASONS.map((r) => (
                     <option key={r.value} value={r.value}>
-                      {r.label}
+                      {t(`orders.refunds.reasons.${r.value}`)}
                     </option>
                   ))}
                 </select>
@@ -205,12 +209,12 @@ export function RefundModal({
               {/* Détails */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Détails (optionnel)
+                  {t('orders.detail.disputeDetails')}
                 </label>
                 <textarea
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
-                  placeholder="Explique brièvement pourquoi tu demandes ce remboursement..."
+                  placeholder={t('orders.refunds.placeholders.details')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   rows={3}
                 />
@@ -231,22 +235,22 @@ export function RefundModal({
                   onClick={onClose}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
                 >
-                  Annuler
+                  {t('orders.detail.back')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {loading ? (
+                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Envoi...
+                      {t('orders.refunds.labels.sending')}
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      Envoyer
+                      {t('orders.detail.dispute')}
                     </>
                   )}
                 </button>
@@ -264,36 +268,37 @@ interface RefundStatusBadgeProps {
 }
 
 export function RefundStatusBadge({ status }: RefundStatusBadgeProps) {
+  const { t } = useSafeLanguage();
   const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
     pending: {
       color: "bg-yellow-100 text-yellow-800",
       icon: <Clock className="w-4 h-4" />,
-      label: "En attente",
+      label: t('orders.refunds.status.pending'),
     },
     approved: {
       color: "bg-blue-100 text-blue-800",
       icon: <Clock className="w-4 h-4" />,
-      label: "Approuvé",
+      label: t('orders.refunds.status.approved'),
     },
     processing: {
       color: "bg-blue-100 text-blue-800",
       icon: <Clock className="w-4 h-4" />,
-      label: "En traitement",
+      label: t('orders.refunds.status.processing'),
     },
     completed: {
       color: "bg-green-100 text-green-800",
       icon: <CheckCircle className="w-4 h-4" />,
-      label: "Complété",
+      label: t('orders.refunds.status.completed'),
     },
     rejected: {
       color: "bg-red-100 text-red-800",
       icon: <XCircle className="w-4 h-4" />,
-      label: "Rejeté",
+      label: t('orders.refunds.status.rejected'),
     },
     failed: {
       color: "bg-red-100 text-red-800",
       icon: <XCircle className="w-4 h-4" />,
-      label: "Échoué",
+      label: t('orders.refunds.status.failed'),
     },
   };
 
@@ -313,12 +318,14 @@ interface RefundListProps {
 }
 
 export function RefundList({ refunds, loading }: RefundListProps) {
+  const { t, language } = useSafeLanguage();
+  const { formatAmount } = useCurrency();
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-600">Chargement des remboursements...</p>
+          <p className="text-gray-600">{t('orders.detail.loading')}</p>
         </div>
       </div>
     );
@@ -328,7 +335,7 @@ export function RefundList({ refunds, loading }: RefundListProps) {
     return (
       <div className="text-center py-8">
         <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-600">Aucune demande de remboursement</p>
+        <p className="text-gray-600">{t('orders.refunds.noRefunds')}</p>
       </div>
     );
   }
@@ -343,12 +350,12 @@ export function RefundList({ refunds, loading }: RefundListProps) {
           className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
         >
           <div className="flex items-start justify-between mb-3">
-            <div>
+             <div>
               <h4 className="font-medium text-gray-900">
-                Remboursement de €{(refund.amount_cents / 100).toFixed(2)}
+                {t('orders.refunds.title')} : {formatAmount(refund.amount_cents / 100)}
               </h4>
               <p className="text-sm text-gray-500">
-                Demandé le {new Date(refund.created_at).toLocaleDateString("fr-FR")}
+                {t('orders.refunds.labels.requestedAt')} {new Date(refund.created_at).toLocaleDateString(language || "fr-FR")}
               </p>
             </div>
             <RefundStatusBadge status={refund.status} />
@@ -362,14 +369,14 @@ export function RefundList({ refunds, loading }: RefundListProps) {
 
           {refund.admin_notes && (
             <div className="bg-blue-50 rounded p-2 mb-3 border border-blue-200">
-              <p className="text-xs font-medium text-blue-900 mb-1">Notes admin:</p>
+              <p className="text-xs font-medium text-blue-900 mb-1">{t('orders.refunds.labels.adminNotes')}</p>
               <p className="text-sm text-blue-800">{refund.admin_notes}</p>
             </div>
           )}
 
           {refund.refunded_at && (
             <p className="text-xs text-green-600">
-              ✓ Remboursé le {new Date(refund.refunded_at).toLocaleDateString("fr-FR")}
+              ✓ {t('orders.refunds.labels.refundedAt')} {new Date(refund.refunded_at).toLocaleDateString(language || "fr-FR")}
             </p>
           )}
         </motion.div>

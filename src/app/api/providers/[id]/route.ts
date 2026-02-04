@@ -152,8 +152,8 @@ export async function GET(
         reviews: reviewsWithProfiles,
         stats: {
           total_services: services?.length || 0,
-          total_reviews: totalReviews,
-          average_rating: averageRating,
+          total_reviews: provider.total_reviews || totalReviews,
+          average_rating: provider.rating || averageRating,
           average_communication: averageCommunication,
           average_quality: averageQuality,
           average_deadline: averageDeadline,

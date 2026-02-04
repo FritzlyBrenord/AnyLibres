@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import {
   User,
   Settings,
@@ -21,10 +22,12 @@ import {
   ShoppingBag,
   Star,
   Brain,
+  HelpCircle,
 } from "lucide-react";
 
 export function UserMenu() {
   const { user, signOut, loading } = useAuth();
+  const { t } = useSafeLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [favoriCount, SetfavoriCount] = useState(0);
@@ -55,11 +58,6 @@ export function UserMenu() {
       .then((data) => (data.success ? data.data.count : 0))
       .catch(() => 0);
 
-    // Stockage et vérification immédiate
-    console.log("💾 Variable stockée:", count);
-    console.log("🔍 Vérification type:", typeof count);
-    console.log("🎯 Valeur réelle:", count);
-
     return count;
   }
 
@@ -81,13 +79,13 @@ export function UserMenu() {
           href="/login"
           className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
-          Connexion
+          {t.navigation.login}
         </Link>
         <Link
           href="/register"
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
         >
-          S'inscrire
+          {t.navigation.register}
         </Link>
       </div>
     );
@@ -170,7 +168,7 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <User className="w-4 h-4" />
-              Voir mon profil
+              {t.navigation.profile}
             </Link>
 
             {/* Dashboard pour prestataires */}
@@ -181,7 +179,7 @@ export function UserMenu() {
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
               >
                 <LayoutDashboard className="w-4 h-4" />
-                Tableau de bord
+                {t.navigation.dashboard}
               </Link>
             )}
 
@@ -224,7 +222,7 @@ export function UserMenu() {
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 font-medium"
               >
                 <Briefcase className="w-4 h-4" />
-                Devenir prestataire
+                {t.navigation.becomeProvider}
               </button>
             )}
           </div>
@@ -237,7 +235,7 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <ShoppingBag className="w-4 h-4" />
-              Mes commandes
+              {t.navigation.myOrders}
             </Link>
 
             {/* Messages */}
@@ -247,7 +245,7 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <MessageSquare className="w-4 h-4" />
-              Messages
+              {t.messages.title}
             </Link>
 
             {/* Notifications */}
@@ -257,7 +255,7 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <Bell className="w-4 h-4" />
-              Notifications
+              {t.notifications.title}
             </Link>
 
             {/* Favoris */}
@@ -267,7 +265,7 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               <Heart className="w-4 h-4" />
-              Favoris {favoriCount}
+              {t.navigation.favorites} {favoriCount > 0 && `(${favoriCount})`}
             </Link>
 
             {/* AI Insights - NEW */}
@@ -277,7 +275,17 @@ export function UserMenu() {
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 font-medium"
             >
               <Brain className="w-4 h-4" />
-              Mes Insights IA
+              {t.navigation.aiInsights}
+            </Link>
+
+            {/* Centre d'aide */}
+            <Link
+              href="/help"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <HelpCircle className="w-4 h-4" />
+              {t.help?.title || "Centre d'Aide"}
             </Link>
           </div>
 
@@ -288,7 +296,7 @@ export function UserMenu() {
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
             >
               <LogOut className="w-4 h-4" />
-              Déconnexion
+              {t.navigation.logout}
             </button>
           </div>
         </div>

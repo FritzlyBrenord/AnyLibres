@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useLanguage } from "@/hooks/useLanguage";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface Recipient {
   id: string;
@@ -42,7 +44,13 @@ interface AdminDonationPanelProps {
 }
 
 export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) {
+  const { language, t } = useLanguage();
   const { defaultCurrency, convertFromUSD, formatAmount } = useCurrency();
+  const { hasPermission } = usePermissions();
+  
+  const canDonate = hasPermission('donations.create');
+  const canViewHistory = hasPermission('donations.view_history');
+
   const [recipientType, setRecipientType] = useState<"client" | "provider">("client");
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(null);
   const [amount, setAmount] = useState("");
@@ -118,8 +126,13 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
   const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!canDonate) {
+      setError("Vous n'avez pas la permission de faire un don.");
+      return;
+    }
+
     if (!selectedRecipient || !amount || parseFloat(amount) <= 0) {
-      setError("Veuillez remplir tous les champs");
+      setError(t('admin.donation.errorAllFields'));
       return;
     }
 
@@ -138,14 +151,14 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           recipient_id: selectedRecipient.id,
           recipient_type: recipientType,
           amount_cents: Math.round(parseFloat(amount) * 100),
-          reason: reason || `Don à ${recipientType}`,
+          reason: reason || t('admin.donation.reasonDefault', { type: recipientType === 'client' ? t('admin.donation.client') : t('admin.donation.provider') }),
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Erreur lors du don");
+        setError(data.error || t('admin.donation.errorGeneric'));
         return;
       }
 
@@ -154,7 +167,10 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
         selectedRecipient.email;
 
       setSuccess(
-        `Don de ${formatAmount(parseFloat(amount))} envoyé à ${recipientName}`
+        t('admin.donation.successWithDetails', { 
+          amount: formatAmount(parseFloat(amount)), 
+          name: recipientName 
+        })
       );
       setAmount("");
       setReason("");
@@ -168,7 +184,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
       // Reset après 3 secondes
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError("Erreur lors du don");
+      setError(t('admin.donation.errorGeneric'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -176,7 +192,8 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("fr-FR", {
+    const locales = { fr: 'fr-FR', en: 'en-US', es: 'es-ES' };
+    return new Date(dateStr).toLocaleDateString(locales[language] || 'fr-FR', {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -193,15 +210,23 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
         animate={{ opacity: 1, y: 0 }}
         className={`${
           isDark ? "bg-gray-800/50 border-gray-700" : "bg-white border-gray-200"
-        } rounded-2xl p-6 shadow-lg border`}
+        } rounded-2xl p-6 shadow-lg border relative overflow-hidden`}
       >
+        {!canDonate && (
+          <div className="absolute inset-0 z-10 bg-gray-100/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col items-center">
+              <Lock className="w-8 h-8 text-gray-400 mb-2" />
+              <p className="text-gray-600 dark:text-gray-300 font-medium">Permission requise</p>
+            </div>
+          </div>
+        )}
         <h3
           className={`text-xl font-bold mb-6 flex items-center gap-2 ${
             isDark ? "text-white" : "text-gray-900"
           }`}
         >
           <Heart className="w-6 h-6 text-red-600" />
-          Faire un Don
+          {t('admin.donation.title')}
         </h3>
 
         <form onSubmit={handleDonate} className="space-y-4">
@@ -243,12 +268,12 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           {/* Type de destinataire */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              Type de destinataire
+              {t('admin.donation.recipientType')}
             </label>
             <div className="flex gap-2">
               {[
-                { value: "client", label: "Client", icon: User },
-                { value: "provider", label: "Prestataire", icon: Users },
+                { value: "client", label: t('admin.donation.client'), icon: User },
+                { value: "provider", label: t('admin.donation.provider'), icon: Users },
               ].map((type) => {
                 const Icon = type.icon;
                 return (
@@ -280,7 +305,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           {/* Recherche de destinataire */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              Chercher un destinataire
+              {t('admin.donation.searchLabel')}
             </label>
             <div className="relative">
               <Search className={`absolute left-3 top-2.5 w-5 h-5 ${isDark ? "text-gray-500" : "text-gray-400"}`} />
@@ -291,7 +316,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Chercher par nom ou email...`}
+                placeholder={t('admin.donation.searchPlaceholder')}
                 className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                   isDark
                     ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -393,7 +418,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           {/* Montant */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              Montant ({defaultCurrency?.symbol || "€"})
+              {t('admin.donation.amount')} ({defaultCurrency?.symbol || "€"})
             </label>
             <input
               type="number"
@@ -413,12 +438,12 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           {/* Raison (optionnel) */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-              Raison (optionnel)
+              {t('admin.donation.reason')}
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Bonus pour excellente performance..."
+              placeholder={t('admin.donation.reasonPlaceholder')}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
                 isDark
                   ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -431,7 +456,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
           {/* Info */}
           <div className={`p-3 rounded-lg ${isDark ? "bg-blue-900/20 border border-blue-800" : "bg-blue-50 border border-blue-200"}`}>
             <p className={`text-xs ${isDark ? "text-blue-300" : "text-blue-800"}`}>
-              Le montant sera déduit de votre solde admin et ajouté automatiquement au solde disponible du destinataire.
+              {t('admin.donation.info')}
             </p>
           </div>
 
@@ -444,12 +469,12 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Envoi en cours...
+                {t('admin.donation.sending')}
               </>
             ) : (
               <>
                 <Heart className="w-5 h-5" />
-                Envoyer le don
+                {t('admin.donation.send')}
               </>
             )}
           </button>
@@ -457,6 +482,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
       </motion.div>
 
       {/* Historique des dons */}
+      {canViewHistory && (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -473,7 +499,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
         >
           <h3 className="text-xl font-bold flex items-center gap-2">
             <History className="w-6 h-6 text-purple-600" />
-            Historique des Dons
+            {t('admin.donation.historyTitle')}
           </h3>
           {showHistory ? (
             <ChevronUp className="w-5 h-5" />
@@ -497,7 +523,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
               ) : donations.length === 0 ? (
                 <div className={`text-center py-8 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                   <Heart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Aucun don effectué</p>
+                  <p>{t('admin.donation.noHistory')}</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -530,7 +556,7 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
                               {donation.recipient_name}
                             </p>
                             <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                              {donation.recipient_type === "client" ? "Client" : "Prestataire"}
+                            {donation.recipient_type === "client" ? t('admin.donation.client') : t('admin.donation.provider')}
                             </p>
                           </div>
                         </div>
@@ -558,10 +584,11 @@ export function AdminDonationPanel({ isDark = false }: AdminDonationPanelProps) 
 
         {!showHistory && donations.length > 0 && (
           <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-            {donations.length} don{donations.length > 1 ? "s" : ""} effectué{donations.length > 1 ? "s" : ""}
+            {t('admin.donation.donationsCount', { count: donations.length })}
           </p>
         )}
       </motion.div>
+      )}
     </div>
   );
 }

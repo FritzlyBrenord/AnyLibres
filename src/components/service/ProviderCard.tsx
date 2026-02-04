@@ -39,11 +39,20 @@ export function ProviderCard({ provider }: ProviderCardProps) {
   const { t } = useSafeLanguage();
   const [imageLoadError, setImageLoadError] = useState(false);
 
+  // Debug logging
+  console.log('ProviderCard - Provider ID:', provider.id);
+  console.log('ProviderCard - provider.rating:', provider.rating);
+  console.log('ProviderCard - provider.stats:', provider.stats);
+  console.log('ProviderCard - provider.total_reviews:', provider.total_reviews);
+  console.log('ProviderCard - Calculated rating:', (provider.stats?.average_rating ?? provider.rating ?? 0));
+
   const displayName =
-    provider.profile?.display_name ||
-    provider.company_name ||
-    t?.providerCard?.provider ||
-    "Prestataire";
+    provider.profile?.first_name || provider.profile?.last_name
+      ? `${provider.profile.first_name || ""} ${provider.profile.last_name || ""}`.trim()
+      : provider.profile?.display_name ||
+        provider.company_name ||
+        "Prestataire";
+
   // Image par défaut si aucun avatar n'est défini
   const defaultAvatarImage =
     "https://via.placeholder.com/200/E2E8F0/64748B?text=Avatar";
@@ -115,7 +124,7 @@ export function ProviderCard({ provider }: ProviderCardProps) {
           <div className="flex items-center gap-1 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-200">
             <Star className="w-4 h-4 fill-blue-500 text-blue-500" />
             <span className="font-semibold text-sm text-slate-900">
-              {provider.rating.toFixed(1)}
+              {(provider.stats?.average_rating ?? provider.rating ?? 0).toFixed(1)}
             </span>
           </div>
           <div className="flex items-center gap-1 text-slate-600 text-sm">

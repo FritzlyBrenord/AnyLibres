@@ -23,7 +23,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLanguageContext } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 import { AdminBalanceSection } from "./AdminBalanceSection";
@@ -69,10 +69,8 @@ interface FinanceStats {
 }
 
 const Finance = ({ isDark }: { isDark?: boolean }) => {
-  const { t, language } = useLanguageContext();
+  const { t, language } = useLanguage();
   const { convertFromUSD, formatAmount } = useCurrency();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tAny = t as Record<string, any>;
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -94,14 +92,14 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
       } else {
         setError(
           data.error ||
-            tAny.admin?.finance?.error ||
+            t('admin.finance.error') ||
             "Erreur lors du chargement des statistiques",
         );
       }
     } catch (err) {
       console.error("Error fetching finance stats:", err);
       setError(
-        tAny.admin?.finance?.error ||
+        t('admin.finance.error') ||
           "Impossible de charger les statistiques financières",
       );
     } finally {
@@ -131,7 +129,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className={`${isDark ? "text-gray-300" : "text-gray-600"}`}>
-            {tAny.admin?.finance?.loading ||
+            {t('admin.finance.loading') ||
               "Chargement des statistiques financières..."}
           </p>
         </div>
@@ -157,7 +155,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
               isDark ? "text-red-300" : "text-red-800"
             }`}
           >
-            {error || tAny.admin?.finance?.error || "Erreur lors du chargement"}
+            {error || t('admin.finance.error') || "Erreur lors du chargement"}
           </p>
         </div>
       </div>
@@ -258,21 +256,16 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
       >
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1
-              className={`text-4xl font-bold mb-2 ${
-                isDark ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {tAny.admin?.finance?.title || "Finances du Système"}
+            <h1 className={`text-4xl font-bold mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
+              {t('admin.finance.title')}
             </h1>
             <p className={isDark ? "text-gray-400" : "text-gray-600"}>
-              {tAny.admin?.finance?.subtitle ||
-                "Vue d'ensemble complète des revenus et transactions"}
+              {t('admin.finance.subtitle')}
             </p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg">
             <Download className="w-5 h-5" />
-            {tAny.admin?.finance?.export || "Exporter"}
+            {t('admin.finance.export')}
           </button>
         </div>
       </motion.div>
@@ -296,12 +289,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             {formatCurrency(stats.total_revenue_gross)}
           </div>
           <p className="text-green-100 text-sm">
-            {tAny.admin?.finance?.cards?.grossRevenue?.title ||
-              "Revenus Bruts Totaux"}
+            {t('admin.finance.cards.grossRevenue.title')}
           </p>
           <p className="text-xs text-green-200 mt-2">
-            {tAny.admin?.finance?.cards?.grossRevenue?.subtitle ||
-              "Montant total des commandes payées"}
+            {t('admin.finance.cards.grossRevenue.subtitle')}
           </p>
         </motion.div>
 
@@ -322,12 +313,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             {formatCurrency(stats.total_system_revenue)}
           </div>
           <p className="text-green-100 text-sm">
-            {tAny.admin?.finance?.cards?.confirmedRevenue?.title ||
-              "Revenus Système Confirmés"}
+            {t('admin.finance.cards.confirmedRevenue.title')}
           </p>
           <p className="text-xs text-green-200 mt-2">
-            {tAny.admin?.finance?.cards?.confirmedRevenue?.subtitle ||
-              "Clients ont accepté les services"}
+            {t('admin.finance.cards.confirmedRevenue.subtitle')}
           </p>
         </motion.div>
 
@@ -348,12 +337,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             {formatCurrency(stats.total_provider_earnings)}
           </div>
           <p className="text-blue-100 text-sm">
-            {tAny.admin?.finance?.cards?.providerShare?.title ||
-              "Part Prestataires (95%)"}
+            {t('admin.finance.cards.providerShare.title')}
           </p>
           <p className="text-xs text-blue-200 mt-2">
-            {tAny.admin?.finance?.cards?.providerShare?.subtitle ||
-              "Montant total pour les prestataires"}
+            {t('admin.finance.cards.providerShare.subtitle')}
           </p>
         </motion.div>
 
@@ -374,12 +361,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             {formatCurrency(stats.pending_provider_balance)}
           </div>
           <p className="text-orange-100 text-sm">
-            {tAny.admin?.finance?.cards?.pendingBalance?.title ||
-              "Solde Restant Dû"}
+            {t('admin.finance.cards.pendingBalance.title')}
           </p>
           <p className="text-xs text-orange-200 mt-2">
-            {tAny.admin?.finance?.cards?.pendingBalance?.subtitle ||
-              "Montant restant à payer aux prestataires"}
+            {t('admin.finance.cards.pendingBalance.subtitle')}
           </p>
         </motion.div>
       </div>
@@ -391,7 +376,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         transition={{ delay: 0.45 }}
       >
         <CollapsibleSection
-          title={tAny.admin?.finance?.systemRevenue?.title || "Revenus Système Détaillés"}
+          title={t('admin.finance.systemRevenue.title')}
           icon={DollarSign}
           iconColor="text-purple-600"
           defaultOpen={true}
@@ -402,8 +387,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
               className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
             >
               ✅{" "}
-              {tAny.admin?.finance?.systemRevenue?.confirmed ||
-                "Revenus Confirmés (Clients ont accepté)"}
+              {t('admin.finance.systemRevenue.confirmed')}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Commission sur commandes (5%) */}
@@ -414,12 +398,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.commission ||
-                        "Commission Commandes"}
+                      {t('admin.finance.systemRevenue.commission')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.systemRevenue?.commissionConfirmed ||
-                        "5% confirmé"}
+                      {t('admin.finance.systemRevenue.commissionConfirmed')}
                     </p>
                   </div>
                 </div>
@@ -436,13 +418,11 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.withdrawalFees ||
-                        "Frais de Retrait"}
+                      {t('admin.finance.systemRevenue.withdrawalFees')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
                       {withdrawalFeePercentage}%{" "}
-                      {tAny.admin?.finance?.systemRevenue?.withdrawalFeesDesc ||
-                        "des retraits"}
+                        {t('admin.finance.systemRevenue.withdrawalFeesDesc')}
                     </p>
                   </div>
                 </div>
@@ -459,12 +439,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {tAny.admin?.finance?.systemRevenue?.totalConfirmed ||
-                        "Total Confirmé"}
+                      {t('admin.finance.systemRevenue.totalConfirmed')}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.moneyEarned ||
-                        "Argent acquis"}
+                      {t('admin.finance.systemRevenue.moneyEarned')}
                     </p>
                   </div>
                 </div>
@@ -481,8 +459,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
               className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
             >
               ⏳{" "}
-              {tAny.admin?.finance?.systemRevenue?.pending ||
-                "Revenus en Attente (Services non acceptés)"}
+                {t('admin.finance.systemRevenue.pending')}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
@@ -492,12 +469,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.commissionPending ||
-                        "Commission en Attente"}
+                      {t('admin.finance.systemRevenue.commissionPending')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.systemRevenue
-                        ?.commissionNotConfirmed || "5% non confirmé"}
+                      {t('admin.finance.systemRevenue.commissionNotConfirmed')}
                     </p>
                   </div>
                 </div>
@@ -513,12 +488,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.providersPending ||
-                        "Prestataires en Attente"}
+                      {t('admin.finance.systemRevenue.providersPending')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.systemRevenue
-                        ?.providersNotConfirmed || "95% non confirmé"}
+                      {t('admin.finance.systemRevenue.providersNotConfirmed')}
                     </p>
                   </div>
                 </div>
@@ -536,7 +509,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                 className={`text-sm font-semibold mb-3 ${isDark ? "text-gray-300" : "text-gray-700"}`}
               >
                 ↩️{" "}
-                {tAny.admin?.finance?.systemRevenue?.refunds || "Remboursements"}
+                {t('admin.finance.systemRevenue.refunds')}
               </h4>
               <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
                 <div className="flex items-center gap-3">
@@ -545,12 +518,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.systemRevenue?.totalRefunded ||
-                        "Total Remboursé"}
+                      {t('admin.finance.systemRevenue.totalRefunded')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.systemRevenue?.cancelledOrders ||
-                        "Commandes annulées"}
+                      {t('admin.finance.systemRevenue.cancelledOrders')}
                     </p>
                   </div>
                 </div>
@@ -571,7 +542,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           transition={{ delay: 0.5 }}
         >
           <CollapsibleSection
-            title={tAny.admin?.finance?.providerBalances?.title || "Soldes Prestataires Détaillés"}
+            title={t('admin.finance.providerBalances.title')}
             icon={Wallet}
             iconColor="text-purple-600"
             defaultOpen={false}
@@ -584,12 +555,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.providerBalances?.available ||
-                        "Disponible"}
+                      {t('admin.finance.providerBalances.available')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.providerBalances?.availableDesc ||
-                        "Prêt à être retiré"}
+                      {t('admin.finance.providerBalances.availableDesc')}
                     </p>
                   </div>
                 </div>
@@ -605,12 +574,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.providerBalances?.pending ||
-                        "En attente"}
+                      {t('admin.finance.providerBalances.pending')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.providerBalances?.pendingDesc ||
-                        "Commandes en cours"}
+                      {t('admin.finance.providerBalances.pendingDesc')}
                     </p>
                   </div>
                 </div>
@@ -626,12 +593,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.providerBalances?.withdrawn ||
-                        "Retiré"}
+                      {t('admin.finance.providerBalances.withdrawn')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.providerBalances?.withdrawnDesc ||
-                        "Total des retraits"}
+                      {t('admin.finance.providerBalances.withdrawnDesc')}
                     </p>
                   </div>
                 </div>
@@ -647,12 +612,10 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {tAny.admin?.finance?.providerBalances?.totalEarned ||
-                        "Total Gagné"}
+                      {t('admin.finance.providerBalances.totalEarned')}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {tAny.admin?.finance?.providerBalances?.totalEarnedDesc ||
-                        "Cumul total"}
+                      {t('admin.finance.providerBalances.totalEarnedDesc')}
                     </p>
                   </div>
                 </div>
@@ -671,7 +634,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           transition={{ delay: 0.6 }}
         >
           <CollapsibleSection
-            title={tAny.admin?.finance?.orderStats?.title || "Statistiques Commandes"}
+            title={t('admin.finance.orderStats.title')}
             icon={ShoppingCart}
             iconColor="text-purple-600"
             defaultOpen={false}
@@ -683,7 +646,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     <BarChart3 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                   </div>
                   <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                    {tAny.admin?.finance?.orderStats?.total || "Total"}
+                    {t('admin.finance.orderStats.total')}
                   </span>
                 </div>
                 <span
@@ -701,7 +664,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     <CheckCircle className="w-5 h-5 text-green-600" />
                   </div>
                   <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                    {tAny.admin?.finance?.orderStats?.completed || "Complétées"}
+                    {t('admin.finance.orderStats.completed')}
                   </span>
                 </div>
                 <span className="text-xl font-bold text-green-600">
@@ -715,7 +678,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     <Clock className="w-5 h-5 text-orange-600" />
                   </div>
                   <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                    {tAny.admin?.finance?.orderStats?.pending || "En cours"}
+                    {t('admin.finance.orderStats.pending')}
                   </span>
                 </div>
                 <span className="text-xl font-bold text-orange-600">
@@ -729,7 +692,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     <XCircle className="w-5 h-5 text-red-600" />
                   </div>
                   <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-                    {tAny.admin?.finance?.orderStats?.cancelled || "Annulées"}
+                    {t('admin.finance.orderStats.cancelled')}
                   </span>
                 </div>
                 <span className="text-xl font-bold text-red-600">
@@ -751,7 +714,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         transition={{ delay: 0.7 }}
       >
         <CollapsibleSection
-          title={tAny.admin?.finance?.monthlyRevenue?.title || "Revenus Mensuels (12 derniers mois)"}
+          title={t('admin.finance.monthlyRevenue.title')}
           icon={Calendar}
           iconColor="text-purple-600"
           defaultOpen={false}
@@ -775,13 +738,11 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     </span>
                     <div className="flex items-center gap-4 text-sm">
                       <span className="text-purple-600 font-semibold">
-                        {tAny.admin?.finance?.monthlyRevenue?.platform ||
-                          "Plateforme"}
+                        {t('admin.finance.monthlyRevenue.platform')}
                         : {formatCurrency(month.platform_share)}
                       </span>
                       <span className="text-blue-600 font-semibold">
-                        {tAny.admin?.finance?.monthlyRevenue?.providers ||
-                          "Providers"}
+                        {t('admin.finance.monthlyRevenue.providers')}
                         : {formatCurrency(month.provider_share)}
                       </span>
                       <span
@@ -829,10 +790,8 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
                     <span className="text-xs text-gray-500">
                       {month.orders_count}{" "}
                       {month.orders_count > 1
-                        ? tAny.admin?.finance?.monthlyRevenue?.orders ||
-                          "commandes"
-                        : tAny.admin?.finance?.monthlyRevenue?.order ||
-                          "commande"}
+                        ? t('admin.finance.monthlyRevenue.orders')
+: t('admin.finance.monthlyRevenue.order')}
                     </span>
                   </div>
                 </div>
@@ -849,7 +808,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
         transition={{ delay: 0.8 }}
       >
         <CollapsibleSection
-          title={tAny.admin?.finance?.globalDistribution?.title || "Répartition Globale"}
+          title={t('admin.finance.globalDistribution.title')}
           icon={PieChart}
           iconColor="text-white"
           defaultOpen={false}
@@ -857,8 +816,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl text-white">
             <div className="text-center">
               <p className="text-purple-100 text-sm mb-1">
-                {tAny.admin?.finance?.globalDistribution?.confirmed ||
-                  "Revenus Confirmés"}
+                {t('admin.finance.globalDistribution.confirmed')}
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(stats.total_system_revenue)}
@@ -866,8 +824,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             </div>
             <div className="text-center">
               <p className="text-purple-100 text-sm mb-1">
-                {tAny.admin?.finance?.globalDistribution?.pending ||
-                  "Revenus en Attente"}
+                {t('admin.finance.globalDistribution.pending')}
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(stats.total_system_revenue_pending)}
@@ -875,8 +832,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             </div>
             <div className="text-center">
               <p className="text-purple-100 text-sm mb-1">
-                {tAny.admin?.finance?.globalDistribution?.refunds ||
-                  "Remboursements"}
+                {t('admin.finance.globalDistribution.refunds')}
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(stats.total_refunds)}
@@ -884,8 +840,7 @@ const Finance = ({ isDark }: { isDark?: boolean }) => {
             </div>
             <div className="text-center">
               <p className="text-purple-100 text-sm mb-1">
-                {tAny.admin?.finance?.globalDistribution?.gross ||
-                  "Volume Brut"}
+                {t('admin.finance.globalDistribution.gross')}
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(stats.total_revenue_gross)}

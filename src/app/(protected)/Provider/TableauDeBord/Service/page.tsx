@@ -33,30 +33,7 @@ import {
 } from "@/types/service";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
 
-const getStatusBadge = (status: ServiceStatus) => {
-  const config = {
-    draft: {
-      label: "Brouillon",
-      color: "bg-gray-100 text-gray-800 border-gray-200",
-    },
-    published: {
-      label: "Publié",
-      color: "bg-green-100 text-green-800 border-green-200",
-    },
-    archived: {
-      label: "Archivé",
-      color: "bg-orange-100 text-orange-800 border-orange-200",
-    },
-  };
-  const { label, color } = config[status];
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-medium border ${color}`}
-    >
-      {label}
-    </span>
-  );
-};
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 const formatCurrency = (amount: number, currency: string) => {
   return new Intl.NumberFormat("fr-FR", {
@@ -67,11 +44,11 @@ const formatCurrency = (amount: number, currency: string) => {
 
 // Hook pour obtenir la devise sélectionnée
 const useSelectedCurrency = () => {
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
 
   useEffect(() => {
     // Charger la devise depuis localStorage
-    const savedCurrency = localStorage.getItem('selectedCurrency');
+    const savedCurrency = localStorage.getItem("selectedCurrency");
     if (savedCurrency) {
       setSelectedCurrency(savedCurrency);
     }
@@ -81,9 +58,15 @@ const useSelectedCurrency = () => {
       setSelectedCurrency(event.detail.code);
     };
 
-    window.addEventListener('currencyChanged', handleCurrencyChange as EventListener);
+    window.addEventListener(
+      "currencyChanged",
+      handleCurrencyChange as EventListener,
+    );
     return () => {
-      window.removeEventListener('currencyChanged', handleCurrencyChange as EventListener);
+      window.removeEventListener(
+        "currencyChanged",
+        handleCurrencyChange as EventListener,
+      );
     };
   }, []);
 
@@ -108,9 +91,36 @@ const getServiceMetrics = (service: Service) => {
   };
 };
 
+const getStatusBadge = (status: ServiceStatus, t: any) => {
+  const config = {
+    draft: {
+      label: t.serviceList?.stats?.draft || "Brouillon",
+      color: "bg-gray-100 text-gray-800 border-gray-200",
+    },
+    published: {
+      label: t.serviceList?.stats?.published || "Publié",
+      color: "bg-green-100 text-green-800 border-green-200",
+    },
+    archived: {
+      label: t.serviceList?.stats?.archived || "Archivé",
+      color: "bg-orange-100 text-orange-800 border-orange-200",
+    },
+  };
+  const { label, color } = config[status] || config.draft;
+  return (
+    <span
+      className={`px-3 py-1 rounded-full text-xs font-medium border ${color}`}
+    >
+      {label}
+    </span>
+  );
+};
+// ...
+// Removed duplicate getStatusBadge
 export default function ServicesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useSafeLanguage();
   const selectedCurrency = useSelectedCurrency();
 
   const [services, setServices] = useState<Service[]>([]);
@@ -139,7 +149,7 @@ export default function ServicesPage() {
     if (services.length > 0) {
       const totalViews = services.reduce(
         (acc, curr) => acc + (curr.views_count || 0),
-        0
+        0,
       );
       setStats((prev) => ({ ...prev, totalViews }));
     }
@@ -229,8 +239,8 @@ export default function ServicesPage() {
           services.map((service) =>
             service.id === statusChange.serviceId
               ? { ...service, status: statusChange.newStatus }
-              : service
-          )
+              : service,
+          ),
         );
         loadStats(); // Refresh stats
         setShowStatusModal(false);
@@ -250,21 +260,30 @@ export default function ServicesPage() {
 
     const messages = {
       published: {
-        title: "Publier le service",
-        message: `Voulez-vous vraiment publier "${statusChange.serviceName}" ? Le service sera visible par tous les utilisateurs.`,
-        confirmButton: "Publier",
+        title:
+          t.serviceList?.modals?.status?.published?.title ||
+          "Publier le service",
+        message: `${t.serviceList?.modals?.status?.published?.message || "Voulez-vous vraiment publier"} "${statusChange.serviceName}"${t.serviceList?.modals?.status?.published?.messageSuffix || "? Le service sera visible par tous les utilisateurs."}`,
+        confirmButton:
+          t.serviceList?.modals?.status?.published?.confirm || "Publier",
         confirmColor: "bg-green-600 hover:bg-green-700",
       },
       draft: {
-        title: "Mettre en brouillon",
-        message: `Voulez-vous vraiment mettre "${statusChange.serviceName}" en brouillon ? Le service ne sera plus visible publiquement.`,
-        confirmButton: "Mettre en brouillon",
+        title:
+          t.serviceList?.modals?.status?.draft?.title || "Mettre en brouillon",
+        message: `${t.serviceList?.modals?.status?.draft?.message || "Voulez-vous vraiment mettre"} "${statusChange.serviceName}" ${t.serviceList?.modals?.status?.draft?.messageSuffix || "en brouillon ? Le service ne sera plus visible publiquement."}`,
+        confirmButton:
+          t.serviceList?.modals?.status?.draft?.confirm ||
+          "Mettre en brouillon",
         confirmColor: "bg-gray-600 hover:bg-gray-700",
       },
       archived: {
-        title: "Archiver le service",
-        message: `Voulez-vous vraiment archiver "${statusChange.serviceName}" ? Le service sera masqué mais pourra être restauré.`,
-        confirmButton: "Archiver",
+        title:
+          t.serviceList?.modals?.status?.archived?.title ||
+          "Archiver le service",
+        message: `${t.serviceList?.modals?.status?.archived?.message || "Voulez-vous vraiment archiver"} "${statusChange.serviceName}"${t.serviceList?.modals?.status?.archived?.messageSuffix || "? Le service sera masqué mais pourra être restauré."}`,
+        confirmButton:
+          t.serviceList?.modals?.status?.archived?.confirm || "Archiver",
         confirmColor: "bg-orange-600 hover:bg-orange-700",
       },
     };
@@ -321,7 +340,9 @@ export default function ServicesPage() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <p className="mt-4 text-gray-600">
+              {t.common?.loading || "Chargement..."}
+            </p>
           </div>
         </div>
       </>
@@ -338,10 +359,10 @@ export default function ServicesPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Mes Services
+                  {t.serviceList?.title || "Mes Services"}
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Gérez et suivez vos services
+                  {t.serviceList?.subtitle || "Gérez et suivez vos services"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -364,7 +385,7 @@ export default function ServicesPage() {
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex items-center font-semibold transition-colors"
                 >
                   <Plus size={20} className="mr-2" />
-                  Nouveau Service
+                  {t.serviceList?.newService || "Nouveau Service"}
                 </button>
               </div>
             </div>
@@ -374,7 +395,9 @@ export default function ServicesPage() {
               <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      {t.serviceList?.stats?.total || "Total"}
+                    </p>
                     <p className="text-2xl font-bold text-gray-900">
                       {stats.total}
                     </p>
@@ -387,7 +410,7 @@ export default function ServicesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-600">
-                      Publiés
+                      {t.serviceList?.stats?.published || "Publiés"}
                     </p>
                     <p className="text-2xl font-bold text-green-700">
                       {stats.published}
@@ -401,7 +424,7 @@ export default function ServicesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">
-                      Brouillons
+                      {t.serviceList?.stats?.draft || "Brouillons"}
                     </p>
                     <p className="text-2xl font-bold text-gray-700">
                       {stats.draft}
@@ -415,7 +438,7 @@ export default function ServicesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-orange-600">
-                      Archivés
+                      {t.serviceList?.stats?.archived || "Archivés"}
                     </p>
                     <p className="text-2xl font-bold text-orange-700">
                       {stats.archived}
@@ -439,7 +462,10 @@ export default function ServicesPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Rechercher un service..."
+                  placeholder={
+                    t.serviceList?.filters?.searchPlaceholder ||
+                    "Rechercher un service..."
+                  }
                   value={filters.search}
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, search: e.target.value }))
@@ -459,10 +485,18 @@ export default function ServicesPage() {
                 }
                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                <option value="all">Tous les statuts</option>
-                <option value="published">Publiés</option>
-                <option value="draft">Brouillons</option>
-                <option value="archived">Archivés</option>
+                <option value="all">
+                  {t.serviceList?.filters?.allStatus || "Tous les statuts"}
+                </option>
+                <option value="published">
+                  {t.serviceList?.filters?.published || "Publiés"}
+                </option>
+                <option value="draft">
+                  {t.serviceList?.filters?.draft || "Brouillons"}
+                </option>
+                <option value="archived">
+                  {t.serviceList?.filters?.archived || "Archivés"}
+                </option>
               </select>
 
               <select
@@ -475,11 +509,22 @@ export default function ServicesPage() {
                 }
                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                <option value="created_at">Date de création</option>
-                <option value="base_price_cents">Prix</option>
-                <option value="views">Vues</option>
-                <option value="orders">Commandes</option>
-                <option value="rating">Note</option>
+                <option value="created_at">
+                  {t.serviceList?.filters?.sortBy?.createdAt ||
+                    "Date de création"}
+                </option>
+                <option value="base_price_cents">
+                  {t.serviceList?.filters?.sortBy?.price || "Prix"}
+                </option>
+                <option value="views">
+                  {t.serviceList?.filters?.sortBy?.views || "Vues"}
+                </option>
+                <option value="orders">
+                  {t.serviceList?.filters?.sortBy?.orders || "Commandes"}
+                </option>
+                <option value="rating">
+                  {t.serviceList?.filters?.sortBy?.rating || "Note"}
+                </option>
               </select>
 
               <button
@@ -487,7 +532,7 @@ export default function ServicesPage() {
                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
               >
                 <Filter size={20} className="inline mr-2" />
-                Filtrer
+                {t.serviceList?.filters?.filterButton || "Filtrer"}
               </button>
             </div>
           </div>
@@ -497,17 +542,20 @@ export default function ServicesPage() {
             <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed border-gray-300">
               <Package className="mx-auto text-gray-400 mb-4" size={64} />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Aucun service trouvé
+                {t.serviceList?.empty?.title || "Aucun service trouvé"}
               </h3>
               <p className="text-gray-600 mb-6">
-                Commencez par créer votre premier service
+                {t.serviceList?.empty?.description ||
+                  "Commencez par créer votre premier service"}
               </p>
               <button
-                onClick={() => router.push("/provider/services/add")}
+                onClick={() =>
+                  router.push("/Provider/TableauDeBord/Service/Add")
+                }
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold inline-flex items-center"
               >
                 <Plus size={20} className="mr-2" />
-                Créer un service
+                {t.serviceList?.empty?.button || "Créer un service"}
               </button>
             </div>
           ) : viewMode === "grid" ? (
@@ -519,7 +567,7 @@ export default function ServicesPage() {
                   onStatusChange={requestStatusChange}
                   onEdit={() =>
                     router.push(
-                      `/Provider/TableauDeBord/Service/edit/${service.id}`
+                      `/Provider/TableauDeBord/Service/edit/${service.id}`,
                     )
                   }
                   onDelete={(id) => {
@@ -528,7 +576,7 @@ export default function ServicesPage() {
                   }}
                   onView={() =>
                     router.push(
-                      `/Provider/TableauDeBord/Service/view/${service.id}`
+                      `/Provider/TableauDeBord/Service/view/${service.id}`,
                     )
                   }
                   onDuplicate={handleDuplicate}
@@ -545,17 +593,17 @@ export default function ServicesPage() {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider whitespace-nowrap">
-                        Service
+                        {t.serviceList?.table?.service || "Service"}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider whitespace-nowrap">
-                        Statut
+                        {t.serviceList?.table?.status || "Statut"}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider whitespace-nowrap">
-                        Prix
+                        {t.serviceList?.table?.price || "Prix"}
                       </th>
 
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider whitespace-nowrap">
-                        Actions
+                        {t.serviceList?.table?.actions || "Actions"}
                       </th>
                     </tr>
                   </thead>
@@ -567,7 +615,7 @@ export default function ServicesPage() {
                         onStatusChange={requestStatusChange}
                         onEdit={() =>
                           router.push(
-                            `/Provider/TableauDeBord/Service/edit/${service.id}`
+                            `/Provider/TableauDeBord/Service/edit/${service.id}`,
                           )
                         }
                         onDelete={(id) => {
@@ -576,7 +624,7 @@ export default function ServicesPage() {
                         }}
                         onView={() =>
                           router.push(
-                            `/Provider/TableauDeBord/Service/view/${service.id}`
+                            `/Provider/TableauDeBord/Service/view/${service.id}`,
                           )
                         }
                         onDuplicate={handleDuplicate}
@@ -616,11 +664,13 @@ export default function ServicesPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-md w-full p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Confirmer la suppression
+                {t.serviceList?.modals?.delete?.title ||
+                  "Confirmer la suppression"}
               </h3>
               <p className="text-gray-600 mb-2">
-                Êtes-vous sûr de vouloir supprimer le service "
-                {serviceToDelete?.title.fr}" ?
+                {t.serviceList?.modals?.delete?.message ||
+                  "Êtes-vous sûr de vouloir supprimer le service"}{" "}
+                "{serviceToDelete?.title.fr}" ?
               </p>
               <p className="text-sm text-gray-500 mb-6">
                 Cette action est irréversible et supprimera toutes les données
@@ -631,13 +681,13 @@ export default function ServicesPage() {
                   onClick={() => setShowDeleteModal(false)}
                   className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
                 >
-                  Annuler
+                  {t.serviceList?.modals?.cancel || "Annuler"}
                 </button>
                 <button
                   onClick={handleDelete}
                   className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                 >
-                  Supprimer
+                  {t.serviceList?.modals?.delete?.confirm || "Supprimer"}
                 </button>
               </div>
             </div>
@@ -665,7 +715,7 @@ export default function ServicesPage() {
                         }}
                         className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
                       >
-                        Annuler
+                        {t.serviceList?.modals?.cancel || "Annuler"}
                       </button>
                       <button
                         onClick={confirmStatusChange}
@@ -709,20 +759,26 @@ function ServiceCard({
   setActionMenu,
   selectedCurrency,
 }: ServiceCardProps) {
+  const { t } = useSafeLanguage();
   const { views, orders, conversion } = getServiceMetrics(service);
   const averageRating = service.rating || 0;
-  const [displayPrice, setDisplayPrice] = useState<number>(service.base_price_cents / 100);
+  const [displayPrice, setDisplayPrice] = useState<number>(
+    service.base_price_cents / 100,
+  );
   const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     const convertPrice = async () => {
-      if (selectedCurrency === 'USD') {
+      if (selectedCurrency === "USD") {
         setDisplayPrice(service.base_price_cents / 100);
         return;
       }
 
       setPriceLoading(true);
-      const converted = await convertFromUSD(service.base_price_cents / 100, selectedCurrency);
+      const converted = await convertFromUSD(
+        service.base_price_cents / 100,
+        selectedCurrency,
+      );
       if (converted !== null) {
         setDisplayPrice(converted);
       }
@@ -748,7 +804,7 @@ function ServiceCard({
           </div>
         )}
         <div className="absolute top-3 right-3">
-          {getStatusBadge(service.status)}
+          {getStatusBadge(service.status, t)}
         </div>
         <div className="absolute top-3 left-3">
           <button
@@ -767,14 +823,14 @@ function ServiceCard({
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
               >
                 <Eye size={16} className="mr-2" />
-                Voir
+                {t.serviceList?.actions?.view || "Voir"}
               </button>
               <button
                 onClick={() => onEdit(service.id)}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
               >
                 <Edit size={16} className="mr-2" />
-                Modifier
+                {t.serviceList?.actions?.edit || "Modifier"}
               </button>
 
               {service.status === "draft" && (
@@ -783,7 +839,7 @@ function ServiceCard({
                   className="w-full px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 flex items-center"
                 >
                   <Play size={16} className="mr-2" />
-                  Publier
+                  {t.serviceList?.actions?.publish || "Publier"}
                 </button>
               )}
               {service.status === "archived" ? (
@@ -792,7 +848,7 @@ function ServiceCard({
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                 >
                   <ArchiveRestore size={16} className="mr-2" />
-                  Désarchiver
+                  {t.serviceList?.actions?.unarchive || "Désarchiver"}
                 </button>
               ) : (
                 <button
@@ -800,7 +856,7 @@ function ServiceCard({
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                 >
                   <Archive size={16} className="mr-2" />
-                  Archiver
+                  {t.serviceList?.actions?.archive || "Archiver"}
                 </button>
               )}
               <button
@@ -808,7 +864,7 @@ function ServiceCard({
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
               >
                 <Trash2 size={16} className="mr-2" />
-                Supprimer
+                {t.serviceList?.actions?.delete || "Supprimer"}
               </button>
             </div>
           )}
@@ -852,7 +908,7 @@ function ServiceCard({
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Edit size={16} className="inline mr-1" />
-            Modifier
+            {t.serviceList?.actions?.edit || "Modifier"}
           </button>
           <button
             onClick={() => onView(service.id)}
@@ -878,20 +934,26 @@ function ServiceTableRow({
   setActionMenu,
   selectedCurrency,
 }: ServiceCardProps) {
+  const { t } = useSafeLanguage();
   const { views, orders, conversion } = getServiceMetrics(service);
   const averageRating = service.rating || 0;
-  const [displayPrice, setDisplayPrice] = useState<number>(service.base_price_cents / 100);
+  const [displayPrice, setDisplayPrice] = useState<number>(
+    service.base_price_cents / 100,
+  );
   const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     const convertPrice = async () => {
-      if (selectedCurrency === 'USD') {
+      if (selectedCurrency === "USD") {
         setDisplayPrice(service.base_price_cents / 100);
         return;
       }
 
       setPriceLoading(true);
-      const converted = await convertFromUSD(service.base_price_cents / 100, selectedCurrency);
+      const converted = await convertFromUSD(
+        service.base_price_cents / 100,
+        selectedCurrency,
+      );
       if (converted !== null) {
         setDisplayPrice(converted);
       }
@@ -928,7 +990,7 @@ function ServiceTableRow({
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">{getStatusBadge(service.status)}</td>
+      <td className="px-6 py-4">{getStatusBadge(service.status, t)}</td>
       <td className="px-6 py-4">
         <div className="text-lg font-bold text-gray-900">
           {priceLoading ? (
@@ -944,14 +1006,14 @@ function ServiceTableRow({
           <button
             onClick={() => onEdit(service.id)}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Modifier"
+            title={t.serviceList?.actions?.edit || "Modifier"}
           >
             <Edit size={16} />
           </button>
           <button
             onClick={() => onView(service.id)}
             className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-            title="Voir"
+            title={t.serviceList?.actions?.view || "Voir"}
           >
             <Eye size={16} />
           </button>
@@ -973,7 +1035,7 @@ function ServiceTableRow({
                     className="w-full px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 flex items-center"
                   >
                     <Play size={16} className="mr-2" />
-                    Publier
+                    {t.serviceList?.actions?.publish || "Publier"}
                   </button>
                 )}
                 {service.status === "archived" ? (
@@ -982,7 +1044,7 @@ function ServiceTableRow({
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                   >
                     <ArchiveRestore size={16} className="mr-2" />
-                    Désarchiver
+                    {t.serviceList?.actions?.unarchive || "Désarchiver"}
                   </button>
                 ) : (
                   <button
@@ -990,7 +1052,7 @@ function ServiceTableRow({
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
                   >
                     <Archive size={16} className="mr-2" />
-                    Archiver
+                    {t.serviceList?.actions?.archive || "Archiver"}
                   </button>
                 )}
                 <button
@@ -998,7 +1060,7 @@ function ServiceTableRow({
                   className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
                 >
                   <Trash2 size={16} className="mr-2" />
-                  Supprimer
+                  {t.serviceList?.actions?.delete || "Supprimer"}
                 </button>
               </div>
             )}

@@ -18,8 +18,21 @@ export default function AdminLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Chargement initial avec animation
+  // Chargement initial avec animation + Thème
   useEffect(() => {
+    // Restaurer le thème et la sidebar depuis localStorage
+    const savedTheme = localStorage.getItem("anylibre_admin_theme");
+    if (savedTheme === "dark") {
+      setIsDark(true);
+    } else if (savedTheme === "light") {
+      setIsDark(false);
+    }
+
+    const savedSidebar = localStorage.getItem("anylibre_admin_sidebar_collapsed");
+    if (savedSidebar === "true") {
+      setIsSidebarCollapsed(true);
+    }
+
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 800);
@@ -36,7 +49,12 @@ export default function AdminLayout({
   }, [isDark]);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    
+    // Sauvegarder dans localStorage
+    localStorage.setItem("anylibre_admin_theme", newIsDark ? "dark" : "light");
+
     // Animation feedback
     const themeBtn = document.querySelector('[title*="Mode"]');
     if (themeBtn) {
@@ -48,7 +66,9 @@ export default function AdminLayout({
   };
 
   const toggleSidebarCollapse = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
+    const nextCollapsed = !isSidebarCollapsed;
+    setIsSidebarCollapsed(nextCollapsed);
+    localStorage.setItem("anylibre_admin_sidebar_collapsed", String(nextCollapsed));
   };
 
   const toggleMobileSidebar = () => {
@@ -113,11 +133,11 @@ export default function AdminLayout({
         {isMobileSidebarOpen && (
           <>
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden animate-fade-in"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden animate-fade-in"
               onClick={() => setIsMobileSidebarOpen(false)}
             />
             <div
-              className={`fixed left-0 top-0 h-screen z-50 lg:hidden transform transition-transform duration-500 ${
+              className={`fixed left-0 top-0 h-screen z-[60] lg:hidden transform transition-transform duration-500 ${
                 isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
@@ -144,7 +164,10 @@ export default function AdminLayout({
           <AdminHeader
             isDark={isDark}
             onToggleSidebar={toggleMobileSidebar}
+            onToggleCollapse={toggleSidebarCollapse}
+            onMenuClick={handleMenuClick}
             activeMenu={activeMenu}
+            isSidebarCollapsed={isSidebarCollapsed}
           />
 
           <AdminContent activeMenu={activeMenu} isDark={isDark} />

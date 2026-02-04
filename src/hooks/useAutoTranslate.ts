@@ -24,9 +24,11 @@ const translationCache: TranslationCache = {};
  */
 export function useAutoTranslate(
     content: MultiLangText | string | undefined,
-    sourceLang: string = 'auto'
+    sourceLang: string = 'auto',
+    targetLang?: string
 ): string {
-    const { language } = useSafeLanguage();
+    const { language: appLanguage } = useSafeLanguage();
+    const language = targetLang || appLanguage;
     const [translatedText, setTranslatedText] = useState<string>('');
     const [isTranslating, setIsTranslating] = useState(false);
 
@@ -77,7 +79,7 @@ export function useAutoTranslate(
             }
 
             // Si c'est un objet MultiLangText
-            const multiLangContent = content as MultiLangText;
+            const multiLangContent = content as any;
 
             // Si la traduction existe déjà dans la langue demandée
             if (multiLangContent[language]) {
@@ -152,7 +154,7 @@ export function useTranslationStatus(content: MultiLangText | string | undefined
         return { isTranslating, hasTranslation: true };
     }
 
-    const multiLangContent = content as MultiLangText;
+    const multiLangContent = content as any;
     const hasTranslation = !!multiLangContent[language];
 
     return { isTranslating, hasTranslation };

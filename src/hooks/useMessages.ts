@@ -14,7 +14,7 @@ export function useMessages(conversationId: string | null) {
 
   // Charger les messages
   const loadMessages = useCallback(async () => {
-    if (!conversationId) {
+    if (!conversationId || conversationId.startsWith('temp_')) {
       setMessages([]);
       setLoading(false);
       return;
@@ -54,37 +54,15 @@ export function useMessages(conversationId: string | null) {
       try {
         setSending(true);
 
-        // Si des fichiers sont attachés, les uploader d'abord
         let attachmentsData: any[] = [];
 
+        // 1. Uploader d'abord si on a des fichiers
         if (payload.attachments && payload.attachments.length > 0) {
-          // Créer d'abord le message pour avoir un message_id
-          const tempMessageResponse = await fetch('/api/messages/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversation_id: conversationId,
-              receiver_id: payload.receiver_id,
-              text: payload.text || '',
-              message_type: payload.message_type || 'text',
-              metadata: payload.metadata || {},
-              attachments: [], // Vide pour l'instant
-            }),
-          });
+          // Utiliser un ID temporaire pour le dossier d'upload si on n'a pas encore de message_id
+          const tempFolderId = `temp_${Date.now()}`;
 
-          const tempMessageData = await tempMessageResponse.json();
-
-          if (!tempMessageData.success) {
-            throw new Error(tempMessageData.error || 'Failed to create message');
-          }
-
-          const messageId = tempMessageData.data.message.id;
-          const finalConversationId = tempMessageData.data.conversation_id || conversationId;
-
-          // Uploader chaque fichier
           attachmentsData = await Promise.all(
             payload.attachments.map(async (file) => {
-              // Déterminer le type de fichier
               let fileType: 'image' | 'video' | 'audio' | 'document' = 'document';
               if (file.type.startsWith('image/')) fileType = 'image';
               else if (file.type.startsWith('video/')) fileType = 'video';
@@ -93,8 +71,8 @@ export function useMessages(conversationId: string | null) {
               const formData = new FormData();
               formData.append('file', file);
               formData.append('type', fileType);
-              formData.append('conversation_id', finalConversationId);
-              formData.append('message_id', messageId);
+              formData.append('conversation_id', conversationId || 'new');
+              formData.append('message_id', tempFolderId);
 
               const uploadResponse = await fetch('/api/messages/upload', {
                 method: 'POST',
@@ -102,7 +80,6 @@ export function useMessages(conversationId: string | null) {
               });
 
               const uploadData = await uploadResponse.json();
-
               if (!uploadData.success) {
                 throw new Error(uploadData.error || 'Failed to upload file');
               }
@@ -116,54 +93,30 @@ export function useMessages(conversationId: string | null) {
               };
             })
           );
-
-          // Mettre à jour le message avec les pièces jointes
-          const updateResponse = await fetch('/api/messages/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversation_id: finalConversationId,
-              receiver_id: payload.receiver_id,
-              text: payload.text || '',
-              message_type: payload.message_type || 'text',
-              metadata: payload.metadata || {},
-              attachments: attachmentsData,
-              reply_to_message_id: payload.reply_to_message_id,
-            }),
-          });
-
-          const finalData = await updateResponse.json();
-
-          if (!finalData.success) {
-            throw new Error(finalData.error || 'Failed to update message with attachments');
-          }
-
-          // Recharger les messages
-          await loadMessages();
-
-          return finalData.data;
-        } else {
-          // Pas de fichiers, envoyer normalement
-          const response = await fetch('/api/messages/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversation_id: conversationId,
-              ...payload,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            throw new Error(data.error || 'Failed to send message');
-          }
-
-          // Recharger les messages
-          await loadMessages();
-
-          return data.data;
         }
+
+        // 2. Envoyer une SEULE requête de création de message
+        const response = await fetch('/api/messages/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversation_id: conversationId,
+            ...payload,
+            attachments: attachmentsData, // Inclure les fichiers uploadés
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to send message');
+        }
+
+        // On ne recharge pas forcément ici si le Realtime s'en occupe, 
+        // mais pour l'expérience utilisateur immédiate, on peut ajouter le message localement
+        // ou attendre le signal Realtime qui arrive généralement très vite.
+
+        return data.data;
       } catch (err: any) {
         console.error('Error sending message:', err);
         throw err;
@@ -171,7 +124,7 @@ export function useMessages(conversationId: string | null) {
         setSending(false);
       }
     },
-    [conversationId, loadMessages]
+    [conversationId]
   );
 
   // Marquer comme lu
@@ -241,11 +194,23 @@ export function useMessages(conversationId: string | null) {
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
+        async (payload) => {
           console.log('New message received:', payload);
-          // Recharger les messages
-          loadMessages();
+          const newMessage = payload.new as Message;
+
+          // Récupérer les infos de l'expéditeur si nécessaire
+          // (Optionnel : si le payload ne contient pas le sender, on peut faire un fetch léger ou ignorer si c'est nous)
+
+          setMessages((prev) => {
+            // Éviter les doublons si le message a déjà été ajouté (ex: via la réponse de l'API)
+            if (prev.some(m => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+
           scrollToBottom();
+
+          // Marquer comme lu si on est sur la conversation
+          markAsRead(conversationId);
         }
       )
       .on(
@@ -258,8 +223,23 @@ export function useMessages(conversationId: string | null) {
         },
         (payload) => {
           console.log('Message updated:', payload);
-          // Recharger les messages
-          loadMessages();
+          const updatedMessage = payload.new as Message;
+          setMessages((prev) =>
+            prev.map(m => m.id === updatedMessage.id ? { ...m, ...updatedMessage } : m)
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          console.log('Message deleted:', payload);
+          setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
         }
       )
       .subscribe();

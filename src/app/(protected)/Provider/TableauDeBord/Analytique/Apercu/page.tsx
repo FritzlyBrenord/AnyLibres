@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import HeaderProvider from "@/components/layout/HeaderProvider";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import {
   AreaChart,
   Area,
@@ -107,6 +108,7 @@ interface ConvertedAmountProps {
 }
 
 function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps) {
+  const { t } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
 
   useEffect(() => {
@@ -125,7 +127,8 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      const locale = t.lang === 'en' ? 'en-US' : t.lang === 'es' ? 'es-ES' : 'fr-FR';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -134,12 +137,14 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
     } catch {
       return `${displayAmount.toFixed(2)} ${selectedCurrency}`;
     }
-  }, [displayAmount, selectedCurrency]);
+  }, [displayAmount, selectedCurrency, t.lang]);
 
   return <>{formattedAmount}</>;
 }
 
 export default function AnalyticsOverview() {
+  const { t } = useSafeLanguage();
+  const ta = t.analytics;
   const { user, loading: authLoading } = useAuth();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
@@ -435,7 +440,7 @@ export default function AnalyticsOverview() {
               <div className="absolute inset-0 border-4 border-purple-200 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
             </div>
-            <p className="text-gray-600 font-medium">Chargement de vos analytics...</p>
+            <p className="text-gray-600 font-medium">{ta.loading}</p>
           </div>
         </div>
       </div>
@@ -474,11 +479,11 @@ export default function AnalyticsOverview() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Tableau de Bord Analytique
+                {ta.title}
               </h1>
               <p className="text-gray-600 flex items-center gap-2">
                 <Activity className="w-4 h-4" />
-                Vue d'ensemble de vos performances
+                {ta.subtitle}
               </p>
             </div>
             <button
@@ -487,7 +492,7 @@ export default function AnalyticsOverview() {
               className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="font-medium text-gray-700">Actualiser</span>
+              <span className="font-medium text-gray-700">{ta.refresh}</span>
             </button>
           </div>
         </div>
@@ -495,32 +500,32 @@ export default function AnalyticsOverview() {
         {/* KPI Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
-            title="Revenus Totaux"
+            title={ta.kpi.totalRevenue}
             value={<ConvertedAmount amountCents={totalRevenue} selectedCurrency={selectedCurrency} />}
-            subtext="Revenu net après frais"
+            subtext={ta.kpi.netRevenue}
             icon={DollarSign}
             trend={analytics?.kpi?.total_revenue?.growth_percent}
-            trendLabel="vs mois dernier"
+            trendLabel={ta.kpi.vsLastMonth}
             color="green"
           />
           <StatCard
-            title="Commandes Complétées"
+            title={ta.kpi.completedOrders}
             value={completedOrders}
-            subtext={`${activeOrders} commandes actives`}
+            subtext={t('analytics.kpi.activeOrdersCount', { count: activeOrders })}
             icon={ShoppingBag}
             color="blue"
           />
           <StatCard
-            title="Prix Moyen"
+            title={ta.kpi.avgPrice}
             value={<ConvertedAmount amountCents={avgPrice} selectedCurrency={selectedCurrency} />}
-            subtext="Par commande complétée"
+            subtext={ta.kpi.perCompletedOrder}
             icon={Target}
             color="purple"
           />
           <StatCard
-            title="Note Globale"
+            title={ta.kpi.globalRating}
             value={`${rating.toFixed(1)}/5`}
-            subtext={`Basé sur ${totalReviews} avis`}
+            subtext={t('analytics.kpi.basedOnReviews', { count: totalReviews })}
             icon={Star}
             color="orange"
           />
@@ -529,27 +534,27 @@ export default function AnalyticsOverview() {
         {/* Secondary KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
-            title="Clients Uniques"
+            title={ta.secondaryKpi.uniqueClients}
             value={clients?.total_unique_clients || 0}
-            subtext={`${clients?.repeat_rate || 0}% de clients récurrents`}
+            subtext={t('analytics.secondaryKpi.repeatRate', { rate: clients?.repeat_rate || 0 })}
             icon={Users}
             color="indigo"
           />
           <StatCard
-            title="Taux de Conversion"
+            title={ta.secondaryKpi.conversionRate}
             value={
               performance.length > 0
                 ? `${(performance.reduce((acc, s) => acc + parseFloat(s.conversion_rate), 0) / performance.length).toFixed(1)}%`
                 : '0%'
             }
-            subtext="Moyenne sur tous vos services"
+            subtext={ta.secondaryKpi.avgAllServices}
             icon={TrendingUp}
             color="pink"
           />
           <StatCard
-            title="Temps de Réponse"
+            title={ta.secondaryKpi.responseTime}
             value={`${analytics?.provider_stats?.response_time_hours || 0}h`}
-            subtext="Temps moyen de réponse"
+            subtext={ta.secondaryKpi.avgResponseTime}
             icon={Clock}
             color="blue"
           />
@@ -561,8 +566,8 @@ export default function AnalyticsOverview() {
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Évolution des Revenus</h3>
-                <p className="text-sm text-gray-500">7 derniers jours</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{ta.charts.revenueEvolution}</h3>
+                <p className="text-sm text-gray-500">{ta.charts.last7Days}</p>
               </div>
               <div className="flex gap-2">
                 {['7d', '30d', '90d', 'all'].map((period) => (
@@ -575,7 +580,7 @@ export default function AnalyticsOverview() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {period === 'all' ? 'Tout' : period}
+                    {ta.charts.periods[period as keyof typeof ta.charts.periods]}
                   </button>
                 ))}
               </div>
@@ -627,8 +632,8 @@ export default function AnalyticsOverview() {
 
           {/* Order Distribution Pie Chart */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Distribution des Commandes</h3>
-            <p className="text-sm text-gray-500 mb-6">Statut actuel</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">{ta.charts.orderDistribution}</h3>
+            <p className="text-sm text-gray-500 mb-6">{ta.charts.currentStatus}</p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -675,8 +680,8 @@ export default function AnalyticsOverview() {
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Performance des Services</h3>
-                <p className="text-sm text-gray-500">Top 5 services par vues et commandes</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{ta.charts.servicePerformance}</h3>
+                <p className="text-sm text-gray-500">{ta.charts.topServicesDesc}</p>
               </div>
               <Award className="w-6 h-6 text-purple-600" />
             </div>
@@ -706,8 +711,8 @@ export default function AnalyticsOverview() {
                     wrapperStyle={{paddingTop: '20px'}}
                     iconType="circle"
                   />
-                  <Bar dataKey="vues" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="commandes" fill="#10b981" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="vues" name={ta.charts.legend.views} fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="commandes" name={ta.charts.legend.orders} fill="#10b981" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -716,7 +721,7 @@ export default function AnalyticsOverview() {
           {/* Recent Activity */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Activité Récente</h3>
+              <h3 className="text-xl font-bold text-gray-900">{ta.recentActivity.title}</h3>
               <Package className="w-6 h-6 text-blue-600" />
             </div>
             <div className="space-y-4 max-h-80 overflow-y-auto">
@@ -786,7 +791,7 @@ export default function AnalyticsOverview() {
               ) : (
                 <div className="text-center py-12 text-gray-400">
                   <Activity className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Aucune activité récente</p>
+                  <p className="text-sm">{ta.recentActivity.noActivity}</p>
                 </div>
               )}
             </div>
@@ -799,8 +804,8 @@ export default function AnalyticsOverview() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Meilleurs Clients</h3>
-                <p className="text-sm text-gray-500">Top 5 par dépenses totales</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{ta.topClients.title}</h3>
+                <p className="text-sm text-gray-500">{ta.topClients.subtitle}</p>
               </div>
               <Users className="w-6 h-6 text-indigo-600" />
             </div>
@@ -819,7 +824,10 @@ export default function AnalyticsOverview() {
                         Client #{client.client_id.slice(0, 8)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {client.orders_count} commande{client.orders_count > 1 ? 's' : ''}
+                        {t('analytics.topClients.ordersCount', { 
+                          count: client.orders_count,
+                          s: client.orders_count > 1 ? 's' : ''
+                        })}
                       </p>
                     </div>
                   </div>
@@ -833,7 +841,7 @@ export default function AnalyticsOverview() {
               {(!clients?.top_clients || clients.top_clients.length === 0) && (
                 <div className="text-center py-8 text-gray-400">
                   <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Aucun client pour le moment</p>
+                  <p className="text-sm">{ta.topClients.noClients}</p>
                 </div>
               )}
             </div>
@@ -842,14 +850,14 @@ export default function AnalyticsOverview() {
           {/* Quick Stats Summary */}
           <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">Résumé Rapide</h3>
+              <h3 className="text-xl font-bold">{ta.quickSummary.title}</h3>
               <Activity className="w-6 h-6 opacity-80" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Eye className="w-4 h-4 opacity-80" />
-                  <p className="text-sm opacity-90">Vues Totales</p>
+                  <p className="text-sm opacity-90">{ta.quickSummary.totalViews}</p>
                 </div>
                 <p className="text-2xl font-bold">
                   {performance.reduce((acc, s) => acc + s.views_count, 0)}
@@ -858,7 +866,7 @@ export default function AnalyticsOverview() {
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-4 h-4 opacity-80" />
-                  <p className="text-sm opacity-90">Conversions</p>
+                  <p className="text-sm opacity-90">{ta.quickSummary.conversions}</p>
                 </div>
                 <p className="text-2xl font-bold">
                   {performance.reduce((acc, s) => acc + s.orders_count, 0)}
@@ -867,20 +875,20 @@ export default function AnalyticsOverview() {
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Package className="w-4 h-4 opacity-80" />
-                  <p className="text-sm opacity-90">Services Actifs</p>
+                  <p className="text-sm opacity-90">{ta.quickSummary.activeServices}</p>
                 </div>
                 <p className="text-2xl font-bold">{performance.length}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Star className="w-4 h-4 opacity-80" />
-                  <p className="text-sm opacity-90">Satisfaction</p>
+                  <p className="text-sm opacity-90">{ta.quickSummary.satisfaction}</p>
                 </div>
                 <p className="text-2xl font-bold">{((rating / 5) * 100).toFixed(0)}%</p>
               </div>
             </div>
             <div className="mt-6 p-4 bg-white/10 backdrop-blur-sm rounded-xl">
-              <p className="text-sm opacity-90 mb-1">Disponible pour retrait</p>
+              <p className="text-sm opacity-90 mb-1">{ta.quickSummary.availableForWithdrawal}</p>
               <p className="text-3xl font-bold">
                 <ConvertedAmount amountCents={revenue?.summary?.available_for_withdrawal_cents || 0} selectedCurrency={selectedCurrency} />
               </p>

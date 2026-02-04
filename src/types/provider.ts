@@ -39,6 +39,8 @@ export interface ProviderProfile {
     avatar_url?: string;
     bio?: string;
     email?: string;
+    first_name?: string;
+    last_name?: string;
   };
 
   // Informations professionnelles

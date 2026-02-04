@@ -1,5 +1,3 @@
-// components/OrderMessagingModal.tsx
-// Modal de messagerie unifié pour tous les types de messages
 import React, { useState, useRef, useEffect } from "react";
 import {
   X,
@@ -16,16 +14,20 @@ import {
   Shield,
   MessageCircle,
 } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface OrderMessagingModalProps {
   open: boolean;
   onClose: () => void;
   orderId?: string;
-  providerId: string;
+  providerId?: string; // Optionnel si on contacte un client
+  clientId?: string;   // Optionnel si on contacte un prestataire
+  recipientType?: "client" | "provider"; // Nouveau prop
   messageType: "simple" | "revision" | "accept" | "reject";
   onMessageSent: () => void;
   serviceId?: string;
   serviceTitle?: string; // Titre du service pour afficher dans l'objet
+  initialRecipientData?: any; // Données du destinataire déjà disponibles
 }
 
 interface ProviderProfile {
@@ -33,6 +35,7 @@ interface ProviderProfile {
   profile_id: string; // ID du profile pour les messages
   first_name: string;
   last_name: string;
+  display_name?: string;
   avatar_url?: string;
   occupations?: string;
 }
@@ -42,19 +45,26 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
   onClose,
   orderId,
   providerId,
+  clientId,
+  recipientType = "provider", // Par défaut contact prestataire
   messageType,
   onMessageSent,
   serviceId,
-  serviceTitle = "ce service",
+  serviceTitle,
+  initialRecipientData,
 }) => {
+  const { t } = useSafeLanguage();
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<ProviderProfile | null>(null);
-  const [loadingProvider, setLoadingProvider] = useState(true);
+  
+  // État unifié pour le destinataire (peut être provider ou client)
+  const [recipient, setRecipient] = useState<ProviderProfile | null>(null);
+  const [loadingRecipient, setLoadingRecipient] = useState(true);
+  
   const [userProfile, setUserProfile] = useState<{
     first_name?: string;
     last_name?: string;
@@ -65,63 +75,103 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
+  const displayServiceTitle = serviceTitle || t("orders.detail.fallbackServiceTitle");
+
   // Configuration selon le type de message
   const messageConfig = {
     simple: {
-      title: "Contacter le Prestataire",
-      placeholder:
-        "Décrivez votre projet, posez vos questions, discutez des détails...",
-      buttonText: "Envoyer le Message",
+      title: recipientType === "provider" 
+        ? t("orders.messaging.contactProvider") 
+        : t("orders.messaging.contactClient"),
+      placeholder: t("orders.messaging.placeholder"),
+      buttonText: t("orders.messaging.buttonSend"),
       buttonColor: "from-purple-600 to-pink-600",
-      getSubject: (userName: string) =>
-        `${userName} est intéressé par "${serviceTitle}"`,
-      predefinedMessages: [
-        "👋 Bonjour, je suis intéressé par votre service. Pourriez-vous me donner plus de détails ?",
-        "💼 J'ai un projet similaire. Pouvons-nous discuter de mes besoins spécifiques ?",
-        "📅 Quels sont vos délais de livraison actuels ?",
-        "💰 Est-il possible d'avoir un devis personnalisé pour mon projet ?",
-      ],
+      getSubject: (userName: string) => {
+        if (orderId) {
+          const shortId = orderId.slice(0, 8);
+          return recipientType === "provider"
+            ? t("orders.messaging.subjects.providerQuestion", { name: userName, id: shortId })
+            : t("orders.messaging.subjects.clientMessage", { name: userName, id: shortId });
+        }
+        return t("orders.messaging.subjects.interest", { name: userName, title: displayServiceTitle });
+      },
+      predefinedMessages: (() => {
+        if (orderId) {
+          if (recipientType === "provider") {
+            return [
+              t("orders.messaging.predefined.client.progress"),
+              t("orders.messaging.predefined.client.deadline"),
+              t("orders.messaging.predefined.client.question"),
+              t("orders.messaging.predefined.client.thanks")
+            ];
+          } else {
+             return [
+               t("orders.messaging.predefined.provider.clarification"),
+               t("orders.messaging.predefined.provider.onTime"),
+               t("orders.messaging.predefined.provider.received"),
+               t("orders.messaging.predefined.provider.missing")
+             ];
+          }
+        }
+        return [
+          t("orders.messaging.predefined.service.details"),
+          t("orders.messaging.predefined.service.specific"),
+          t("orders.messaging.predefined.service.delay"),
+          t("orders.messaging.predefined.service.quote")
+        ];
+      })(),
     },
     revision: {
-      title: "Demander une Révision",
-      placeholder:
-        "Décrivez précisément les modifications nécessaires, les éléments à corriger...",
-      buttonText: "Envoyer la Demande",
+      title: t("orders.messaging.types.revision.title"),
+      placeholder: t("orders.messaging.types.revision.placeholder"),
+      buttonText: t("orders.messaging.buttonSend"),
       buttonColor: "from-orange-500 to-red-500",
       getSubject: (userName: string) =>
-        `${userName} demande une révision - ${serviceTitle}${orderId ? ` (Commande #${orderId.slice(0, 8)})` : ""}`,
-      predefinedMessages: [
-        "🔧 Bonjour, je souhaiterais quelques modifications sur le travail livré...",
-        "📝 Il y a certains éléments qui ne correspondent pas à mes attentes...",
-        "🎨 Pourriez-vous ajuster les couleurs/le design sur les parties suivantes...",
-      ],
+        t("orders.messaging.types.revision.subject", { 
+          name: userName, 
+          title: displayServiceTitle, 
+          id: orderId?.slice(0, 8) || "" 
+        }),
+      predefinedMessages: t("orders.messaging.types.revision.predefined", { returnObjects: true }) as string[],
     },
     accept: {
-      title: "Accepter la Livraison",
-      placeholder: "Exprimez votre satisfaction, laissez un commentaire positif...",
-      buttonText: "Accepter et Terminer",
+      title: t("orders.messaging.types.accept.title"),
+      placeholder: t("orders.messaging.types.accept.placeholder"),
+      buttonText: t("orders.messaging.buttonSend"),
       buttonColor: "from-green-500 to-emerald-600",
       getSubject: (userName: string) =>
-        `${userName} accepte la livraison - ${serviceTitle}${orderId ? ` (Commande #${orderId.slice(0, 8)})` : ""}`,
-      predefinedMessages: [
-        "✅ Excellent travail ! Tout correspond parfaitement à mes attentes.",
-        "👍 Je suis très satisfait du résultat, merci pour votre professionnalisme.",
-        "🎉 Livraison parfaite, je valide sans modification nécessaire.",
-      ],
+        t("orders.messaging.types.accept.subject", { 
+          name: userName, 
+          title: displayServiceTitle, 
+          id: orderId?.slice(0, 8) || "" 
+        }),
+      predefinedMessages: t("orders.messaging.types.accept.predefined", { returnObjects: true }) as string[],
+    },
+    accept_simple: { // Fallback for some internal logic if needed
+       title: t("orders.detail.acceptHeading"),
+       placeholder: t("orders.messaging.types.accept.placeholder"),
+       buttonText: t("orders.detail.confirmBtn"),
+       buttonColor: "from-green-500 to-emerald-600",
+       getSubject: (userName: string) =>
+        t("orders.messaging.types.accept.subject", { 
+          name: userName, 
+          title: displayServiceTitle, 
+          id: orderId?.slice(0, 8) || "" 
+        }),
+      predefinedMessages: t("orders.messaging.types.accept.predefined", { returnObjects: true }) as string[],
     },
     reject: {
-      title: "Refuser la Livraison",
-      placeholder:
-        "Expliquez clairement les raisons du refus, les problèmes identifiés...",
-      buttonText: "Confirmer le Refus",
+      title: t("orders.messaging.types.reject.title"),
+      placeholder: t("orders.messaging.types.reject.placeholder"),
+      buttonText: t("orders.messaging.buttonSend"),
       buttonColor: "from-red-500 to-rose-600",
       getSubject: (userName: string) =>
-        `${userName} refuse la livraison - ${serviceTitle}${orderId ? ` (Commande #${orderId.slice(0, 8)})` : ""}`,
-      predefinedMessages: [
-        "❌ Malheureusement, le travail livré ne correspond pas à mes attentes...",
-        "⚠️ Je ne peux pas accepter cette livraison pour les raisons suivantes...",
-        "🔍 Il y a des incohérences importantes avec la commande initiale...",
-      ],
+        t("orders.messaging.types.reject.subject", { 
+          name: userName, 
+          title: displayServiceTitle, 
+          id: orderId?.slice(0, 8) || "" 
+        }),
+      predefinedMessages: t("orders.messaging.types.reject.predefined", { returnObjects: true }) as string[],
     },
   };
 
@@ -137,31 +187,102 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
 
   // Charger les informations du prestataire ET de l'utilisateur
   useEffect(() => {
-    if (open && providerId) {
-      loadProviderInfo();
+    if (open) {
+      if (initialRecipientData) {
+        // Si on a déjà les données, on les utilise directement
+        setRecipient({
+          id: clientId || initialRecipientData.id || "",
+          profile_id: initialRecipientData.id || clientId || "",
+          first_name: initialRecipientData.first_name || "",
+          last_name: initialRecipientData.last_name || "",
+          display_name: initialRecipientData.display_name,
+          avatar_url: initialRecipientData.avatar_url,
+          occupations: recipientType === "client" ? "Client" : initialRecipientData.occupations
+        });
+        setLoadingRecipient(false);
+      } else {
+        loadRecipientInfo();
+      }
       loadUserProfile();
     }
-  }, [open, providerId]);
+  }, [open, providerId, clientId, recipientType, initialRecipientData]);
 
-  const loadProviderInfo = async () => {
+  const loadRecipientInfo = async () => {
     try {
-      setLoadingProvider(true);
-      const response = await fetch(`/api/providers/${providerId}`);
-      const data = await response.json();
+      setLoadingRecipient(true);
+      setError(null);
 
-      if (data.success && data.data.provider) {
-        setProvider({
-          ...data.data.provider,
-          profile_id: data.data.provider.profile_id || data.data.provider.id,
-        });
-      } else {
-        setError("Impossible de charger les informations du prestataire");
+      let targetId = recipientType === "provider" ? providerId : clientId;
+      if (!targetId) {
+        // Fallback or error if ID missing
+        setLoadingRecipient(false);
+        return;
+      }
+
+      // Si c'est un prestataire, on utilise l'API provider existante
+      if (recipientType === "provider") {
+        const response = await fetch(`/api/providers/${targetId}`);
+        const data = await response.json();
+
+        if (data.success && data.data.provider) {
+          const p = data.data.provider;
+          const profileData = p.profile;
+          
+          setRecipient({
+            id: p.id,
+            profile_id: p.profile_id || profileData?.id || p.id,
+            first_name: profileData?.first_name || p.first_name || "",
+            last_name: profileData?.last_name || p.last_name || "",
+            display_name: profileData?.display_name || p.display_name || "",
+            avatar_url: profileData?.avatar_url || p.avatar_url || p.logo_url,
+            occupations: p.profession || p.occupations || profileData?.occupations,
+          });
+        }
+      } 
+      // Si c'est un client, on utilise la nouvelle API public user
+      else {
+        try {
+            const response = await fetch(`/api/users/${targetId}/public`);
+            
+            let data;
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+            }
+
+            if (response.ok && data) {
+            setRecipient({
+                id: data.id, 
+                profile_id: data.id, 
+                first_name: data.first_name || "",
+                last_name: data.last_name || "",
+                display_name: data.display_name,
+                avatar_url: data.avatar_url,
+                occupations: "Client"
+            });
+            } else {
+                console.error("Client fetch error:", data?.error || response.statusText);
+                throw new Error("Impossible de charger le profil client");
+            }
+        } catch (e) {
+             console.error("Client fetch exception:", e);
+             // Fallback minimal
+             setRecipient({
+                 id: targetId,
+                 profile_id: targetId,
+                 first_name: "Client",
+                 last_name: "",
+                 avatar_url: undefined,
+                 occupations: "Client"
+             });
+        }
+
       }
     } catch (err) {
-      console.error("Error loading provider:", err);
-      setError("Erreur lors du chargement du prestataire");
+      console.error("Error loading recipient:", err);
+      setError("Erreur lors du chargement du destinataire");
     } finally {
-      setLoadingProvider(false);
+      setLoadingRecipient(false);
     }
   };
 
@@ -221,8 +342,8 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
       return;
     }
 
-    if (!provider?.profile_id) {
-      setError("Impossible de trouver le prestataire");
+    if (!recipient?.profile_id) {
+      setError("Impossible de trouver le destinataire");
       return;
     }
 
@@ -231,14 +352,14 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
 
     try {
       // Nom complet de l'utilisateur
-      const userName = userProfile
-        ? `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim() ||
-          userProfile.display_name ||
-          "Un client"
-        : "Un client";
+      const formattedUserName = userProfile?.first_name || userProfile?.last_name
+        ? `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim()
+        : userProfile?.display_name 
+          ? `@${userProfile.display_name}` 
+          : (userProfile as any)?.email || "Un utilisateur";
 
       // Créer l'objet du message
-      const subject = config.getSubject(userName);
+      const subject = config.getSubject(formattedUserName);
 
       // Préparer le message avec l'objet
       const fullMessage = `**${subject}**\n\n${message.trim()}`;
@@ -257,7 +378,7 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          receiver_id: provider.profile_id,
+          receiver_id: recipient.profile_id,
           text: fullMessage,
           message_type: messageType === "simple" ? "text" : messageType,
           metadata,
@@ -336,120 +457,92 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in-90 zoom-in-95">
-        {/* Header avec infos du prestataire */}
-        <div className="flex items-center gap-4 p-6 border-b border-slate-200">
-          {/* Photo de profil du prestataire */}
-          <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center relative overflow-hidden">
-            {provider?.avatar_url ? (
-              <img
-                src={provider.avatar_url}
-                alt={`${provider.first_name} ${provider.last_name}`}
-                className="w-full h-full object-cover"
-              />
-            ) : provider ? (
-              <span className="text-white text-xl font-bold">
-                {provider.first_name?.charAt(0).toUpperCase() || ''}
-                {provider.last_name?.charAt(0).toUpperCase() || ''}
-              </span>
-            ) : (
-              <User className="w-7 h-7 text-white" />
-            )}
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
-          </div>
+        {/* Header avec infos du prestataire uniquement */}
+        <div className="p-4 sm:p-6 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-pink-50">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {/* Photo de profil du destinataire */}
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center relative overflow-hidden flex-shrink-0 shadow-lg border-2 border-white">
+                {recipient?.avatar_url ? (
+                  <img
+                    src={recipient.avatar_url}
+                    alt={`${recipient.first_name} ${recipient.last_name}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : recipient ? (
+                  <span className="text-white text-xl sm:text-2xl font-bold">
+                    {(recipient.first_name || recipient.display_name || "U").charAt(0).toUpperCase()}
+                  </span>
+                ) : (
+                  <User className="w-8 h-8 text-white" />
+                )}
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
 
-          <div className="flex-1">
-            {loadingProvider ? (
-              <>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {config.title}
-                </h2>
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Chargement...</span>
-                </div>
-              </>
-            ) : provider ? (
-              <>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {provider.first_name} {provider.last_name}
-                </h2>
-                <p className="text-sm text-slate-600 flex items-center gap-1">
-                  <span>Prestataire</span>
-                  {provider.occupations && (
-                    <>
-                      <span>•</span>
-                      <span>{provider.occupations}</span>
-                    </>
-                  )}
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {config.title}
-                </h2>
-                <p className="text-slate-600">Prestataire</p>
-              </>
-            )}
-          </div>
-
-          {/* Indicateur de type de message */}
-          {messageType !== "simple" && (
-            <div
-              className={`px-4 py-2 rounded-xl ${
-                messageType === "accept"
-                  ? "bg-green-100 text-green-700 border border-green-200"
-                  : messageType === "revision"
-                  ? "bg-orange-100 text-orange-700 border border-orange-200"
-                  : "bg-red-100 text-red-700 border border-red-200"
-              }`}
-            >
-              <span className="font-semibold text-sm">
-                {messageType === "accept"
-                  ? "Acceptation"
-                  : messageType === "revision"
-                  ? "Révision"
-                  : "Refus"}
-              </span>
+              <div className="flex-1 min-w-0">
+                {loadingRecipient ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                    <span className="text-slate-600 font-medium">{t("orders.detail.loading")}</span>
+                  </div>
+                ) : recipient ? (
+                  <>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">
+                      {recipient.first_name || recipient.last_name 
+                        ? `${recipient.first_name} ${recipient.last_name}`.trim() 
+                        : recipient.display_name || "Contact"}
+                    </h2>
+                    {recipient.occupations && (
+                      <div className="flex items-center gap-2 text-slate-600 mt-0.5">
+                        <span className="text-sm truncate">{recipient.occupations}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <h2 className="text-xl font-bold text-slate-900">Contact</h2>
+                )}
+              </div>
             </div>
-          )}
 
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
-            disabled={isSending}
-          >
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
+            <div className="flex items-center gap-3">
+              {/* Indicateur de type de message (si non simple) */}
+              {messageType !== "simple" && (
+                <div
+                  className={`hidden sm:flex px-4 py-2 rounded-xl text-sm font-bold shadow-sm ${
+                    messageType === "accept"
+                      ? "bg-green-100 text-green-700 border border-green-200"
+                      : messageType === "revision"
+                      ? "bg-orange-100 text-orange-700 border border-orange-200"
+                      : "bg-red-100 text-red-700 border border-red-200"
+                  }`}
+                >
+                  {messageType === "accept"
+                    ? "Acceptation"
+                    : messageType === "revision"
+                    ? "Révision"
+                    : "Refus"}
+                </div>
+              )}
+
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/50 rounded-xl transition-colors flex-shrink-0"
+                disabled={isSending}
+              >
+                <X className="w-6 h-6 text-slate-500" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Zone de conversation */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Objet du message */}
-          {userProfile && (
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-200">
-              <div className="flex items-start gap-3">
-                <MessageCircle className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-700 mb-1">
-                    Objet du message :
-                  </p>
-                  <p className="text-slate-900 font-medium leading-relaxed">
-                    {config.getSubject(
-                      `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim() ||
-                        userProfile.display_name ||
-                        "Un client"
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Message d'erreur */}
 
           {/* Message d'erreur */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <div className="text-red-600 font-semibold mb-2">❌ Erreur</div>
+              <div className="text-red-600 font-semibold mb-2">❌ {t("orders.messaging.errorTitle")}</div>
               <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
@@ -458,11 +551,10 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
           {sentSuccess && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
               <div className="text-green-600 font-semibold mb-1">
-                ✅ Message envoyé !
+                ✅ {t("orders.messaging.success")}
               </div>
               <p className="text-green-700 text-sm">
-                Votre message a été envoyé à {provider?.first_name}.
-                Redirection vers la messagerie...
+                {t("orders.messaging.successDesc", { name: recipient?.first_name || "" })}
               </p>
             </div>
           )}
@@ -471,7 +563,7 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
           {!isSending && !sentSuccess && !error && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-slate-700">
-                Messages prédéfinis :
+                {t("orders.messaging.predefinedTitle")}
               </p>
               {config.predefinedMessages.map((text, index) => (
                 <button
@@ -491,7 +583,7 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
               <div className="max-w-xs lg:max-w-md px-4 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white">
                 <p className="text-sm whitespace-pre-wrap">{message}</p>
                 <p className="text-xs mt-1 text-purple-100">
-                  À envoyer à {provider?.first_name}
+                  À envoyer à {recipient?.first_name}
                 </p>
               </div>
             </div>
@@ -600,11 +692,11 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
                 <div className="flex justify-between items-center mt-3">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Shield className="w-3 h-3" />
-                    <span>Message sécurisé et chiffré</span>
+                    <span>{t("orders.messaging.secureNote")}</span>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-slate-400">
-                      {message.length}/2500
+                      {t("orders.messaging.charCount", { current: message.length })}
                     </span>
                     <button
                       onClick={handleSendMessage}
@@ -623,7 +715,7 @@ const OrderMessagingModal: React.FC<OrderMessagingModalProps> = ({
                       ) : (
                         <Send className="w-4 h-4" />
                       )}
-                      <span>{isSending ? "Envoi..." : config.buttonText}</span>
+                      <span>{isSending ? t("orders.messaging.sending") : config.buttonText}</span>
                     </button>
                   </div>
                 </div>

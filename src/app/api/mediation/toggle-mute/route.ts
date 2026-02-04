@@ -10,10 +10,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: "Non authentifié" }, { status: 401 });
         }
 
-        const { disputeId, userId, isMuted } = await JSON.parse(await req.text());
+        const body = await req.json();
+        const { disputeId, userId, isMuted } = body;
 
         if (!disputeId || !userId) {
-            return NextResponse.json({ success: false, error: "Paramètres manquants" }, { status: 400 });
+            console.error("Missing parameters in toggle-mute:", { disputeId, userId, isMuted, body });
+            return NextResponse.json({
+                success: false,
+                error: `Paramètres manquants: disputeId=${disputeId ? 'OK' : 'MISSING'}, userId=${userId ? 'OK' : 'MISSING'}`,
+                debugReceived: body
+            }, { status: 400 });
         }
 
         // Vérifier si l'utilisateur actuel est l'admin de ce litige ou un admin système

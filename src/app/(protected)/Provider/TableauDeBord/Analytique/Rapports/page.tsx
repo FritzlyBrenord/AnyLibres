@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import Header from "@/components/layout/HeaderProvider";
 
 interface ReportData {
@@ -26,6 +27,7 @@ interface ReportData {
 }
 
 export default function AnalyticsReports() {
+  const { t, language } = useSafeLanguage();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ReportData | null>(null);
@@ -77,24 +79,26 @@ export default function AnalyticsReports() {
     try {
       const csvRows = [
         [
-          "Date",
-          "Commande ID",
-          "Montant Brut (€)",
-          "Frais Plateforme (€)",
-          "Montant Net (€)",
-          "Statut",
-          "Service",
+          t.analytics.reportsPage.csv.common.date,
+          t.analytics.reportsPage.csv.common.orderId,
+          t.analytics.reportsPage.csv.revenue.gross.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.fees.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.net.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.common.status,
+          t.analytics.reportsPage.csv.common.service,
         ],
       ];
 
       data.earnings.forEach((earning: any) => {
         const order = data.orders.find((o: any) => o.id === earning.order_id);
         const serviceTitle =
-          order?.order_items?.[0]?.service?.title?.fr || "N/A";
+          order?.order_items?.[0]?.service?.title?.[language] || 
+          order?.order_items?.[0]?.service?.title?.fr || 
+          t.analytics.reportsPage.csv.common.na;
 
         csvRows.push([
-          new Date(earning.created_at).toLocaleDateString("fr-FR"),
-          earning.order_id || "N/A",
+          new Date(earning.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
+          earning.order_id || t.analytics.reportsPage.csv.common.na,
           (earning.amount_cents / 100).toFixed(2),
           (earning.platform_fee_cents / 100).toFixed(2),
           (earning.net_amount_cents / 100).toFixed(2),
@@ -121,33 +125,35 @@ export default function AnalyticsReports() {
     try {
       const csvRows = [
         [
-          "Date",
-          "Commande ID",
-          "Client",
-          "Service",
-          "Montant Net (€)",
-          "Statut",
-          "Date Livraison",
+          t.analytics.reportsPage.csv.common.date,
+          t.analytics.reportsPage.csv.common.orderId,
+          t.analytics.reportsPage.csv.common.client,
+          t.analytics.reportsPage.csv.common.service,
+          t.analytics.reportsPage.csv.revenue.net.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.common.status,
+          t.analytics.reportsPage.csv.orders.deliveryDate,
         ],
       ];
 
       data.orders.forEach((order: any) => {
         const earning = data.earnings.find((e: any) => e.order_id === order.id);
         const serviceTitle =
-          order.order_items?.[0]?.service?.title?.fr || "N/A";
+          order.order_items?.[0]?.service?.title?.[language] || 
+          order.order_items?.[0]?.service?.title?.fr || 
+          t.analytics.reportsPage.csv.common.na;
         const clientName =
-          order.client?.full_name || order.client?.email || "Client";
+          order.client?.full_name || order.client?.email || t.analytics.reportsPage.csv.common.client;
 
         csvRows.push([
-          new Date(order.created_at).toLocaleDateString("fr-FR"),
+          new Date(order.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
           order.id,
           clientName,
           serviceTitle,
           earning ? (earning.net_amount_cents / 100).toFixed(2) : "0.00",
           order.status,
           order.delivery_date
-            ? new Date(order.delivery_date).toLocaleDateString("fr-FR")
-            : "N/A",
+            ? new Date(order.delivery_date).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US')
+            : t.analytics.reportsPage.csv.common.na,
         ]);
       });
 
@@ -169,13 +175,13 @@ export default function AnalyticsReports() {
     try {
       const csvRows = [
         [
-          "Service",
-          "Prix de Base (€)",
-          "Commandes",
-          "Revenus Générés (€)",
-          "Note Moyenne",
-          "Avis",
-          "Taux Conversion",
+          t.analytics.reportsPage.csv.common.service,
+          t.analytics.reportsPage.csv.performance.basePrice.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.performance.orders,
+          t.analytics.reportsPage.csv.performance.revenue.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.performance.avgRating,
+          t.analytics.reportsPage.csv.performance.reviews,
+          t.analytics.reportsPage.csv.performance.conversion,
         ],
       ];
 
@@ -217,7 +223,7 @@ export default function AnalyticsReports() {
             : "0.0";
 
         csvRows.push([
-          service.title?.fr || service.title?.en || "Service",
+          service.title?.[language] || service.title?.fr || service.title?.en || t.analytics.reportsPage.csv.common.service,
           (service.base_price_cents / 100).toFixed(2),
           ordersCount.toString(),
           (serviceRevenue / 100).toFixed(2),
@@ -245,13 +251,13 @@ export default function AnalyticsReports() {
     try {
       const csvRows = [
         [
-          "Client",
-          "Email",
-          "Nombre Commandes",
-          "Dépenses Totales (€)",
-          "Valeur Moy. Commande (€)",
-          "Première Commande",
-          "Dernière Commande",
+          t.analytics.reportsPage.csv.common.client,
+          t.analytics.reportsPage.csv.common.email,
+          t.analytics.reportsPage.csv.clients.orderCount,
+          t.analytics.reportsPage.csv.clients.totalSpend.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.clients.avgOrder.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.clients.firstOrder,
+          t.analytics.reportsPage.csv.clients.lastOrder,
         ],
       ];
 
@@ -297,8 +303,8 @@ export default function AnalyticsReports() {
           client.orders_count.toString(),
           (client.total_spend_cents / 100).toFixed(2),
           (client.total_spend_cents / client.orders_count / 100).toFixed(2),
-          new Date(client.first_order).toLocaleDateString("fr-FR"),
-          new Date(client.last_order).toLocaleDateString("fr-FR"),
+          new Date(client.first_order).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
+          new Date(client.last_order).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
         ]);
       });
 
@@ -345,7 +351,7 @@ export default function AnalyticsReports() {
         );
 
         return {
-          month: new Date(currentYear, i).toLocaleDateString("fr-FR", {
+          month: new Date(currentYear, i).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
             month: "long",
           }),
           gross: monthEarnings.reduce(
@@ -364,20 +370,20 @@ export default function AnalyticsReports() {
       });
 
       const csvRows = [
-        ["RAPPORT FISCAL ANNUEL - " + currentYear],
+        [`${t.analytics.reportsPage.csv.fiscal.annualReport} - ${currentYear}`],
         [""],
-        ["RÉSUMÉ ANNUEL"],
-        ["Revenus Bruts Total", (totalGross / 100).toFixed(2) + " €"],
-        ["Frais de Plateforme Total", (totalFees / 100).toFixed(2) + " €"],
-        ["Revenus Net Total", (totalNet / 100).toFixed(2) + " €"],
-        ["Nombre de Transactions", yearEarnings.length.toString()],
+        [t.analytics.reportsPage.csv.fiscal.summary],
+        [t.analytics.reportsPage.csv.revenue.gross.replace(' ({currency})', ''), (totalGross / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.revenue.fees.replace(' ({currency})', ''), (totalFees / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.revenue.net.replace(' ({currency})', ''), (totalNet / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.fiscal.transactions, yearEarnings.length.toString()],
         [""],
-        ["DÉTAIL MENSUEL"],
+        [t.analytics.reportsPage.csv.fiscal.monthlyDetail],
         [
-          "Mois",
-          "Revenus Bruts (€)",
-          "Frais Plateforme (€)",
-          "Revenus Net (€)",
+          t.analytics.reportsPage.csv.fiscal.month,
+          t.analytics.reportsPage.csv.revenue.gross.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.fees.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.net.replace('{currency}', t.common.currency),
         ],
       ];
 
@@ -430,39 +436,41 @@ export default function AnalyticsReports() {
 
       const csvRows = [
         [
-          "RAPPORT MENSUEL - " +
-            new Date().toLocaleDateString("fr-FR", {
+          `${t.analytics.reportsPage.csv.fiscal.monthlyReport} - ` +
+            new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
               month: "long",
               year: "numeric",
             }),
         ],
         [""],
-        ["RÉSUMÉ DU MOIS"],
-        ["Revenus Bruts", (totalGross / 100).toFixed(2) + " €"],
-        ["Frais de Plateforme", (totalFees / 100).toFixed(2) + " €"],
-        ["Revenus Net", (totalNet / 100).toFixed(2) + " €"],
-        ["Nombre de Transactions", monthEarnings.length.toString()],
+        [t.analytics.reportsPage.csv.fiscal.summary],
+        [t.analytics.reportsPage.csv.revenue.gross.replace(' ({currency})', ''), (totalGross / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.revenue.fees.replace(' ({currency})', ''), (totalFees / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.revenue.net.replace(' ({currency})', ''), (totalNet / 100).toFixed(2) + " " + t.common.currency],
+        [t.analytics.reportsPage.csv.fiscal.transactions, monthEarnings.length.toString()],
         [""],
-        ["DÉTAIL DES TRANSACTIONS"],
+        [t.analytics.reportsPage.csv.fiscal.transactionDetail],
         [
-          "Date",
-          "Commande ID",
-          "Service",
-          "Montant Brut (€)",
-          "Frais (€)",
-          "Montant Net (€)",
-          "Statut",
+          t.analytics.reportsPage.csv.common.date,
+          t.analytics.reportsPage.csv.common.orderId,
+          t.analytics.reportsPage.csv.common.service,
+          t.analytics.reportsPage.csv.revenue.gross.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.fees.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.revenue.net.replace('{currency}', t.common.currency),
+          t.analytics.reportsPage.csv.common.status,
         ],
       ];
 
       monthEarnings.forEach((earning: any) => {
         const order = data.orders.find((o: any) => o.id === earning.order_id);
         const serviceTitle =
-          order?.order_items?.[0]?.service?.title?.fr || "N/A";
+          order?.order_items?.[0]?.service?.title?.[language] || 
+          order?.order_items?.[0]?.service?.title?.fr || 
+          t.analytics.reportsPage.csv.common.na;
 
         csvRows.push([
-          new Date(earning.created_at).toLocaleDateString("fr-FR"),
-          earning.order_id || "N/A",
+          new Date(earning.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
+          earning.order_id || t.analytics.reportsPage.csv.common.na,
           serviceTitle,
           (earning.amount_cents / 100).toFixed(2),
           (earning.platform_fee_cents / 100).toFixed(2),
@@ -472,7 +480,7 @@ export default function AnalyticsReports() {
       });
 
       const monthName = new Date()
-        .toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+        .toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', { month: "long", year: "numeric" })
         .replace(" ", "_");
       const csvContent = csvRows.map((row) => row.join(";")).join("\n");
       downloadCSV(csvContent, `rapport_mensuel_${monthName}.csv`);
@@ -524,11 +532,10 @@ export default function AnalyticsReports() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 mb-2">
-                📊 Rapports & Exports
+                📊 {t.analytics.reportsPage.title}
               </h1>
               <p className="text-slate-600">
-                Exportez vos données analytiques pour votre comptabilité et
-                analyses
+                {t.analytics.reportsPage.subtitle}
               </p>
             </div>
             <button
@@ -536,7 +543,7 @@ export default function AnalyticsReports() {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              <span className="font-medium">Actualiser</span>
+              <span className="font-medium">{t.analytics.reportsPage.refresh}</span>
             </button>
           </div>
         </div>
@@ -550,9 +557,9 @@ export default function AnalyticsReports() {
               </div>
               <TrendingUp className="w-5 h-5 opacity-80" />
             </div>
-            <p className="text-blue-100 text-sm mb-1">Revenus Totaux</p>
+            <p className="text-blue-100 text-sm mb-1">{t.analytics.reportsPage.stats.totalEarnings}</p>
             <p className="text-3xl font-bold">
-              {stats.totalEarnings.toFixed(2)} €
+              {stats.totalEarnings.toFixed(2)} {t.common.currency}
             </p>
           </div>
 
@@ -563,7 +570,7 @@ export default function AnalyticsReports() {
               </div>
               <CheckCircle2 className="w-5 h-5 opacity-80" />
             </div>
-            <p className="text-purple-100 text-sm mb-1">Commandes</p>
+            <p className="text-purple-100 text-sm mb-1">{t.analytics.reportsPage.stats.orders}</p>
             <p className="text-3xl font-bold">{stats.totalOrders}</p>
           </div>
 
@@ -574,7 +581,7 @@ export default function AnalyticsReports() {
               </div>
               <AlertCircle className="w-5 h-5 opacity-80" />
             </div>
-            <p className="text-green-100 text-sm mb-1">Services Actifs</p>
+            <p className="text-green-100 text-sm mb-1">{t.analytics.reportsPage.stats.activeServices}</p>
             <p className="text-3xl font-bold">{stats.totalServices}</p>
           </div>
 
@@ -585,7 +592,7 @@ export default function AnalyticsReports() {
               </div>
               <TrendingUp className="w-5 h-5 opacity-80" />
             </div>
-            <p className="text-orange-100 text-sm mb-1">Clients Uniques</p>
+            <p className="text-orange-100 text-sm mb-1">{t.analytics.reportsPage.stats.uniqueClients}</p>
             <p className="text-3xl font-bold">{stats.totalClients}</p>
           </div>
         </div>
@@ -598,11 +605,10 @@ export default function AnalyticsReports() {
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Rapport Mensuel
+              {t.analytics.reportsPage.cards.monthly.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Détail complet de toutes les transactions du mois en cours avec
-              résumé financier.
+              {t.analytics.reportsPage.cards.monthly.description}
             </p>
             <button
               onClick={exportRapportMensuel}
@@ -614,7 +620,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
 
@@ -624,11 +630,10 @@ export default function AnalyticsReports() {
               <FileText className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Rapport Fiscal Annuel
+              {t.analytics.reportsPage.cards.annual.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Résumé annuel complet pour votre déclaration fiscale avec détail
-              mensuel.
+              {t.analytics.reportsPage.cards.annual.description}
             </p>
             <button
               onClick={exportRapportFiscal}
@@ -640,7 +645,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
 
@@ -650,11 +655,10 @@ export default function AnalyticsReports() {
               <DollarSign className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Historique des Revenus
+              {t.analytics.reportsPage.cards.revenue.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Liste complète de tous vos revenus avec détails des frais et
-              montants nets.
+              {t.analytics.reportsPage.cards.revenue.description}
             </p>
             <button
               onClick={exportRevenus}
@@ -666,7 +670,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
 
@@ -676,11 +680,10 @@ export default function AnalyticsReports() {
               <ShoppingBag className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Historique des Commandes
+              {t.analytics.reportsPage.cards.orders.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Archive complète de toutes vos commandes avec clients et statuts
-              de livraison.
+              {t.analytics.reportsPage.cards.orders.description}
             </p>
             <button
               onClick={exportCommandes}
@@ -692,7 +695,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
 
@@ -702,11 +705,10 @@ export default function AnalyticsReports() {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Performance des Services
+              {t.analytics.reportsPage.cards.services.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Analyse détaillée de la performance de chacun de vos services avec
-              métriques.
+              {t.analytics.reportsPage.cards.services.description}
             </p>
             <button
               onClick={exportServices}
@@ -718,7 +720,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
 
@@ -728,11 +730,10 @@ export default function AnalyticsReports() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Analyse Clients
+              {t.analytics.reportsPage.cards.clients.title}
             </h3>
             <p className="text-sm text-slate-500 mb-6">
-              Liste détaillée de vos clients avec historique d'achat et
-              statistiques.
+              {t.analytics.reportsPage.cards.clients.description}
             </p>
             <button
               onClick={exportClients}
@@ -744,7 +745,7 @@ export default function AnalyticsReports() {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Télécharger CSV
+              {t.analytics.reportsPage.cards.download}
             </button>
           </div>
         </div>
@@ -757,28 +758,12 @@ export default function AnalyticsReports() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 mb-2">
-                ℹ️ Informations sur les exports
+                ℹ️ {t.analytics.reportsPage.info.title}
               </h3>
               <ul className="text-sm text-slate-600 space-y-2">
-                <li>
-                  • Tous les fichiers sont au format CSV, compatible avec Excel,
-                  Google Sheets et logiciels de comptabilité
-                </li>
-                <li>
-                  • Les montants sont en euros (€) avec séparateur décimal
-                  français
-                </li>
-                <li>
-                  • Le séparateur de colonnes est le point-virgule (;) pour
-                  compatibilité Excel France
-                </li>
-                <li>
-                  • Les revenus nets correspondent aux montants après déduction
-                  des frais de plateforme (2.5%)
-                </li>
-                <li>
-                  • Les données sont exportées en temps réel depuis votre compte
-                </li>
+                {t.analytics.reportsPage.info.items.map((item: string, idx: number) => (
+                  <li key={idx}>• {item}</li>
+                ))}
               </ul>
             </div>
           </div>

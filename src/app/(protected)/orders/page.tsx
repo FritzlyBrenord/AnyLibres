@@ -17,45 +17,29 @@ import {
   Loader2,
   ShoppingBag,
   Calendar,
-  Tabs,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import type { Order, OrderStatus, PaymentStatus } from "@/types/order";
 import { RefundModal, RefundList, RefundStatusBadge } from "./RefundComponents";
 import { ClientBalancePanel } from "./ClientBalancePanel";
 
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "En attente",
-  payment_processing: "Paiement en cours",
-  paid: "Payé",
-  in_progress: "En cours",
-  delivered: "Livré",
-  revision_requested: "Révision demandée",
-  completed: "Terminé",
-  cancelled: "Annulé",
-  refunded: "Remboursé",
-};
+
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
-  payment_processing: "bg-blue-100 text-blue-800",
   paid: "bg-blue-100 text-blue-800",
   in_progress: "bg-purple-100 text-purple-800",
+  delivery_delayed: "bg-amber-100 text-amber-800",
   delivered: "bg-green-100 text-green-800",
   revision_requested: "bg-orange-100 text-orange-800",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
   refunded: "bg-gray-100 text-gray-800",
+  disputed: "bg-rose-100 text-rose-800",
 };
 
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending: "En attente",
-  processing: "En traitement",
-  succeeded: "Réussi",
-  failed: "Échoué",
-  refunded: "Remboursé",
-  cancelled: "Annulé",
-};
+
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   pending: "bg-gray-100 text-gray-800",
@@ -64,9 +48,11 @@ const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   failed: "bg-red-100 text-red-800",
   refunded: "bg-orange-100 text-orange-800",
   cancelled: "bg-red-100 text-red-800",
+  disputed: "bg-rose-100 text-rose-800",
 };
 
 export default function OrdersListPage() {
+  const { t, language } = useSafeLanguage();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,7 +198,8 @@ export default function OrdersListPage() {
 
   const formatPrice = (amount: number) => {
     try {
-      return new Intl.NumberFormat("fr-FR", {
+      const locale = language || 'fr-FR';
+      return new Intl.NumberFormat(locale, {
         style: "currency",
         currency: selectedCurrency,
       }).format(amount);
@@ -222,7 +209,8 @@ export default function OrdersListPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat("fr-FR", {
+    const locale = language || 'fr-FR';
+    return new Intl.DateTimeFormat(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -261,10 +249,10 @@ export default function OrdersListPage() {
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-slate-900">
-                  Mes Commandes
+                  {t('orders.title')}
                 </h1>
                 <p className="text-slate-600 text-lg">
-                  Gérez et suivez vos commandes en temps réel
+                  {t('orders.subtitle')}
                 </p>
               </div>
             </div>
@@ -272,9 +260,9 @@ export default function OrdersListPage() {
             {/* Tabs */}
             <div className="flex gap-4 mt-8 border-b border-gray-200">
               {[
-                { id: "orders", label: "Commandes" },
-                { id: "balance", label: "Solde" },
-                { id: "refunds", label: "Remboursements" },
+                { id: "orders", label: t('orders.tabs.orders') },
+                { id: "balance", label: t('orders.tabs.balance') },
+                { id: "refunds", label: t('orders.tabs.refunds') },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -298,13 +286,13 @@ export default function OrdersListPage() {
               <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <Filter className="w-5 h-5 text-purple-600" />
-                  <h3 className="font-semibold text-slate-900">Filtres</h3>
+                  <h3 className="font-semibold text-slate-900">{t('orders.filters.title')}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Role Toggle */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Vue
+                      {t('orders.filters.view')}
                     </label>
                     <div className="flex gap-2">
                       <button
@@ -315,7 +303,7 @@ export default function OrdersListPage() {
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        Achats
+                        {t('orders.filters.buys')}
                       </button>
                       <button
                         onClick={() => setRole("provider")}
@@ -325,7 +313,7 @@ export default function OrdersListPage() {
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        Ventes
+                        {t('orders.filters.sales')}
                       </button>
                     </div>
                   </div>
@@ -333,43 +321,43 @@ export default function OrdersListPage() {
                   {/* Status Filter */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Statut Commande
+                      {t('orders.filters.orderStatus')}
                     </label>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Tous</option>
-                      <option value="pending">En attente</option>
-                      <option value="paid">Payé</option>
-                      <option value="in_progress">En cours</option>
-                      <option value="delivered">Livré</option>
+                      <option value="">{t('orders.filters.all')}</option>
+                      <option value="pending">{t('orders.status.pending')}</option>
+                      <option value="paid">{t('orders.status.paid')}</option>
+                      <option value="in_progress">{t('orders.status.in_progress')}</option>
+                      <option value="delivered">{t('orders.status.delivered')}</option>
                       <option value="revision_requested">
-                        Révision demandée
+                        {t('orders.status.revision_requested')}
                       </option>
-                      <option value="completed">Terminé</option>
-                      <option value="cancelled">Annulé</option>
+                      <option value="completed">{t('orders.status.completed')}</option>
+                      <option value="cancelled">{t('orders.status.cancelled')}</option>
                     </select>
                   </div>
 
                   {/* Payment Filter */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Statut Paiement
+                      {t('orders.filters.paymentStatus')}
                     </label>
                     <select
                       value={paymentFilter}
                       onChange={(e) => setPaymentFilter(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Tous</option>
-                      <option value="pending">En attente</option>
-                      <option value="processing">En traitement</option>
-                      <option value="succeeded">Réussi</option>
-                      <option value="failed">Échoué</option>
-                      <option value="refunded">Remboursé</option>
-                      <option value="cancelled">Annulé</option>
+                      <option value="">{t('orders.filters.all')}</option>
+                      <option value="pending">{t('orders.status.pending')}</option>
+                      <option value="processing">{t('orders.status.processing')}</option>
+                      <option value="succeeded">{t('orders.status.succeeded')}</option>
+                      <option value="failed">{t('orders.status.failed')}</option>
+                      <option value="refunded">{t('orders.status.refunded')}</option>
+                      <option value="cancelled">{t('orders.status.cancelled')}</option>
                     </select>
                   </div>
 
@@ -382,7 +370,7 @@ export default function OrdersListPage() {
                       }}
                       className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                     >
-                      Réinitialiser
+                      {t('orders.filters.reset')}
                     </button>
                   </div>
                 </div>
@@ -411,12 +399,12 @@ export default function OrdersListPage() {
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Aucune commande
+                    {t('orders.list.noOrders')}
                   </h3>
                   <p className="text-gray-600">
                     {role === "client"
-                      ? "Vous n'avez pas encore passé de commande."
-                      : "Vous n'avez pas encore reçu de commande."}
+                      ? t('orders.list.noOrdersClient')
+                      : t('orders.list.noOrdersProvider')}
                   </p>
                 </div>
               ) : (
@@ -466,11 +454,7 @@ export default function OrdersListPage() {
                                         ]
                                       }`}
                                     >
-                                      {
-                                        STATUS_LABELS[
-                                          order.status as OrderStatus
-                                        ]
-                                      }
+                                      {t(`orders.status.${order.status}`)}
                                     </span>
                                   </div>
 
@@ -531,11 +515,7 @@ export default function OrdersListPage() {
                                     ]
                                   }`}
                                 >
-                                  {
-                                    PAYMENT_STATUS_LABELS[
-                                      order.payment_status as PaymentStatus
-                                    ]
-                                  }
+                                  {t(`orders.status.${order.payment_status}`)}
                                 </span>
                               </div>
 
@@ -574,7 +554,7 @@ export default function OrdersListPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Mes Remboursements
+                  {t('orders.refunds.title')}
                 </h2>
               </div>
               <RefundList refunds={refunds} loading={loading} />

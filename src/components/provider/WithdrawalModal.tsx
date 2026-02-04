@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { X, Loader2, AlertCircle, Wallet, Plus, ArrowDownToLine, Clock } from "lucide-react";
 import PaymentMethodCard from "@/components/provider/PaymentMethodCard";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface PaymentMethod {
   id: string;
@@ -25,7 +27,7 @@ interface WithdrawalModalProps {
   onDeletePaymentMethod: (id: string) => Promise<void>;
   withdrawalFeePercentage: number;
   timeRemaining: number;
-  accountFrozen?: boolean; // 🆕 Nouveau: statut du compte gelé
+  accountFrozen?: boolean;
   onSubmit: (amount: number, paymentMethodId: string) => Promise<void>;
   ConvertedAmountComponent: React.ComponentType<{ amountCents: number; selectedCurrency: string }>;
 }
@@ -42,10 +44,13 @@ export default function WithdrawalModal({
   onDeletePaymentMethod,
   withdrawalFeePercentage,
   timeRemaining,
-  accountFrozen = false, // 🆕 Par défaut: false (compte actif)
+  accountFrozen = false,
   onSubmit,
   ConvertedAmountComponent,
 }: WithdrawalModalProps) {
+  const { t } = useSafeLanguage();
+  const tm = t.providerDashboard.withdrawalModal;
+  
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +60,13 @@ export default function WithdrawalModal({
   const MAX_AMOUNT = 5000;
   const available = availableAmountCents / 100;
   const hasInsufficientBalance = available < MIN_AMOUNT;
+
+  // Symbols for different currencies (fallback)
+  const getSymbol = (code: string) => {
+    if (code === 'EUR') return '€';
+    if (code === 'USD') return '$';
+    return code;
+  };
 
   // Auto-select default payment method
   useEffect(() => {
@@ -69,52 +81,50 @@ export default function WithdrawalModal({
     if (isOpen) {
       setWithdrawalAmount("");
 
-      // 🔒 Vérifier si le compte est gelé
       if (accountFrozen) {
-        setError(
-          "🔒 Compte gelé - Retraits bloqués. Contactez le support pour plus d'informations."
-        );
+        setError(tm.errors.accountFrozen);
       }
-      // Auto-set error if insufficient balance
       else if (hasInsufficientBalance) {
         setError(
-          `Solde insuffisant. Minimum requis: ${MIN_AMOUNT}€ • Votre solde: ${available.toFixed(2)}€`
+          t('providerDashboard.withdrawalModal.errors.insufficientBalance', {
+            min: `${MIN_AMOUNT}€`,
+            balance: `${available.toFixed(2)}€`
+          })
         );
       } else {
         setError("");
       }
     }
-  }, [isOpen, hasInsufficientBalance, available, accountFrozen]);
+  }, [isOpen, hasInsufficientBalance, available, accountFrozen, tm.errors.accountFrozen, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // 🔒 Bloquer immédiatement si compte gelé
     if (accountFrozen) {
-      setError("🔒 Compte gelé - Impossible d'effectuer un retrait. Contactez le support.");
+      setError(tm.errors.accountFrozen);
       return;
     }
 
     const amount = parseFloat(withdrawalAmount);
 
     if (!amount || amount < MIN_AMOUNT) {
-      setError(`Le montant minimum est de ${MIN_AMOUNT}€`);
+      setError(t('providerDashboard.withdrawalModal.errors.minAmount', { amount: `${MIN_AMOUNT}€` }));
       return;
     }
 
     if (amount > Math.min(available, MAX_AMOUNT)) {
-      setError(`Le montant maximum est de ${Math.min(available, MAX_AMOUNT).toFixed(2)}€`);
+      setError(t('providerDashboard.withdrawalModal.errors.maxAmount', { amount: `${Math.min(available, MAX_AMOUNT).toFixed(2)}€` }));
       return;
     }
 
     if (!selectedPaymentMethod) {
-      setError("Veuillez sélectionner une méthode de paiement");
+      setError(tm.errors.selectMethod);
       return;
     }
 
     if (timeRemaining > 0) {
-      setError("Vous devez attendre 24h entre deux retraits");
+      setError(tm.errors.wait24h);
       return;
     }
 
@@ -123,7 +133,7 @@ export default function WithdrawalModal({
       await onSubmit(amount, selectedPaymentMethod);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Erreur lors du retrait");
+      setError(err.message || tm.errors.generalError);
     } finally {
       setSubmitting(false);
     }
@@ -138,9 +148,7 @@ export default function WithdrawalModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl my-8">
-        {/* Header avec gradient */}
         <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 sm:p-8 rounded-t-3xl overflow-hidden">
-          {/* Animated background */}
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 animate-pulse"></div>
           
           <div className="relative flex items-center justify-between">
@@ -149,8 +157,8 @@ export default function WithdrawalModal({
                 <ArrowDownToLine className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white">Retirer vos gains</h2>
-                <p className="text-emerald-100 text-sm mt-1">Transférez vos gains vers votre compte</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white">{tm.title}</h2>
+                <p className="text-emerald-100 text-sm mt-1">{tm.subtitle}</p>
               </div>
             </div>
             <button
@@ -163,7 +171,6 @@ export default function WithdrawalModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-          {/* Error Message */}
           {error && (
             <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3 animate-shake">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -171,7 +178,6 @@ export default function WithdrawalModal({
             </div>
           )}
 
-          {/* 🔒 Account Frozen Warning */}
           {accountFrozen && (
             <div className="bg-gradient-to-r from-red-500 to-red-600 border-2 border-red-700 rounded-xl p-5 animate-pulse">
               <div className="flex items-start gap-4">
@@ -180,14 +186,14 @@ export default function WithdrawalModal({
                 </div>
                 <div className="flex-1">
                   <h4 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    🔒 Compte Gelé
+                    {tm.frozenTitle}
                   </h4>
                   <p className="text-red-50 font-medium mb-3">
-                    Votre compte a été temporairement gelé. Tous les retraits sont bloqués.
+                    {tm.frozenMessage}
                   </p>
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                     <p className="text-sm text-white font-semibold">
-                      📧 Veuillez contacter le support pour plus d&apos;informations et débloquer votre compte.
+                      {tm.frozenSupport}
                     </p>
                   </div>
                 </div>
@@ -195,13 +201,12 @@ export default function WithdrawalModal({
             </div>
           )}
 
-          {/* Timer Warning */}
           {timeRemaining > 0 && !accountFrozen && (
             <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-red-600" />
-                  <span className="text-sm font-semibold text-red-700">Prochain retrait disponible dans</span>
+                  <span className="text-sm font-semibold text-red-700">{tm.timerWarning}</span>
                 </div>
                 <span className="text-2xl font-bold text-red-600">
                   {Math.floor(timeRemaining)}h {Math.round((timeRemaining % 1) * 60)}min
@@ -216,7 +221,6 @@ export default function WithdrawalModal({
             </div>
           )}
 
-          {/* Available Balance */}
           <div className={`rounded-2xl p-6 border-2 ${
             accountFrozen
               ? 'bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 border-gray-400 opacity-60'
@@ -227,7 +231,7 @@ export default function WithdrawalModal({
             <div className="flex items-center gap-3 mb-2">
               <Wallet className={`w-6 h-6 ${hasInsufficientBalance ? 'text-red-600' : 'text-emerald-600'}`} />
               <p className={`text-sm font-semibold ${hasInsufficientBalance ? 'text-red-700' : 'text-emerald-700'}`}>
-                Solde disponible
+                {tm.availableBalance}
               </p>
             </div>
             <p className={`text-4xl font-bold bg-gradient-to-r ${
@@ -242,23 +246,29 @@ export default function WithdrawalModal({
               <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
                 <p className="text-xs font-semibold text-red-800 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  Solde insuffisant pour effectuer un retrait
+                  {tm.insufficientBalance}
                 </p>
                 <p className="text-xs text-red-700 mt-1">
-                  Minimum requis: {MIN_AMOUNT}€ • Votre solde: {available.toFixed(2)}€
+                  {t('providerDashboard.withdrawalModal.insufficientBalanceDetail', {
+                    min: `${MIN_AMOUNT}€`,
+                    balance: `${available.toFixed(2)}€`
+                  })}
                 </p>
               </div>
             ) : (
               <p className="text-xs text-emerald-600 mt-2">
-                ⓘ Minimum: {MIN_AMOUNT}€ • Maximum: {MAX_AMOUNT}€ • Frais: {withdrawalFeePercentage}%
+                {t('providerDashboard.withdrawalModal.limitsAndFees', {
+                  min: `${MIN_AMOUNT}€`,
+                  max: `${MAX_AMOUNT}€`,
+                  fees: withdrawalFeePercentage
+                })}
               </p>
             )}
           </div>
 
-          {/* Payment Methods Section */}
           <div className={accountFrozen || hasInsufficientBalance ? 'opacity-50 pointer-events-none' : ''}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Mode de paiement</h3>
+              <h3 className="text-lg font-bold text-gray-900">{tm.paymentMethod}</h3>
               <button
                 type="button"
                 onClick={onAddPaymentMethod}
@@ -266,7 +276,7 @@ export default function WithdrawalModal({
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
-                Ajouter
+                {tm.addMethod}
               </button>
             </div>
 
@@ -275,8 +285,8 @@ export default function WithdrawalModal({
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Wallet className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-600 font-medium mb-2">Aucun mode de paiement</p>
-                <p className="text-sm text-gray-500 mb-4">Ajoutez votre premier mode de paiement pour commencer</p>
+                <p className="text-gray-600 font-medium mb-2">{tm.noMethodsTitle}</p>
+                <p className="text-sm text-gray-500 mb-4">{tm.noMethodsDesc}</p>
                 <button
                   type="button"
                   onClick={onAddPaymentMethod}
@@ -284,7 +294,7 @@ export default function WithdrawalModal({
                   className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-5 h-5" />
-                  Ajouter un mode de paiement
+                  {tm.addFirstMethod}
                 </button>
               </div>
             ) : (
@@ -310,10 +320,9 @@ export default function WithdrawalModal({
             )}
           </div>
 
-          {/* Amount Input */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Montant à retirer (€)
+              {t('providerDashboard.withdrawalModal.amountLabel', { symbol: getSymbol(selectedCurrency) })}
             </label>
             <div className="relative">
               <input
@@ -329,7 +338,7 @@ export default function WithdrawalModal({
                     ? 'opacity-50 bg-gray-100 border-gray-300 cursor-not-allowed'
                     : 'border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
                 }`}
-                placeholder={accountFrozen ? "🔒 Compte gelé" : hasInsufficientBalance ? "Solde insuffisant" : "0.00"}
+                placeholder={accountFrozen ? "🔒" : hasInsufficientBalance ? "..." : tm.amountPlaceholder}
                 required
               />
             </div>
@@ -340,7 +349,7 @@ export default function WithdrawalModal({
                 disabled={timeRemaining > 0 || hasInsufficientBalance}
                 className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Min ({MIN_AMOUNT}€)
+                {t('providerDashboard.withdrawalModal.minBtn', { amount: `${MIN_AMOUNT}€` })}
               </button>
               <button
                 type="button"
@@ -348,42 +357,40 @@ export default function WithdrawalModal({
                 disabled={timeRemaining > 0 || hasInsufficientBalance}
                 className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Max ({Math.min(available, MAX_AMOUNT).toFixed(2)}€)
+                {t('providerDashboard.withdrawalModal.maxBtn', { amount: `${Math.min(available, MAX_AMOUNT).toFixed(2)}€` })}
               </button>
             </div>
           </div>
 
-          {/* Summary */}
           {amount >= MIN_AMOUNT && (
             <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border-2 border-gray-200">
               <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="text-lg">📊</span> Récapitulatif
+                <span className="text-lg">📊</span> {tm.summaryTitle}
               </h4>
               <div className="space-y-3">
                 <div className="flex justify-between text-gray-700">
-                  <span>Montant demandé</span>
+                  <span>{tm.amountRequested}</span>
                   <span className="font-semibold">{amount.toFixed(2)} €</span>
                 </div>
                 <div className="flex justify-between text-orange-600">
-                  <span>Frais ({withdrawalFeePercentage}%)</span>
+                  <span>{t('providerDashboard.withdrawalModal.fees', { percent: withdrawalFeePercentage })}</span>
                   <span className="font-semibold">-{fee.toFixed(2)} €</span>
                 </div>
                 <div className="border-t-2 border-gray-300 pt-3 flex justify-between items-center">
-                  <span className="font-bold text-gray-900 text-lg">Vous recevrez</span>
+                  <span className="font-bold text-gray-900 text-lg">{tm.youWillReceive}</span>
                   <span className="text-2xl font-bold text-emerald-600">{netAmount.toFixed(2)} €</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
               className="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors text-lg"
             >
-              Annuler
+              {tm.cancel}
             </button>
             <button
               type="submit"
@@ -393,26 +400,25 @@ export default function WithdrawalModal({
               {submitting ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  Traitement...
+                  {tm.processing}
                 </>
               ) : accountFrozen ? (
                 <>
                   <AlertCircle className="w-6 h-6" />
-                  🔒 Compte Gelé
+                  {tm.frozenTitle}
                 </>
               ) : (
                 <>
                   <ArrowDownToLine className="w-6 h-6" />
-                  {hasInsufficientBalance ? "Solde insuffisant" : "Confirmer le retrait"}
+                  {hasInsufficientBalance ? tm.insufficientBalance : tm.confirm}
                 </>
               )}
             </button>
           </div>
 
-          {/* Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-xs text-blue-800">
-              💡 Les retraits sont traités sous 2-5 jours ouvrables. Un seul retrait autorisé toutes les 24h.
+              {tm.info}
             </p>
           </div>
         </form>
@@ -421,5 +427,3 @@ export default function WithdrawalModal({
   );
 }
 
-// Missing import (add at top of component)
-import { useState, useEffect } from "react";

@@ -4,7 +4,7 @@
 
 import { CurrencyCode } from './service';
 
-export type RoleEnum = 'client' | 'provider' | 'admin';
+export type RoleEnum = 'client' | 'provider' | 'admin' | string;
 export type LocaleCode = 'fr' | 'en' | 'es';
 
 export interface NotificationSettings {

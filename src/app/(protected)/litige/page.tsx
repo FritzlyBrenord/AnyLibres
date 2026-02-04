@@ -20,6 +20,7 @@ import {
   Download,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 type UserRole = "client" | "provider" | "admin";
 
@@ -44,6 +45,7 @@ interface MediationPresence {
 }
 
 const MediationRoom = () => {
+  const { t } = useSafeLanguage();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const disputeId = searchParams.get("dispute_id");
@@ -171,7 +173,7 @@ const MediationRoom = () => {
   const clientPresent = presenceData.some((p) => p.role === "client" && p.is_present);
   const providerPresent = presenceData.some((p) => p.role === "provider" && p.is_present);
   const canSendMessage = clientPresent && providerPresent && !isPaused;
-  const missingParty = !clientPresent ? "Client" : !providerPresent ? "Prestataire" : null;
+  const missingParty = !clientPresent ? t('mediation.roles.client') : !providerPresent ? t('mediation.roles.provider') : null;
 
   const getRoleStyles = (role: UserRole) => {
     const styles = {
@@ -211,13 +213,13 @@ const MediationRoom = () => {
 
     setIsSending(true);
     try {
-      const res = await fetch(`/api/mediation/${disputeId}/messages`, {
+        const res = await fetch(`/api/mediation/${disputeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sender_id: user.id,
           sender_role: currentUserRole,
-          sender_name: user.user_metadata?.full_name || "Utilisateur",
+          sender_name: user ? `${user.first_name} ${user.last_name}` : t('mediation.none'),
           content: inputMessage,
           message_type: "text",
         }),
@@ -232,7 +234,7 @@ const MediationRoom = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Erreur");
+      alert(t('mediation.errors.default'));
     } finally {
       setIsSending(false);
     }
@@ -264,13 +266,13 @@ const MediationRoom = () => {
 
         const { file_url, file_name, file_size_bytes } = await uploadRes.json();
 
-        const messageRes = await fetch(`/api/mediation/${disputeId}/messages`, {
+          const messageRes = await fetch(`/api/mediation/${disputeId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sender_id: user.id,
             sender_role: currentUserRole,
-            sender_name: user.user_metadata?.full_name || "Utilisateur",
+            sender_name: user ? `${user.first_name} ${user.last_name}` : t('mediation.none'),
             content: null,
             message_type: type,
             file_url,
@@ -287,7 +289,7 @@ const MediationRoom = () => {
         }
       } catch (error) {
         console.error("Error:", error);
-        alert("Erreur");
+        alert(t('mediation.errors.default'));
       } finally {
         setIsSending(false);
         setShowMediaMenu(false);
@@ -327,13 +329,13 @@ const MediationRoom = () => {
 
             const { file_url, file_name } = await uploadRes.json();
 
-            const messageRes = await fetch(`/api/mediation/${disputeId}/messages`, {
+              const messageRes = await fetch(`/api/mediation/${disputeId}/messages`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 sender_id: user.id,
                 sender_role: currentUserRole,
-                sender_name: user.user_metadata?.full_name || "Utilisateur",
+                sender_name: user ? `${user.first_name} ${user.last_name}` : t('mediation.none'),
                 content: null,
                 message_type: "voice",
                 file_url,
@@ -350,7 +352,7 @@ const MediationRoom = () => {
             }
           } catch (error) {
             console.error("Error:", error);
-            alert("Erreur");
+            alert(t('mediation.errors.default'));
           } finally {
             setIsSending(false);
           }
@@ -359,7 +361,7 @@ const MediationRoom = () => {
         mediaRecorder.start();
         setIsRecording(true);
       } catch (error) {
-        alert("Microphone non disponible");
+        alert(t('mediation.errors.micNotAvailable'));
       }
     } else {
       if (mediaRecorderRef.current) {
@@ -413,7 +415,7 @@ const MediationRoom = () => {
   if (!user || !disputeId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <div className="text-white">Accès refusé</div>
+        <div className="text-white">{t('mediation.accessDenied')}</div>
       </div>
     );
   }
@@ -430,9 +432,9 @@ const MediationRoom = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
-                  Salle de Médiation
+                  {t('mediation.title')}
                 </h1>
-                <p className="text-sm text-slate-400">Session active</p>
+                <p className="text-sm text-slate-400">{t('mediation.activeSession')}</p>
               </div>
             </div>
 
@@ -457,33 +459,33 @@ const MediationRoom = () => {
 
               {currentUserRole === "admin" && (
                 <button
-                  onClick={toggleAdminPause}
+                   onClick={toggleAdminPause}
                   className={`px-4 py-2 rounded-lg font-medium ${isPaused ? "bg-green-600" : "bg-red-600"}`}
                 >
-                  {isPaused ? "▶️ Reprendre" : "⏸️ Pause"}
+                  {isPaused ? `▶️ ${t('mediation.resume')}` : `⏸️ ${t('mediation.pause')}`}
                 </button>
               )}
 
               {currentUserRole === "client" && (
-                <button
+                 <button
                   onClick={() => setShowDecisionModal(true)}
                   className="px-6 py-2 bg-gradient-to-r from-amber-600 to-amber-700 rounded-lg font-semibold"
                 >
-                  Décision
+                  {t('mediation.decision')}
                 </button>
               )}
             </div>
           </div>
 
-          {isPaused && (
+           {isPaused && (
             <div className="mt-3 px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg text-sm text-red-300">
-              ⏸️ Discussion en pause
+              ⏸️ {t('mediation.pausedDiscussion')}
             </div>
           )}
 
-          {!canSendMessage && (
+           {!canSendMessage && (
             <div className="mt-3 px-4 py-2 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-sm text-yellow-300">
-              En attente de {missingParty}...
+              {t('mediation.waitingFor', { party: missingParty })}
             </div>
           )}
         </div>
@@ -493,9 +495,9 @@ const MediationRoom = () => {
       <div className="max-w-7xl mx-auto px-6 py-6">
         <div className="bg-slate-900/50 rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden">
           <div className="h-[calc(100vh-300px)] overflow-y-auto px-6 py-6 space-y-4">
-            {messages.length === 0 ? (
+             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-slate-400">
-                Aucun message
+                {t('mediation.noMessages')}
               </div>
             ) : (
               messages.map((msg) => {
@@ -510,9 +512,9 @@ const MediationRoom = () => {
                           <span className="text-xl">
                             {msg.sender_role === "client" ? "👤" : msg.sender_role === "provider" ? "🔧" : "⚖️"}
                           </span>
-                          <span className="text-sm text-slate-400">{msg.sender_name}</span>
+                           <span className="text-sm text-slate-400">{msg.sender_name}</span>
                           <span className={`text-xs px-2 py-0.5 rounded ${styles.badge}`}>
-                            {msg.sender_role === "client" ? "Client" : msg.sender_role === "provider" ? "Prestataire" : "Admin"}
+                            {msg.sender_role === "client" ? t('mediation.roles.client') : msg.sender_role === "provider" ? t('mediation.roles.provider') : t('mediation.roles.admin')}
                           </span>
                         </div>
                       )}
@@ -532,9 +534,9 @@ const MediationRoom = () => {
                         {msg.message_type === "document" && (
                           <a href={msg.file_url} target="_blank" className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg hover:bg-slate-700/50">
                             <FileText className="w-8 h-8 text-blue-400" />
-                            <div className="flex-1">
+                             <div className="flex-1">
                               <p className={`${styles.text} font-medium truncate`}>{msg.file_name}</p>
-                              <p className="text-xs text-slate-400">Télécharger</p>
+                              <p className="text-xs text-slate-400">{t('mediation.download')}</p>
                             </div>
                             <Download className="w-5 h-5" />
                           </a>
@@ -571,9 +573,9 @@ const MediationRoom = () => {
           <div className="border-t border-slate-700/50 bg-slate-800/50 px-6 py-4">
             {isRecording && (
               <div className="mb-3 px-4 py-3 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-red-300">Enregistrement...</span>
+                  <span className="text-red-300">{t('mediation.recording')}</span>
                   <span className="text-red-400 font-mono">{formatTime(recordingTime)}</span>
                 </div>
                 <button onClick={handleVoiceRecording} className="text-red-400">
@@ -608,11 +610,11 @@ const MediationRoom = () => {
 
               <input
                 type="text"
-                value={inputMessage}
+                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                 disabled={!canSendMessage}
-                placeholder={isPaused ? "En pause..." : !canSendMessage ? `Attendez ${missingParty}...` : "Message..."}
+                placeholder={isPaused ? t('mediation.placeholders.paused') : !canSendMessage ? t('mediation.placeholders.waiting', { party: missingParty }) : t('mediation.placeholders.message')}
                 className={`flex-1 px-5 py-3 rounded-xl border focus:outline-none focus:ring-2 ${!canSendMessage ? "bg-slate-800/30 border-slate-700/50 text-slate-500 cursor-not-allowed" : "bg-slate-800 border-slate-600 text-white focus:ring-amber-500/50"}`}
               />
 
@@ -640,26 +642,26 @@ const MediationRoom = () => {
       {showDecisionModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl p-8">
-            <div className="flex items-center justify-between mb-6">
+             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
-                Décision finale
+                {t('mediation.finalDecision')}
               </h2>
               <button onClick={() => setShowDecisionModal(false)} className="text-slate-400">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <p className="text-slate-300 mb-8">Confirmez votre décision</p>
+            <p className="text-slate-300 mb-8">{t('mediation.confirmDecision')}</p>
 
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleDecision(true)}
                 className="px-8 py-6 bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 rounded-xl transition-all hover:scale-105 flex flex-col items-center gap-3"
               >
-                <CheckCircle className="w-12 h-12" />
+                  <CheckCircle className="w-12 h-12" />
                 <div>
-                  <p className="font-bold">Accord</p>
-                  <p className="text-sm text-green-100">Réglé ✓</p>
+                  <p className="font-bold">{t('mediation.agreement')}</p>
+                  <p className="text-sm text-green-100">{t('mediation.settled')}</p>
                 </div>
               </button>
 
@@ -667,10 +669,10 @@ const MediationRoom = () => {
                 onClick={() => handleDecision(false)}
                 className="px-8 py-6 bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all hover:scale-105 flex flex-col items-center gap-3"
               >
-                <XCircle className="w-12 h-12" />
+                  <XCircle className="w-12 h-12" />
                 <div>
-                  <p className="font-bold">Refuser</p>
-                  <p className="text-sm text-red-100">Annuler ✗</p>
+                  <p className="font-bold">{t('mediation.refuse')}</p>
+                  <p className="text-sm text-red-100">{t('mediation.cancel')}</p>
                 </div>
               </button>
             </div>

@@ -220,13 +220,23 @@ export async function GET(req: NextRequest) {
         // ... existing auth checks ...
 
         // Vérifier que l'utilisateur est admin
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("user_id", user.id)
-            .single();
+        // SI Super Admin (Root) : On bypass la vérification en base
+        let isAdmin = false;
+        if (user.role === 'super_admin' || user.user_metadata?.role === 'super_admin') {
+            isAdmin = true;
+        } else {
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("user_id", user.id)
+                .single();
 
-        if (!profile || profile.role !== "admin") {
+            if (profile && profile.role === "admin") {
+                isAdmin = true;
+            }
+        }
+
+        if (!isAdmin) {
             return NextResponse.json(
                 { success: false, error: "Accès refusé" },
                 { status: 403 }
@@ -238,10 +248,16 @@ export async function GET(req: NextRequest) {
         const offset = parseInt(searchParams.get("offset") || "0");
 
         // Récupérer les notifications avec le nombre de destinataires
-        const { data: notifications, error: notificationsError, count } = await supabase
+        let query = supabase
             .from("admin_notifications")
-            .select("*", { count: "exact" })
-            .eq("admin_id", user.id)
+            .select("*", { count: "exact" });
+
+        // Si ce n'est pas un super admin, on filtre par son ID
+        if (user.role !== 'super_admin' && user.user_metadata?.role !== 'super_admin') {
+            query = query.eq("admin_id", user.id);
+        }
+
+        const { data: notifications, error: notificationsError, count } = await query
             .order("created_at", { ascending: false })
             .range(offset, offset + limit - 1);
 
@@ -255,7 +271,7 @@ export async function GET(req: NextRequest) {
 
         // Pour chaque notification, récupérer les statistiques de lecture via Admin Client (bypass RLS)
         const enrichedNotifications = await Promise.all(
-            (notifications || []).map(async (notification) => {
+            (notifications || []).map(async (notification: any) => {
                 const { data: recipients, count: totalRecipients } = await supabaseAdmin // Utilize admin client
                     .from("admin_notification_recipients")
                     .select("*", { count: "exact" })

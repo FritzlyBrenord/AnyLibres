@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Send, X, Shield, Bot, User, Loader2, Calendar, AlertTriangle } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface DisputeChatWizardProps {
   isOpen: boolean;
@@ -19,38 +20,12 @@ interface Message {
   options?: { value: string; label: string }[];
 }
 
-const SCENARIOS: Record<string, { label: string; question: string; placeholder: string }> = {
-  quality: {
-    label: "Qualité du travail insuffisante",
-    question: "Je comprends votre déception. Pouvez-vous préciser ce qui ne correspond pas à vos attentes dans le travail livré ? (Style, finitions, bugs...)",
-    placeholder: "Ex: Le design ne respecte pas la charte, il y a des erreurs..."
-  },
-  deadline: {
-    label: "Délais non respectés",
-    question: "C'est ennuyeux, je comprends. De combien de temps estimez-vous le retard et quel est l'impact sur votre projet ?",
-    placeholder: "Ex: Livraison prévue hier, cela bloque mon lancement..."
-  },
-  incomplete: {
-    label: "Livraison incomplète",
-    question: "Je vois. Quels éléments précis sont manquants par rapport à ce qui était convenu ?",
-    placeholder: "Ex: Il manque les fichiers sources et la version mobile..."
-  },
-  no_response: {
-    label: "Plus de réponse du prestataire",
-    question: "Je comprends votre inquiétude. Depuis combien de temps n'avez-vous pas eu de nouvelles ?",
-    placeholder: "Ex: Aucun message depuis 3 jours malgré mes relances..."
-  },
-  not_as_described: {
-    label: "Produit non conforme à la description",
-    question: "C'est problématique. En quoi le produit final diffère-t-il de la description du service commandé ?",
-    placeholder: "Ex: J'ai commandé X mais j'ai reçu Y..."
-  },
-  other: {
-    label: "Autre raison",
-    question: "D'accord. Pouvez-vous m'expliquer la situation en quelques détails ?",
-    placeholder: "Décrivez le problème..."
-  }
-};
+
+interface Scenario {
+  label: string;
+  question: string;
+  placeholder: string;
+}
 
 export default function DisputeChatWizard({
   isOpen,
@@ -58,6 +33,17 @@ export default function DisputeChatWizard({
   onSubmit,
   isLoading,
 }: DisputeChatWizardProps) {
+  const { t, language } = useSafeLanguage();
+
+  const scenarios: Record<string, Scenario> = {
+    quality: t("orders.disputeChat.scenarios.quality", { returnObjects: true }) as Scenario,
+    deadline: t("orders.disputeChat.scenarios.deadline", { returnObjects: true }) as Scenario,
+    incomplete: t("orders.disputeChat.scenarios.incomplete", { returnObjects: true }) as Scenario,
+    no_response: t("orders.disputeChat.scenarios.no_response", { returnObjects: true }) as Scenario,
+    not_as_described: t("orders.disputeChat.scenarios.not_as_described", { returnObjects: true }) as Scenario,
+    other: t("orders.disputeChat.scenarios.other", { returnObjects: true }) as Scenario,
+  };
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [step, setStep] = useState<"reason" | "details" | "solution_choice" | "meeting" | "confirm">("reason");
@@ -65,7 +51,8 @@ export default function DisputeChatWizard({
     reason: "",
     details: "",
     meetingRequest: "",
-    solutionType: "" 
+    solutionType: "",
+    scenarioKey: "" 
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -75,20 +62,37 @@ export default function DisputeChatWizard({
   };
 
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      // Message d'accueil initial
-      setTimeout(() => {
-        addBotMessage("Bonjour. Je suis l'assistant intelligent de résolution de litiges Anylibre.");
-      }, 500);
-      setTimeout(() => {
+    let t1: NodeJS.Timeout;
+    let t2: NodeJS.Timeout;
+
+    if (isOpen) {
+      setMessages([]); // Start fresh on open or language change
+      addBotMessage(t("orders.disputeChat.welcome"));
+
+      // Premier message après 1s
+      t1 = setTimeout(() => {
+        addBotMessage(t("orders.disputeChat.scenarioIntro"));
+      }, 1000);
+
+      // Options après 2.5s (plus naturel)
+      t2 = setTimeout(() => {
+        const scenarios = t("orders.disputeChat.scenarios", { returnObjects: true });
         addBotMessage(
-          "Je suis là pour analyser la situation avec vous. Pour commencer, quelle est la cause principale du problème ?",
+          t("orders.disputeChat.introCause") || "Veuillez choisir la raison du litige :",
           "options",
-          Object.entries(SCENARIOS).map(([key, val]) => ({ value: key, label: val.label }))
+          Object.entries(scenarios).map(([key, anyValue]) => {
+            const val = anyValue as { label: string };
+            return { value: key, label: val.label };
+          })
         );
-      }, 1500);
+      }, 2500);
     }
-  }, [isOpen]);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [isOpen, language, t]);
 
   useEffect(() => {
     scrollToBottom();
@@ -127,10 +131,10 @@ export default function DisputeChatWizard({
     
     // Logique de progression des étapes
     if (step === "reason") {
-      setFormData((prev) => ({ ...prev, reason: label }));
+      setFormData((prev) => ({ ...prev, reason: label, scenarioKey: value }));
       setStep("details");
       
-      const scenario = SCENARIOS[value] || SCENARIOS["other"];
+      const scenario = scenarios[value] || scenarios["other"];
       
       setTimeout(() => {
         addBotMessage(scenario.question);
@@ -143,18 +147,18 @@ export default function DisputeChatWizard({
             // CHEMIN REMBOURSEMENT / ANNULATION
             setStep("confirm");
             setTimeout(() => {
-                addBotMessage("C'est bien noté. Vous souhaitez une annulation car le résultat ne correspond pas à votre commande.");
+                addBotMessage(t("orders.disputeChat.refundPath.noted"));
             }, 600);
             setTimeout(() => {
-                addBotMessage("Un agent Anylibre va personnellement examiner votre dossier et le travail livré. Nous vous contacterons sous 24h.");
+                addBotMessage(t("orders.disputeChat.refundPath.agentReview"));
             }, 1500);
             setTimeout(() => {
                 addBotMessage(
-                  "Voulez-vous confirmer l'ouverture du litige pour examen par nos services ?",
+                  t("orders.disputeChat.refundPath.confirmPrompt"),
                   "options",
                   [
-                     { value: "confirm", label: "✅ Confirmer la demande d'intervention" },
-                     { value: "cancel", label: "Non, annuler" } 
+                     { value: "confirm", label: t("orders.disputeChat.options.confirmIntervention") },
+                     { value: "cancel", label: t("orders.disputeChat.options.cancel") } 
                   ]
                 );
             }, 2500);
@@ -162,7 +166,7 @@ export default function DisputeChatWizard({
             // CHEMIN MEDIATION
             setStep("meeting");
             setTimeout(() => {
-                addBotMessage("Très bien. Une réunion de médiation est souvent la solution la plus rapide. Quelles sont vos disponibilités (Date et Heure) ?", "input");
+                addBotMessage(t("orders.disputeChat.mediationPath.noted"), "input");
             }, 800);
         }
     }
@@ -180,16 +184,16 @@ export default function DisputeChatWizard({
       setStep("solution_choice");
       
       setTimeout(() => {
-        addBotMessage("Merci pour ces détails précis."); 
+        addBotMessage(t("orders.disputeChat.thanksDetails")); 
       }, 500);
 
       setTimeout(() => {
         addBotMessage(
-          "Quelle issue préférez-vous pour le moment ?",
+          t("orders.disputeChat.preferredOutcome"),
           "options",
           [
-            { value: "meeting", label: "📅 Médiation / Réunion avec le prestataire" },
-            { value: "refund", label: "💸 Je ne veux pas continuer (Demande de remboursement)" },
+            { value: "meeting", label: t("orders.disputeChat.options.mediation") },
+            { value: "refund", label: t("orders.disputeChat.options.refund") },
           ]
         );
       }, 1200);
@@ -198,15 +202,15 @@ export default function DisputeChatWizard({
         setFormData((prev) => ({ ...prev, meetingRequest: text }));
         setStep("confirm");
         setTimeout(() => {
-            addBotMessage("Parfait, c'est noté.");
+            addBotMessage(t("orders.disputeChat.mediationPath.thanks"));
         }, 500);
         setTimeout(() => {
             addBotMessage(
-              "En confirmant, le litige sera ouvert et un administrateur organisera la médiation. Confirmez-vous ?",
+              t("orders.disputeChat.mediationPath.confirmPrompt"),
               "options",
               [
-                 { value: "confirm", label: "✅ Confirmer le litige" },
-                 { value: "cancel", label: "Annuler" } 
+                 { value: "confirm", label: t("orders.disputeChat.options.confirmDispute") },
+                 { value: "cancel", label: t("orders.disputeChat.options.cancelShort") } 
               ]
             );
         }, 1200);
@@ -218,7 +222,7 @@ export default function DisputeChatWizard({
           // Si c'est un remboursement direct, on ajoute cette précision dans les détails envoyés
           const finalData = { ...formData };
           if (formData.solutionType === 'refund') {
-              finalData.details += "\n\n[NOTE SYSTEME] Le client refuse la médiation et demande un remboursement pour non-conformité. Agent requis.";
+              finalData.details += t("orders.disputeChat.systemNoteRefund");
           }
           onSubmit(finalData);
       } else {
@@ -228,11 +232,10 @@ export default function DisputeChatWizard({
 
   const getCurrentPlaceholder = () => {
       if (step === "details") {
-          // Trouver la clé du scénario basé sur le label stocké (un peu hacky mais évite de stocker la key separément pour l'instant, ou on cherche)
-          const scenarioKey = Object.keys(SCENARIOS).find(key => SCENARIOS[key].label === formData.reason);
-          return scenarioKey ? SCENARIOS[scenarioKey].placeholder : "Détaillez le problème...";
+          const scenario = scenarios[formData.scenarioKey] || scenarios["other"];
+          return scenario.placeholder;
       }
-      return "Écrivez votre réponse...";
+      return t("orders.disputeChat.inputPlaceholder");
   };
 
   if (!isOpen) return null;
@@ -248,10 +251,10 @@ export default function DisputeChatWizard({
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-white font-bold text-lg">Assistant Litige IA</h3>
+              <h3 className="text-white font-bold text-lg">{t("orders.disputeChat.botName")}</h3>
               <p className="text-indigo-100 text-xs flex items-center gap-1">
                 <Shield className="w-3 h-3" />
-                Support Intelligent Anylibre
+                {t("orders.disputeChat.botSubtitle")}
               </p>
             </div>
           </div>
@@ -316,7 +319,7 @@ export default function DisputeChatWizard({
             <div className="flex justify-center py-4">
                 <div className="flex items-center gap-2 text-indigo-600 bg-white px-4 py-2 rounded-full shadow-sm border border-indigo-100">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-xs font-medium">L'assistant réfléchit...</span>
+                    <span className="text-xs font-medium">{t("orders.disputeChat.thinking")}</span>
                 </div>
             </div>
           )}

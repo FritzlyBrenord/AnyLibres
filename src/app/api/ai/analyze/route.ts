@@ -1,7 +1,7 @@
 // ============================================================================
 // API: AI User Analysis & Insights
 // Route: /api/ai/analyze
-// Analyse comportementale IA de l'utilisateur
+// Analyse comportementale IA de l'utilisateur (Basée sur 30 jours + Historique complet)
 // ============================================================================
 
 import { createClient } from '@/lib/supabase/server';
@@ -22,7 +22,14 @@ export async function GET(request: Request) {
       );
     }
 
-    // 0. Récupérer les mapping de noms de catégories (ID/Key -> Nom FR)
+    // 0. Récupérer le Profil complet (pour le role et la date de création)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, created_at, currency')
+      .eq('id', user.id)
+      .single();
+
+    // 0b. Récupérer les mapping de catégories
     const { data: categoriesData } = await supabase
       .from('categories')
       .select('id, key, name');
@@ -30,305 +37,279 @@ export async function GET(request: Request) {
     const categoryNameMap: Record<string, string> = {};
     if (categoriesData) {
       categoriesData.forEach((cat) => {
-        // Mappe l'ID vers le nom FR, ou EN, ou brut
-        // La structure de 'name' est supposée être MultiLangText { fr: string, en: string }
         let finalName = cat.key;
         if (typeof cat.name === 'object' && cat.name !== null) {
           finalName = cat.name.fr || cat.name.en || cat.key;
         } else if (typeof cat.name === 'string') {
           finalName = cat.name;
         }
-
         categoryNameMap[cat.id] = finalName;
-        categoryNameMap[cat.key] = finalName; // Mappe aussi la clé
+        categoryNameMap[cat.key] = finalName;
       });
     }
 
-    // 1. Récupérer toutes les activités des 30 derniers jours
+    // 1. Récupérer les données "Activité" (30 jours)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: activities } = await supabase
       .from('user_activity_log')
       .select('*')
       .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .gte('created_at', thirtyDaysAgo)
       .order('created_at', { ascending: false });
 
-    // 1b. Récupérer les favoris réels de l'utilisateur pour pondérer l'analyse
-    // On suppose une table 'favorites' avec user_id et service_id
-    // On récupère 'categories' (array) du service
-    const { data: userFavorites } = await supabase
-      .from('favorites')
-      .select('*, service:services(categories)')
+    // 2. Récupérer les COMMANDES (En tant que client) - Historique complet pour profilage
+    const { data: clientOrders } = await supabase
+      .from('orders')
+      .select('*, order_items(*, service:services(categories))')
+      .eq('client_id', user.id)
+      .in('status', ['paid', 'completed', 'delivered']); // On compte les commandes "réelles"
+
+    // 3. Récupérer les COMMANDES (En tant que prestataire) - Si applicable
+    const isProvider = profile?.role === 'provider';
+    let providerOrders: any[] = [];
+    if (isProvider) {
+      const { data: pOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('provider_id', user.id)
+        .in('status', ['completed', 'delivered']);
+      providerOrders = pOrders || [];
+    }
+
+    // 4. Récupérer les AVIS (Donnés et Reçus)
+    const { data: reviewsGiven } = await supabase
+      .from('reviews')
+      .select('*')
       .eq('user_id', user.id);
 
-    if ((!activities || activities.length === 0) && (!userFavorites || userFavorites.length === 0)) {
-      return NextResponse.json({
-        success: true,
-        analysis: {
-          message: 'Pas assez de données pour une analyse',
-          behavioralProfile: 'new_user',
-          engagementScore: 0,
-        },
+    // ========================================================================
+    // ANALYSE DES DONNÉES
+    // ========================================================================
+
+    const categoryScores: Record<string, number> = {}; // Pour le tri (Pondéré)
+    const categoryRealViews: Record<string, number> = {}; // Vues réelles
+    const categoryRealPurchases: Record<string, number> = {}; // Commandes réelles
+
+    const searchKeywords: Record<string, number> = {};
+    const dateActivity: Record<string, number> = {}; // YYYY-MM-DD -> count
+    const hourActivity: Record<number, number> = {}; // 0-23 -> count
+
+    // A. Traitement des Activités (Poids faible: 1)
+    if (activities) {
+      activities.forEach((act) => {
+        // Temps
+        const date = new Date(act.created_at);
+        const dayKey = date.toISOString().split('T')[0];
+        dateActivity[dayKey] = (dateActivity[dayKey] || 0) + 1;
+        hourActivity[date.getHours()] = (hourActivity[date.getHours()] || 0) + 1;
+
+        // Catégories vues
+        if (act.entity_data?.category) {
+          const cat = act.entity_data.category;
+          // Score +1 pour le tri
+          categoryScores[cat] = (categoryScores[cat] || 0) + 1;
+          // Compteur réel +1
+          categoryRealViews[cat] = (categoryRealViews[cat] || 0) + 1;
+        }
+
+        // Mots clés
+        if (act.search_query) {
+          const words = act.search_query.toLowerCase().split(/\s+/);
+          words.forEach((w) => {
+            if (w.length > 3) searchKeywords[w] = (searchKeywords[w] || 0) + 1;
+          });
+        }
       });
     }
 
-    // 2. Analyser les catégories préférées
-    const categoryViews: Record<string, number> = {};
-    const serviceViews: Record<string, number> = {};
-    const providerViews: Record<string, number> = {};
-    const searchKeywords: Record<string, number> = {};
+    // B. Traitement des Commandes (Poids fort: 20)
+    let totalSpent = 0;
+    let categoriesPurchased = new Set<string>();
 
-    // A. Analyser les activités
-    if (activities) {
-      activities.forEach((activity) => {
-        // Catégories
-        if (activity.entity_data?.category) {
-          const rawCat = activity.entity_data.category;
-          categoryViews[rawCat] = (categoryViews[rawCat] || 0) + 1;
-        }
+    if (clientOrders) {
+      clientOrders.forEach((order) => {
+        totalSpent += order.total_cents;
 
-        // Services
-        if (activity.activity_type === 'view_service' && activity.entity_id) {
-          serviceViews[activity.entity_id] = (serviceViews[activity.entity_id] || 0) + 1;
-        }
+        // Poids sur les dates des commandes (elles démontrent une activité forte)
+        const date = new Date(order.created_at);
+        const dayKey = date.toISOString().split('T')[0];
+        // Une commande vaut comme 1 action réelle (avant c'était 10, on simplifie pour le "Total Activités" affiché)
+        dateActivity[dayKey] = (dateActivity[dayKey] || 0) + 1;
 
-        // Providers
-        if (activity.activity_type === 'view_provider' && activity.entity_id) {
-          providerViews[activity.entity_id] = (providerViews[activity.entity_id] || 0) + 1;
-        }
-
-        // Keywords
-        if (activity.search_query) {
-          const keywords = activity.search_query.toLowerCase().split(' ');
-          keywords.forEach((keyword) => {
-            if (keyword.length > 2) {
-              searchKeywords[keyword] = (searchKeywords[keyword] || 0) + 1;
+        // Analyser les catégories achetées
+        if (order.order_items) {
+          order.order_items.forEach((item: any) => {
+            const serviceCats = item.service?.categories;
+            if (Array.isArray(serviceCats)) {
+              serviceCats.forEach((cat: string) => {
+                // Score +20 pour le tri
+                categoryScores[cat] = (categoryScores[cat] || 0) + 20;
+                // Compteur réel +1
+                categoryRealPurchases[cat] = (categoryRealPurchases[cat] || 0) + 1;
+                categoriesPurchased.add(cat);
+              });
             }
           });
         }
       });
     }
 
-    // B. Intégrer les favoris (Pondération forte: +5 points par favori)
-    if (userFavorites) {
-      userFavorites.forEach((fav: any) => {
-        // Supporte structure objet simple ou tableau si jointure one-to-many
-        let serviceData = fav.service;
-        if (Array.isArray(serviceData)) {
-          serviceData = serviceData[0];
-        }
+    // C. Calcul des Métriques Globales (RÉELLES)
+    // Somme simple des actions (sans les multiplicateurs artificiels)
+    // totalActivities = (Log entries) + (Orders count)
+    const totalActivities = (activities?.length || 0) + (clientOrders?.length || 0);
+    const uniqueDays = Object.keys(dateActivity).length;
 
-        if (serviceData && Array.isArray(serviceData.categories)) {
-          serviceData.categories.forEach((catKey: string) => {
-            categoryViews[catKey] = (categoryViews[catKey] || 0) + 5;
-          });
-        }
-      });
+    // ========================================================================
+    // PROFIL COMPORTEMENTAL
+    // ========================================================================
+
+    let behavioralProfile = 'new_user';
+    const orderCount = clientOrders?.length || 0;
+    const reviewCount = reviewsGiven?.length || 0;
+    const daysSinceJoin = profile ? Math.ceil((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+    if (orderCount > 10 || totalSpent > 500000) { // > 5000$ (approx)
+      behavioralProfile = 'decisive'; // "VIP" ou "Gros acheteur" -> Décisif
+    } else if (orderCount > 2 && categoriesPurchased.size > 3) {
+      behavioralProfile = 'explorer'; // Achète un peu de tout
+    } else if (activities && activities.length > 50 && orderCount === 0) {
+      behavioralProfile = 'researcher'; // Cherche beaucoup mais n'achète pas
+    } else if (orderCount > 0 && reviewCount === orderCount) {
+      behavioralProfile = 'comparison_shopper'; // Laisse des avis -> Impliqué/Critique
+    } else if (daysSinceJoin < 7 && totalActivities < 10) {
+      behavioralProfile = 'new_user';
+    } else if (orderCount > 0) {
+      behavioralProfile = 'impulsive'; // Acheté rapidement sans trop d'activité (fallback)
     }
 
-    // 3. Calculer le profil comportemental
-    const activitiesLen = activities?.length || 0;
-    const favoritesLen = userFavorites?.length || 0;
-    const totalInteractions = activitiesLen + (favoritesLen * 2);
+    // ========================================================================
+    // SCORE D'ENGAGEMENT
+    // ========================================================================
+    // Score sur 1.0
+    // Facteurs: Achat (50%), Rétention (Jours uniques/30) (30%), Volume d'activité (20%)
 
-    const uniqueDays = new Set(activities?.map((a) => new Date(a.created_at).toDateString()) || []).size;
+    const purchaseScore = Math.min(orderCount * 0.1, 0.5); // Max 0.5 si 5 commandes
+    const retentionScore = Math.min(uniqueDays / 15, 0.3); // Max 0.3 si 15 jours actifs / 30
+    const volumeScore = Math.min(totalActivities / 200, 0.2); // Max 0.2 si 200 actions
 
-    // Total searches
-    const searchCount = activities?.filter((a) => a.activity_type === 'search').length || 0;
-    // Views
-    const viewCount = activities?.filter((a) => a.activity_type.startsWith('view_')).length || 0;
+    let engagementScore = purchaseScore + retentionScore + volumeScore;
+    if (engagementScore > 1) engagementScore = 1;
 
-    // Actions (Order, Message, Favorite IN LOGS)
-    const actionCountLog = activities?.filter((a) =>
-      ['favorite', 'order', 'message'].includes(a.activity_type)
-    ).length || 0;
+    // ========================================================================
+    // INSIGHTS & PATTERNS
+    // ========================================================================
 
-    // Total significant actions (Logs + Real Favorites DB)
-    const totalActions = actionCountLog + favoritesLen;
-
-    let behavioralProfile = 'explorer';
-
-    if (totalInteractions > 0) {
-      if (searchCount / totalInteractions > 0.4) {
-        behavioralProfile = 'researcher';
-      } else if (totalActions / totalInteractions > 0.3) {
-        behavioralProfile = 'decisive';
-      } else if (viewCount > 50 && totalActions / viewCount < 0.1) {
-        behavioralProfile = 'comparison_shopper';
-      } else if (totalActions / totalInteractions > 0.2 && searchCount / totalInteractions < 0.2) {
-        behavioralProfile = 'impulsive';
-      }
-    }
-
-    // 4. Calculer le score d'engagement
-    const engagementScore = Math.min(
-      (totalInteractions / 100) * 0.4 +
-      (uniqueDays / 30) * 0.3 +
-      (totalActions / (totalInteractions || 1)) * 0.3,
-      1.0
-    );
-
-    // 5. Top catégories (AVEC MAPPING DE NOM)
-    const topCategories = Object.entries(categoryViews)
+    // Top Catégories
+    const topCategories = Object.entries(categoryScores)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([rawKey, count]) => {
-        // Tenter de trouver le nom lisible
-        const readableName = categoryNameMap[rawKey] || rawKey;
+      .map(([key, score]) => {
+        // On renvoie les vrais compteurs
+        const realViews = categoryRealViews[key] || 0;
+
         return {
-          name: readableName, // On renvoie le nom lisible
-          count,
-          score: count / (totalInteractions || 1),
-          // On garde l'ID original si besoin de lien
-          id: rawKey
+          name: categoryNameMap[key] || key,
+          count: realViews, // VRAI nombre de vues, sans pondération
+          score: score / (Math.max(...Object.values(categoryScores)) || 1), // Relatif au max (pour la barre de progression)
+          id: key
         };
       });
 
-    // 6. Top keywords
+    // Top Keywords
     const topKeywords = Object.entries(searchKeywords)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([keyword, count]) => ({ keyword, count }));
 
-    // 7. Patterns de temps
-    const timePatterns = analyzeTimePatterns(activities || []);
+    // Time Patterns
+    const peakHourEntry = Object.entries(hourActivity).sort(([, a], [, b]) => b - a)[0];
+    const peakHour = peakHourEntry ? parseInt(peakHourEntry[0]) : 12;
+    const formattedTime = `${peakHour.toString().padStart(2, '0')}h00`;
 
-    // 8. Insights générés
-    const insights = generateInsights({
-      behavioralProfile,
-      engagementScore,
-      topCategories,
-      topKeywords,
-      searchCount,
-      viewCount,
-      totalActions,
-      totalInteractions,
-      uniqueDays,
-      timePatterns,
-    });
+    // Génération des Insights textuels
+    const insights = [];
 
-    // 9. Sauvegarder les préférences
-    await supabase
-      .from('user_preferences')
-      .upsert({
-        user_id: user.id,
-        favorite_categories: topCategories,
-        frequent_keywords: topKeywords,
-        behavioral_profile: behavioralProfile,
-        engagement_score: engagementScore,
-        search_patterns: timePatterns,
-        last_calculated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
+    // Insight Achat
+    if (clientOrders && clientOrders.length > 0) {
+      insights.push({
+        insight_type: 'financial',
+        title: 'Investisseur Actif 💳',
+        description: `Vous avez réalisé ${clientOrders.length} commande${clientOrders.length > 1 ? 's' : ''} récemment.`,
+        priority: 'high'
+      });
+    } else if (activities && activities.length > 20) {
+      insights.push({
+        insight_type: 'window_shopping',
+        title: 'En repérage 👀',
+        description: "Vous consultez beaucoup de services. Besoin d'aide pour choisir?",
+        priority: 'medium'
+      });
+    }
+
+    // Insight Vendeur (si applicable)
+    if (isProvider && providerOrders.length > 0) {
+      insights.push({
+        insight_type: 'provider_success',
+        title: 'Business Maker 🚀',
+        description: `Bravo! Vous avez complété ${providerOrders.length} commandes pour vos clients.`,
+        priority: 'high'
+      });
+    }
+
+    // Insight Catégorie
+    if (topCategories.length > 0) {
+      insights.push({
+        insight_type: 'interest',
+        title: `Fan de ${topCategories[0].name}`,
+        description: "C'est clairement votre domaine de prédilection.",
+        priority: 'medium'
+      });
+    }
+
+    // Insight Avis
+    if (reviewsGiven && reviewsGiven.length > 0) {
+      insights.push({
+        insight_type: 'reviewer',
+        title: 'Critique Avisé ⭐',
+        description: `Merci d'avoir laissé ${reviewsGiven.length} avis à la communauté.`,
+        priority: 'low'
+      });
+    }
+
+    // Sauvegarde en DB (optionnel mais bon pour le cache)
+    // On met à jour user_preferences si nécessaire...
 
     return NextResponse.json({
       success: true,
       analysis: {
         behavioralProfile,
         engagementScore: Math.round(engagementScore * 100) / 100,
-        totalActivities: totalInteractions,
+        totalActivities, // Mix d'activités web et d'actions réelles
         uniqueDays,
         topCategories,
         topKeywords,
-        timePatterns,
+        timePatterns: {
+          peak_hour: peakHour,
+          peak_day: 'Calculer...', // Simplification pour l'instant
+          most_active_time: formattedTime
+        },
         insights,
+        // Champs extra pour l'UI améliorée
+        stats: {
+          totalSpentCents: totalSpent,
+          ordersCount: orderCount,
+          reviewsCount: reviewCount,
+          providerSales: providerOrders.length
+        }
       },
     });
+
   } catch (error) {
     console.error('AI analysis error:', error);
     return NextResponse.json(
-      { success: false, error: 'Erreur serveur' },
+      { success: false, error: 'Erreur serveur interne' },
       { status: 500 }
     );
   }
-}
-
-// Helper: Analyser les patterns de temps
-function analyzeTimePatterns(activities: any[]) {
-  const hourCounts: Record<number, number> = {};
-  const dayOfWeekCounts: Record<number, number> = {};
-
-  if (!activities || activities.length === 0) {
-    return {
-      peak_hour: 12,
-      peak_day: 'N/A',
-      most_active_time: 'N/A',
-    };
-  }
-
-  activities.forEach((activity) => {
-    const date = new Date(activity.created_at);
-    const hour = date.getHours();
-    const dayOfWeek = date.getDay();
-
-    hourCounts[hour] = (hourCounts[hour] || 0) + 1;
-    dayOfWeekCounts[dayOfWeek] = (dayOfWeekCounts[dayOfWeek] || 0) + 1;
-  });
-
-  const peakHourEntry = Object.entries(hourCounts).sort(([, a], [, b]) => b - a)[0];
-  const peakDayEntry = Object.entries(dayOfWeekCounts).sort(([, a], [, b]) => b - a)[0];
-
-  const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-
-  // Formatage correct de l'heure
-  const peakH = peakHourEntry ? parseInt(peakHourEntry[0]) : 12;
-  // PadStart pour avoir "09h00" au lieu de "9h00"
-  const formattedTime = `${peakH.toString().padStart(2, '0')}h00`;
-
-  const peakDIndex = peakDayEntry ? parseInt(peakDayEntry[0]) : new Date().getDay();
-
-  return {
-    peak_hour: peakH,
-    peak_day: dayNames[peakDIndex] || dayNames[0] || 'Lundi',
-    most_active_time: formattedTime,
-  };
-}
-
-// Helper: Générer des insights
-function generateInsights(data: any) {
-  const insights = [];
-
-  // Insight 1: Catégorie favorite
-  if (data.topCategories.length > 0) {
-    insights.push({
-      insight_type: 'category_interest',
-      title: `Vous adorez ${data.topCategories[0].name}`, // name est maintenant lisible
-      description: `${data.topCategories[0].count} intéractions (vues et favoris) avec cette catégorie. Nous avons des nouveautés pour vous!`,
-      priority: 'high',
-      suggested_action: 'Voir les nouveaux services',
-      // Pour l'URL, on préfère utiliser la Key/ID si dispo, ou le nom en lowercase safe
-      action_url: `/categories/${(data.topCategories[0].id || data.topCategories[0].name).toLowerCase().replace(/\s+/g, '-')}`,
-    });
-  }
-
-  // Insight 2: Pattern de recherche
-  if (data.searchCount > 5) {
-    insights.push({
-      insight_type: 'search_behavior',
-      title: 'Vous recherchez activement',
-      description: `${data.searchCount} recherches effectuées. Affinez vos filtres pour trouver plus rapidement!`,
-      priority: 'medium',
-    });
-  }
-
-  // Insight 3: Engagement
-  if (data.engagementScore > 0.6) {
-    insights.push({
-      insight_type: 'engagement_trend',
-      title: 'Utilisateur très actif! 🎉',
-      description: `Vous êtes dans le top ${(100 - Math.round(data.engagementScore * 100)) < 10 ? 10 : 20}% des utilisateurs les plus engagés. Continuez!`,
-      priority: 'high',
-    });
-  }
-
-  // Insight 4: Temps d'activité
-  if (data.timePatterns.most_active_time !== 'N/A') {
-    insights.push({
-      insight_type: 'spending_pattern',
-      title: `Vous êtes plus actif vers ${data.timePatterns.most_active_time}`,
-      description: `La plupart de vos activités ont lieu le ${data.timePatterns.peak_day}.`,
-      priority: 'low',
-    });
-  }
-
-  return insights;
 }

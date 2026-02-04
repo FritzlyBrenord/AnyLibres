@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { Suspense } from "react";
 import { TranslatedHeader } from "@/components/layout/TranslatedHeader";
@@ -27,10 +27,10 @@ interface ConnectedHomeClientProps {
   newProviders: ProviderProfile[];
 }
 
-export function ConnectedHomeClient({ 
-  recommended, 
-  popular, 
-  newProviders 
+export function ConnectedHomeClient({
+  recommended,
+  popular,
+  newProviders,
 }: ConnectedHomeClientProps) {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -65,12 +65,20 @@ export function ConnectedHomeClient({
         </section>
 
         {/* Recommandations pour vous - Personnalisé (basé sur recherches) */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-indigo-50 to-blue-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-indigo-50 to-blue-50 animate-pulse" />
+          }
+        >
           <BasedOnSearchesSection />
         </Suspense>
 
         {/* Tendances du moment */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-orange-50 to-red-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-orange-50 to-red-50 animate-pulse" />
+          }
+        >
           <TrendingNowSection />
         </Suspense>
 
@@ -85,12 +93,20 @@ export function ConnectedHomeClient({
         </Suspense>
 
         {/* Meilleurs notés de la semaine */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-yellow-50 to-amber-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-yellow-50 to-amber-50 animate-pulse" />
+          }
+        >
           <TopRatedWeekSection />
         </Suspense>
 
         {/* Parce que vous avez aimé - Personnalisé */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-pink-50 to-rose-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-pink-50 to-rose-50 animate-pulse" />
+          }
+        >
           <BecauseYouLikedSection />
         </Suspense>
 
@@ -100,7 +116,11 @@ export function ConnectedHomeClient({
         </Suspense>
 
         {/* Catégories explorées - Personnalisé */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-emerald-50 to-teal-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-emerald-50 to-teal-50 animate-pulse" />
+          }
+        >
           <ExploredCategoriesSection />
         </Suspense>
 
@@ -110,7 +130,11 @@ export function ConnectedHomeClient({
         </Suspense>
 
         {/* Nouveautés */}
-        <Suspense fallback={<div className="h-96 bg-gradient-to-br from-purple-50 to-indigo-50 animate-pulse" />}>
+        <Suspense
+          fallback={
+            <div className="h-96 bg-gradient-to-br from-purple-50 to-indigo-50 animate-pulse" />
+          }
+        >
           <NewArrivalsSection />
         </Suspense>
 
@@ -125,9 +149,6 @@ export function ConnectedHomeClient({
         </Suspense>
 
         {/* Activité récente */}
-        <Suspense fallback={<div className="h-64 bg-white animate-pulse" />}>
-          <RecentActivitySection />
-        </Suspense>
       </main>
 
       <Footer />

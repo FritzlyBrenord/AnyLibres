@@ -19,7 +19,7 @@ import ServicePricing from "@/components/service/ServicePricing";
 import { ProviderCard } from "@/components/service/ProviderCard";
 import ReviewsSection from "@/components/service/ReviewsSection";
 import SimilarServices from "@/components/service/SimilarServices";
-import FavoriteButton from "@/components/service/FavoriteButton";
+
 import OrderMessagingModal from "@/components/message/OrderMessagingModal";
 import ShareModal from "@/components/common/ShareModal";
 

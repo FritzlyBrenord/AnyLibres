@@ -142,9 +142,8 @@ export default function ProviderReviews({ reviews, stats }: ProviderReviewsProps
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {review.reviewer?.display_name ||
-                         `${review.reviewer?.first_name || ''} ${review.reviewer?.last_name || ''}`.trim() ||
-                         'Utilisateur anonyme'}
+                        {review.reviewer?.display_name || 
+                         (review.reviewer?.first_name ? `${review.reviewer.first_name} ${review.reviewer.last_name || ''}` : 'Utilisateur anonyme')}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         {renderStars(review.rating_overall || review.rating || 0)}

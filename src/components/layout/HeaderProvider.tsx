@@ -30,6 +30,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MessagesMenu } from "@/components/layout/MessagesMenu";
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
 import ImpersonationBanner from "../ImpersonationBanner";
+import SimpleLanguageSwitcher from "../common/LanguageSwitcher";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 // Interface pour les devises
 interface Currency {
@@ -43,6 +45,7 @@ const HeaderProvider = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
+  const { t } = useSafeLanguage();
 
   // États pour les menus déroulants
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -55,7 +58,7 @@ const HeaderProvider = () => {
   // États pour les devises
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(
-    null
+    null,
   );
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
 
@@ -83,14 +86,14 @@ const HeaderProvider = () => {
 
         if (data.success) {
           const activeCurrencies = data.data.currencies.filter(
-            (c: Currency) => c.is_active
+            (c: Currency) => c.is_active,
           );
           setCurrencies(activeCurrencies);
 
           // Charger la devise depuis localStorage ou utiliser USD par défaut
           const savedCurrencyCode = localStorage.getItem("selectedCurrency");
           const savedCurrency = activeCurrencies.find(
-            (c: Currency) => c.code === savedCurrencyCode
+            (c: Currency) => c.code === savedCurrencyCode,
           );
 
           if (savedCurrency) {
@@ -194,7 +197,7 @@ const HeaderProvider = () => {
     setShowCurrencyMenu(false);
     // Déclencher un événement personnalisé pour notifier le changement
     window.dispatchEvent(
-      new CustomEvent("currencyChanged", { detail: currency })
+      new CustomEvent("currencyChanged", { detail: currency }),
     );
   };
 
@@ -249,7 +252,7 @@ const HeaderProvider = () => {
                     AnyLibre
                   </h1>
                   <p className="text-[10px] font-semibold text-emerald-600 -mt-1">
-                    PROVIDER
+                    {t.headerProvider.role}
                   </p>
                 </div>
               </button>
@@ -266,7 +269,7 @@ const HeaderProvider = () => {
                   }`}
                 >
                   <Home className="w-4 h-4" />
-                  Tableau de bord
+                  {t.headerProvider.nav.dashboard}
                 </a>
 
                 {/* Mon Entreprise Dropdown */}
@@ -282,7 +285,7 @@ const HeaderProvider = () => {
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
-                    Mon entreprise
+                    {t.headerProvider.nav.business.title}
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         showBusinessMenu ? "rotate-180" : ""
@@ -302,10 +305,10 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5">
-                              Commandes
+                              {t.headerProvider.nav.business.orders.title}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Gérez toutes vos commandes actives
+                              {t.headerProvider.nav.business.orders.subtitle}
                             </div>
                           </div>
                         </a>
@@ -319,10 +322,10 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5">
-                              Services
+                              {t.headerProvider.nav.business.services.title}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Créez et gérez vos services
+                              {t.headerProvider.nav.business.services.subtitle}
                             </div>
                           </div>
                         </a>
@@ -336,10 +339,16 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5">
-                              Profil Public
+                              {
+                                t.headerProvider.nav.business.publicProfile
+                                  .title
+                              }
                             </div>
                             <div className="text-xs text-slate-500">
-                              Personnalisez votre page
+                              {
+                                t.headerProvider.nav.business.publicProfile
+                                  .subtitle
+                              }
                             </div>
                           </div>
                         </a>
@@ -353,10 +362,10 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5">
-                              Avis Clients
+                              {t.headerProvider.nav.business.reviews.title}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Consultez vos évaluations
+                              {t.headerProvider.nav.business.reviews.subtitle}
                             </div>
                           </div>
                         </a>
@@ -364,7 +373,9 @@ const HeaderProvider = () => {
                     </div>
                   )}
                 </div>
-
+                <div className="hidden lg:block ml-2 overflow-hidden">
+                  <SimpleLanguageSwitcher />
+                </div>
                 {/* Analytique Dropdown */}
                 <div className="relative" ref={analyticsMenuRef}>
                   <button
@@ -379,7 +390,7 @@ const HeaderProvider = () => {
                     }`}
                   >
                     <BarChart3 className="w-4 h-4" />
-                    Analytique
+                    {t.headerProvider.nav.analytics.title}
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         showAnalyticsMenu ? "rotate-180" : ""
@@ -393,7 +404,7 @@ const HeaderProvider = () => {
                         {/* Section Principale */}
                         <div className="px-3 py-2">
                           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Rapports
+                            {t.headerProvider.nav.analytics.reportsHeader}
                           </div>
                         </div>
 
@@ -401,7 +412,7 @@ const HeaderProvider = () => {
                           href="/Provider/TableauDeBord/Analytique/Apercu"
                           className={`flex items-start gap-3 p-3 rounded-lg transition-colors group ${
                             isActive(
-                              "/Provider/TableauDeBord/Analytique/Apercu"
+                              "/Provider/TableauDeBord/Analytique/Apercu",
                             )
                               ? "bg-emerald-50"
                               : "hover:bg-slate-50"
@@ -412,15 +423,15 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5 flex items-center gap-2">
-                              Aperçu Général
+                              {t.headerProvider.nav.analytics.overview.title}
                               {isActive(
-                                "/Provider/TableauDeBord/Analytique/Apercu"
+                                "/Provider/TableauDeBord/Analytique/Apercu",
                               ) && (
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                               )}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Vue d'ensemble de vos performances
+                              {t.headerProvider.nav.analytics.overview.subtitle}
                             </div>
                           </div>
                         </a>
@@ -429,7 +440,7 @@ const HeaderProvider = () => {
                           href="/Provider/TableauDeBord/Analytique/Performance"
                           className={`flex items-start gap-3 p-3 rounded-lg transition-colors group ${
                             isActive(
-                              "/Provider/TableauDeBord/Analytique/Performance"
+                              "/Provider/TableauDeBord/Analytique/Performance",
                             )
                               ? "bg-emerald-50"
                               : "hover:bg-slate-50"
@@ -440,15 +451,18 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5 flex items-center gap-2">
-                              Performance
+                              {t.headerProvider.nav.analytics.performance.title}
                               {isActive(
-                                "/Provider/TableauDeBord/Analytique/Performance"
+                                "/Provider/TableauDeBord/Analytique/Performance",
                               ) && (
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                               )}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Analyse détaillée des services
+                              {
+                                t.headerProvider.nav.analytics.performance
+                                  .subtitle
+                              }
                             </div>
                           </div>
                         </a>
@@ -457,7 +471,7 @@ const HeaderProvider = () => {
                           href="/Provider/TableauDeBord/Analytique/Revenus"
                           className={`flex items-start gap-3 p-3 rounded-lg transition-colors group ${
                             isActive(
-                              "/Provider/TableauDeBord/Analytique/Revenus"
+                              "/Provider/TableauDeBord/Analytique/Revenus",
                             )
                               ? "bg-emerald-50"
                               : "hover:bg-slate-50"
@@ -468,15 +482,15 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5 flex items-center gap-2">
-                              Revenus
+                              {t.headerProvider.nav.analytics.earnings.title}
                               {isActive(
-                                "/Provider/TableauDeBord/Analytique/Revenus"
+                                "/Provider/TableauDeBord/Analytique/Revenus",
                               ) && (
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                               )}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Suivi financier et retraits
+                              {t.headerProvider.nav.analytics.earnings.subtitle}
                             </div>
                           </div>
                         </a>
@@ -485,7 +499,7 @@ const HeaderProvider = () => {
                           href="/Provider/TableauDeBord/Analytique/Clients"
                           className={`flex items-start gap-3 p-3 rounded-lg transition-colors group ${
                             isActive(
-                              "/Provider/TableauDeBord/Analytique/Clients"
+                              "/Provider/TableauDeBord/Analytique/Clients",
                             )
                               ? "bg-emerald-50"
                               : "hover:bg-slate-50"
@@ -496,15 +510,15 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5 flex items-center gap-2">
-                              Clients
+                              {t.headerProvider.nav.analytics.clients.title}
                               {isActive(
-                                "/Provider/TableauDeBord/Analytique/Clients"
+                                "/Provider/TableauDeBord/Analytique/Clients",
                               ) && (
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                               )}
                             </div>
                             <div className="text-xs text-slate-500">
-                              Analyse et fidélisation
+                              {t.headerProvider.nav.analytics.clients.subtitle}
                             </div>
                           </div>
                         </a>
@@ -516,7 +530,7 @@ const HeaderProvider = () => {
                           href="/Provider/TableauDeBord/Analytique/Rapports"
                           className={`flex items-start gap-3 p-3 rounded-lg transition-colors group ${
                             isActive(
-                              "/Provider/TableauDeBord/Analytique/Rapports"
+                              "/Provider/TableauDeBord/Analytique/Rapports",
                             )
                               ? "bg-emerald-50"
                               : "hover:bg-slate-50"
@@ -527,16 +541,16 @@ const HeaderProvider = () => {
                           </div>
                           <div className="flex-1">
                             <div className="font-semibold text-slate-900 text-sm mb-0.5 flex items-center gap-2">
-                              Rapports & Exports
+                              {t.headerProvider.nav.analytics.exports.title}
                               {isActive(
-                                "/Provider/TableauDeBord/Analytique/Rapports"
+                                "/Provider/TableauDeBord/Analytique/Rapports",
                               ) && (
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                               )}
                               <Award className="w-3 h-3 text-amber-500 ml-auto" />
                             </div>
                             <div className="text-xs text-slate-500">
-                              Exportez vos données CSV
+                              {t.headerProvider.nav.analytics.exports.subtitle}
                             </div>
                           </div>
                         </a>
@@ -571,7 +585,7 @@ const HeaderProvider = () => {
                   <button
                     onClick={() => setShowCurrencyMenu(!showCurrencyMenu)}
                     className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors group"
-                    title="Changer de devise"
+                    title={t.headerProvider.currency.title}
                   >
                     <Coins className="w-4 h-4 text-slate-600 group-hover:text-slate-900" />
                     <span className="font-semibold text-sm text-slate-700 group-hover:text-slate-900">
@@ -590,11 +604,11 @@ const HeaderProvider = () => {
                         <div className="flex items-center gap-2">
                           <Coins className="w-4 h-4 text-emerald-600" />
                           <h3 className="font-semibold text-sm text-slate-900">
-                            Choisir une devise
+                            {t.headerProvider.currency.choose}
                           </h3>
                         </div>
                         <p className="text-xs text-slate-600 mt-1">
-                          Tous les montants seront affichés dans cette devise
+                          {t.headerProvider.currency.subtitle}
                         </p>
                       </div>
 
@@ -687,7 +701,7 @@ const HeaderProvider = () => {
                         className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-lg font-semibold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 group"
                       >
                         <User className="w-4 h-4" />
-                        Mode Client
+                        {t.headerProvider.userMenu.clientMode}
                         <ChevronDown className="w-4 h-4 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
                       </button>
                     </div>
@@ -702,7 +716,7 @@ const HeaderProvider = () => {
                           <User className="w-4 h-4 text-slate-600" />
                         </div>
                         <span className="font-medium text-slate-700 group-hover:text-slate-900">
-                          Mon Profil
+                          {t.headerProvider.userMenu.profile}
                         </span>
                       </a>
 
@@ -714,7 +728,7 @@ const HeaderProvider = () => {
                           <Settings className="w-4 h-4 text-slate-600" />
                         </div>
                         <span className="font-medium text-slate-700 group-hover:text-slate-900">
-                          Paramètres
+                          {t.headerProvider.userMenu.settings}
                         </span>
                       </a>
 
@@ -726,7 +740,7 @@ const HeaderProvider = () => {
                           <DollarSign className="w-4 h-4 text-slate-600" />
                         </div>
                         <span className="font-medium text-slate-700 group-hover:text-slate-900">
-                          Facturation
+                          {t.headerProvider.userMenu.billing}
                         </span>
                       </a>
                     </div>
@@ -743,7 +757,7 @@ const HeaderProvider = () => {
                           <LogOut className="w-4 h-4 text-slate-600 group-hover:text-red-600" />
                         </div>
                         <span className="font-medium text-slate-700 group-hover:text-red-600">
-                          Déconnexion
+                          {t.headerProvider.userMenu.logout}
                         </span>
                       </button>
                     </div>
@@ -794,13 +808,13 @@ const HeaderProvider = () => {
                   className="flex items-center gap-3 px-4 py-3 bg-slate-100 rounded-lg font-semibold"
                 >
                   <Home className="w-5 h-5 text-slate-700" />
-                  <span>Tableau de bord</span>
+                  <span>{t.headerProvider.nav.dashboard}</span>
                 </a>
 
                 {/* Mon entreprise */}
                 <div>
                   <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Mon entreprise
+                    {t.headerProvider.nav.business.title}
                   </div>
                   <div className="space-y-1">
                     <a
@@ -808,28 +822,36 @@ const HeaderProvider = () => {
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <Package className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Commandes</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.business.orders.title}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Service"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <Target className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Services</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.business.services.title}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/edit"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <User className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Profil</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.business.profileShort}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Avis"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <Star className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Avis</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.business.reviewsShort}
+                      </span>
                     </a>
                   </div>
                 </div>
@@ -837,7 +859,7 @@ const HeaderProvider = () => {
                 {/* Analytique */}
                 <div>
                   <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Analytique
+                    {t.headerProvider.nav.analytics.title}
                   </div>
                   <div className="space-y-1">
                     <a
@@ -845,35 +867,45 @@ const HeaderProvider = () => {
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <BarChart3 className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Aperçu</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.analytics.overviewShort}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Analytique/Performance"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <Zap className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Performance</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.analytics.performance.title}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Analytique/Revenus"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <DollarSign className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Revenus</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.analytics.earnings.title}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Analytique/Clients"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <Users className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Clients</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.analytics.clients.title}
+                      </span>
                     </a>
                     <a
                       href="/Provider/TableauDeBord/Analytique/Rapports"
                       className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-lg"
                     >
                       <FileText className="w-5 h-5 text-slate-500" />
-                      <span className="font-medium">Rapports</span>
+                      <span className="font-medium">
+                        {t.headerProvider.nav.analytics.reportsShort}
+                      </span>
                     </a>
                   </div>
                 </div>
@@ -882,7 +914,7 @@ const HeaderProvider = () => {
                 {!loadingCurrencies && selectedCurrency && (
                   <div className="pt-6 border-t border-slate-200">
                     <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Devise
+                      {t.headerProvider.currency.label}
                     </div>
                     <div className="space-y-1">
                       {currencies.map((currency) => (
@@ -930,14 +962,14 @@ const HeaderProvider = () => {
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 text-white rounded-lg font-semibold"
                   >
                     <User className="w-4 h-4" />
-                    Mode Client
+                    {t.headerProvider.userMenu.clientMode}
                   </button>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-50"
                   >
                     <LogOut className="w-4 h-4" />
-                    Déconnexion
+                    {t.headerProvider.userMenu.logout}
                   </button>
                 </div>
               </div>

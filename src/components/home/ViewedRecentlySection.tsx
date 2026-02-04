@@ -11,8 +11,10 @@ import { Clock, ArrowRight } from 'lucide-react';
 import { Carousel } from '@/components/ui/Carousel';
 import { ServiceCard } from '@/components/service/ServiceCard';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 export function ViewedRecentlySection() {
+  const { t } = useSafeLanguage();
   const [viewedServices, setViewedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,10 +66,10 @@ export function ViewedRecentlySection() {
             </div>
             <div>
               <h2 className="font-heading font-bold text-2xl text-slate-900">
-                Vu récemment
+                {t.home.connected.viewedRecently.title}
               </h2>
               <p className="text-sm text-slate-600">
-                Continuez là où vous vous êtes arrêté
+                {t.home.connected.viewedRecently.subtitle}
               </p>
             </div>
           </div>
@@ -76,7 +78,7 @@ export function ViewedRecentlySection() {
             href="/history"
             className="hidden sm:flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold transition-colors group"
           >
-            Voir tout
+            {t.home.connected.viewAll}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -91,7 +93,7 @@ export function ViewedRecentlySection() {
               <ServiceCard service={service} />
               {/* Badge "Vu récemment" */}
               <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg">
-                Vu récemment
+                {t.home.connected.viewedRecently.badge}
               </div>
             </div>
           ))}
@@ -102,7 +104,7 @@ export function ViewedRecentlySection() {
           href="/history"
           className="sm:hidden flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold mt-6 transition-colors"
         >
-          Voir tout
+          {t.home.connected.viewAll}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

@@ -55,7 +55,7 @@ export function Header({
   showLanguageSwitcher = true,
 }: HeaderProps) {
   const scrolled = useScroll(100);
-  const { user, loading, checkAuth } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { t } = useLanguageContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -81,8 +81,6 @@ export function Header({
 
   useEffect(() => {
     setMounted(true);
-    // Vérifier l'authentification au chargement
-    checkAuth?.();
   }, []);
 
   // Réagir aux changements d'authentification

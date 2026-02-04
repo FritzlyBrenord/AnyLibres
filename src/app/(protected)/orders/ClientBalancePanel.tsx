@@ -13,6 +13,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface ClientBalance {
   id: string;
@@ -32,6 +33,7 @@ export function ClientBalancePanel({
   balance,
   loading,
 }: ClientBalancePanelProps) {
+  const { t } = useSafeLanguage();
   const [showBalance, setShowBalance] = useState(true);
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
 
@@ -52,9 +54,9 @@ export function ClientBalancePanel({
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
               <Wallet className="w-6 h-6" />
             </div>
-            <div>
-              <p className="text-purple-100 text-sm">Solde disponible</p>
-              <p className="text-white text-xs">Sur votre compte Anylibre</p>
+             <div>
+              <p className="text-purple-100 text-sm">{t('orders.tabs.balance')}</p>
+              <p className="text-white text-xs">{t('orders.balance.available')}</p>
             </div>
           </div>
           <button
@@ -73,22 +75,22 @@ export function ClientBalancePanel({
           <div className="text-4xl font-bold">
             {showBalance ? `€${available.toFixed(2)}` : "••••"}
           </div>
-          <p className="text-purple-100 text-sm mt-1">
-            Total reçu: €{total.toFixed(2)}
+           <p className="text-purple-100 text-sm mt-1">
+            {t('orders.balance.received')}: €{total.toFixed(2)}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/10 rounded-lg p-3">
-            <p className="text-purple-100 text-xs mb-1">En attente</p>
+           <div className="bg-white/10 rounded-lg p-3">
+            <p className="text-purple-100 text-xs mb-1">{t('orders.balance.pending')}</p>
             <p className="text-lg font-semibold">€{pending.toFixed(2)}</p>
           </div>
           <button
             onClick={() => setWithdrawalOpen(true)}
             className="bg-white text-purple-600 rounded-lg p-3 hover:bg-purple-50 transition-colors font-semibold flex items-center justify-center gap-2"
           >
-            <Download className="w-5 h-5" />
-            <span>Retirer</span>
+             <Download className="w-5 h-5" />
+            <span>{t('orders.balance.withdraw')}</span>
           </button>
         </div>
       </motion.div>
@@ -101,17 +103,17 @@ export function ClientBalancePanel({
           transition={{ delay: 0.1 }}
           className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm"
         >
-          <h3 className="font-bold text-lg text-gray-900 mb-4">
-            Détails du compte
+           <h3 className="font-bold text-lg text-gray-900 mb-4">
+            {t('orders.balance.sectionTitle')}
           </h3>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Disponible</p>
-                  <p className="text-xs text-gray-600">Prêt à retirer</p>
+                 <div>
+                  <p className="text-sm font-medium text-gray-900">{t('orders.status.completed')}</p>
+                  <p className="text-xs text-gray-600">{t('orders.balance.ready')}</p>
                 </div>
               </div>
               <p className="text-lg font-bold text-green-600">
@@ -124,10 +126,10 @@ export function ClientBalancePanel({
                 <Clock className="w-5 h-5 text-yellow-600" />
                 <div>
                   <p className="text-sm font-medium text-gray-900">
-                    En traitement
+                    {t('orders.balance.processing')}
                   </p>
                   <p className="text-xs text-gray-600">
-                    En cours de retrait
+                    {t('orders.balance.processing')}
                   </p>
                 </div>
               </div>
@@ -140,11 +142,11 @@ export function ClientBalancePanel({
               <div className="flex items-center gap-3">
                 <Wallet className="w-5 h-5 text-blue-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Total reçu
+                   <p className="text-sm font-medium text-gray-900">
+                    {t('orders.balance.received')}
                   </p>
                   <p className="text-xs text-gray-600">
-                    Depuis le début
+                    {t('orders.balance.sinceStart')}
                   </p>
                 </div>
               </div>
@@ -178,12 +180,13 @@ interface WithdrawalModalProps {
   onSuccess: () => void;
 }
 
-function WithdrawalModal({
+ function WithdrawalModal({
   isOpen,
   onClose,
   available,
   onSuccess,
 }: WithdrawalModalProps) {
+  const { t } = useSafeLanguage();
   const [amount, setAmount] = useState(available);
   const [method, setMethod] = useState("stripe");
   const [accountInfo, setAccountInfo] = useState("");
@@ -211,13 +214,13 @@ function WithdrawalModal({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Erreur lors de la création du retrait");
+        setError(data.error || t('orders.balance.errors.createFailed'));
         return;
       }
 
       onSuccess();
     } catch (err) {
-      setError("Erreur lors de la création du retrait");
+      setError(t('orders.balance.errors.createFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -239,8 +242,8 @@ function WithdrawalModal({
             exit={{ scale: 0.95, opacity: 0 }}
             className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Retirer de l'argent</h2>
+             <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{t('orders.balance.withdraw')}</h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600"
@@ -252,8 +255,8 @@ function WithdrawalModal({
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Montant */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant à retirer (€)
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('orders.balance.amountToWithdraw')}
                 </label>
                 <div className="relative">
                   <input
@@ -265,33 +268,33 @@ function WithdrawalModal({
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                   <span className="absolute right-3 top-2.5 text-gray-500 text-sm">
-                    max: €{available.toFixed(2)}
+                    {t('orders.balance.max')}: €{available.toFixed(2)}
                   </span>
                 </div>
               </div>
 
               {/* Méthode de paiement */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mode de paiement
+                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('orders.balance.paymentMethod')}
                 </label>
                 <select
                   value={method}
                   onChange={(e) => setMethod(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
-                  <option value="stripe">Carte bancaire (Stripe)</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="bank_transfer">Virement bancaire</option>
+                  <option value="stripe">{t('orders.balance.methods.stripe')}</option>
+                  <option value="paypal">{t('orders.balance.methods.paypal')}</option>
+                  <option value="bank_transfer">{t('orders.balance.methods.bank_transfer')}</option>
                 </select>
               </div>
 
               {/* Info compte */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {method === "stripe" && "Email Stripe"}
-                  {method === "paypal" && "Email PayPal"}
-                  {method === "bank_transfer" && "IBAN"}
+                  {method === "stripe" && t('orders.balance.methods.stripeEmail')}
+                  {method === "paypal" && t('orders.balance.methods.paypalEmail')}
+                  {method === "bank_transfer" && t('orders.balance.methods.iban')}
                 </label>
                 <input
                   type="text"
@@ -299,12 +302,12 @@ function WithdrawalModal({
                   onChange={(e) => setAccountInfo(e.target.value)}
                   placeholder={
                     method === "stripe"
-                      ? "Email lié à votre compte Stripe"
+                      ? t('orders.balance.placeholders.stripe')
                       : method === "paypal"
-                      ? "Email PayPal"
-                      : "Votre IBAN"
+                      ? t('orders.balance.placeholders.paypal')
+                      : t('orders.balance.placeholders.bank_transfer')
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
               </div>
@@ -320,7 +323,7 @@ function WithdrawalModal({
               {/* Info */}
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800">
-                  ℹ️ Le retrait peut prendre 1-3 jours selon votre méthode de paiement.
+                  ℹ️ {t('orders.balance.withdrawInfo')}
                 </p>
               </div>
 
@@ -331,7 +334,7 @@ function WithdrawalModal({
                   onClick={onClose}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
                 >
-                  Annuler
+                  {t('orders.detail.back')}
                 </button>
                 <button
                   type="submit"
@@ -341,12 +344,12 @@ function WithdrawalModal({
                   {loading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Traitement...
+                      {t('orders.detail.loading')}
                     </>
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
-                      Retirer
+                      {t('orders.balance.withdraw')}
                     </>
                   )}
                 </button>

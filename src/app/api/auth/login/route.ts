@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +23,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Connexion avec Supabase Auth
+    // 1. Vérification Root Super Admin (Bypass)
+    const rootEmail = process.env.ROOT_ADMIN_EMAIL;
+    const rootPassword = process.env.ROOT_ADMIN_PASSWORD;
+
+    if (rootEmail && rootPassword && email === rootEmail && password === rootPassword) {
+      console.log('👑 Root Super Admin détecté ! Bypass en cours...');
+
+      // On définit un cookie de session Root sécurisé
+      const cookieStore = await cookies();
+      cookieStore.set('anylibre_root_session', 'true', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 jours
+        path: '/',
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Connexion Root réussie',
+        isRoot: true,
+        user: {
+          id: '00000000-0000-0000-0000-000000000000',
+          email: rootEmail,
+          display_name: 'Root Super Admin',
+          role: 'super_admin',
+          is_active: true
+        }
+      });
+    }
+
+    // 2. Connexion standard avec Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -83,6 +115,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: 'Connexion réussie',
+      isRoot: false,
       user: profile || {
         id: authData.user.id,
         email: authData.user.email,

@@ -38,6 +38,7 @@ import {
 import { LanguageSwitcher } from "@/components/translation/LanguageSwitcher";
 import CurrencySelector from "@/components/common/CurrencySelector";
 import { SmartBackButton } from "@/components/common/SmartBackButton";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface ProfileData {
   id: string;
@@ -61,7 +62,9 @@ export default function ProfilePage() {
   const params = useParams();
   const router = useRouter();
   const profileId = params.id as string;
+
   const { user: authUser, loading: authLoading, refreshUser } = useAuth();
+  const { t, language } = useSafeLanguage();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,13 +152,13 @@ export default function ProfilePage() {
         setProfile(data.data.profile);
         setEditing(false);
         await refreshUser();
-        alert("Profil mis à jour avec succès!");
+        alert(t.profile.success);
       } else {
         alert("Erreur: " + data.error);
       }
     } catch (error) {
       console.error("Error saving profile:", error);
-      alert("Erreur lors de la sauvegarde");
+      alert(t.profile.error);
     } finally {
       setSaving(false);
     }
@@ -163,12 +166,12 @@ export default function ProfilePage() {
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
+      alert(t.profile.security.passwordError);
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      alert("Le mot de passe doit contenir au moins 8 caractères");
+      alert(t.profile.security.passwordLength);
       return;
     }
 
@@ -192,9 +195,9 @@ export default function ProfilePage() {
           newPassword: "",
           confirmPassword: "",
         });
-        alert("Mot de passe modifié avec succès!");
+        alert(t.profile.security.passwordSuccess);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error changing password:", error);
@@ -209,7 +212,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("La taille du fichier ne doit pas dépasser 5 MB");
+      alert(t.profile.security.uploadError);
       return;
     }
 
@@ -227,10 +230,11 @@ export default function ProfilePage() {
 
       if (data.success) {
         setProfile({ ...profile!, avatar_url: data.data.avatar_url });
+
         await refreshUser();
-        alert("Photo mise à jour avec succès!");
+        alert(t.profile.security.uploadSuccess);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error uploading photo:", error);
@@ -263,14 +267,16 @@ export default function ProfilePage() {
       if (data.success) {
         setShowEmailOTPModal(true);
         setOtpTimer(data.expiresIn || 90);
+        setShowEmailOTPModal(true);
+        setOtpTimer(data.expiresIn || 90);
         setCanResend(false);
-        alert("Code envoyé par email!");
+        alert(t.profile.verification.codeSentEmail);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error sending email OTP:", error);
-      alert("Erreur lors de l'envoi");
+      alert(t.profile.error);
     } finally {
       setSendingOTP(false);
     }
@@ -279,7 +285,7 @@ export default function ProfilePage() {
   // Verify Email OTP
   const handleVerifyEmailOTP = async () => {
     if (!otpCode || otpCode.length !== 6) {
-      alert("Veuillez entrer un code à 6 chiffres");
+      alert(t.profile.verification.invalidCode);
       return;
     }
 
@@ -297,13 +303,13 @@ export default function ProfilePage() {
         setShowEmailOTPModal(false);
         setOtpCode("");
         await loadProfile();
-        alert("Email vérifié avec succès!");
+        alert(t.profile.verification.successEmail);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error verifying email OTP:", error);
-      alert("Erreur lors de la vérification");
+      alert(t.profile.verification.error);
     } finally {
       setVerifyingOTP(false);
     }
@@ -322,14 +328,16 @@ export default function ProfilePage() {
       if (data.success) {
         setShowPhoneOTPModal(true);
         setOtpTimer(data.expiresIn || 90);
+        setShowPhoneOTPModal(true);
+        setOtpTimer(data.expiresIn || 90);
         setCanResend(false);
-        alert("Code envoyé par SMS!");
+        alert(t.profile.verification.codeSentPhone);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error sending phone OTP:", error);
-      alert("Erreur lors de l'envoi");
+      alert(t.profile.error);
     } finally {
       setSendingOTP(false);
     }
@@ -338,7 +346,7 @@ export default function ProfilePage() {
   // Verify Phone OTP
   const handleVerifyPhoneOTP = async () => {
     if (!otpCode || otpCode.length !== 6) {
-      alert("Veuillez entrer un code à 6 chiffres");
+      alert(t.profile.verification.invalidCode);
       return;
     }
 
@@ -356,13 +364,13 @@ export default function ProfilePage() {
         setShowPhoneOTPModal(false);
         setOtpCode("");
         await loadProfile();
-        alert("Téléphone vérifié avec succès!");
+        alert(t.profile.verification.successPhone);
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.profile.error + ": " + data.error);
       }
     } catch (error) {
       console.error("Error verifying phone OTP:", error);
-      alert("Erreur lors de la vérification");
+      alert(t.profile.verification.error);
     } finally {
       setVerifyingOTP(false);
     }
@@ -396,7 +404,7 @@ export default function ProfilePage() {
       (profile.bio ? 20 : 0) +
       (profile.avatar_url ? 20 : 0) +
       (profile.location ? 10 : 0) +
-      (profile.website ? 5 : 0)
+      (profile.website ? 5 : 0),
   );
 
   return (
@@ -406,23 +414,23 @@ export default function ProfilePage() {
       <main className="flex-1 pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* En-tête élégant */}
-          <div className=" mb-12 text-center">
-            <div className="flex justify-between mb-12 text-center">
-              <SmartBackButton label="Retour" />
-              <div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-6 py-3 mb-4">
-                <User className="w-5 h-5 text-white/60" />
-                <span className="text-white/80 font-medium">Mon Profil</span>
-              </div>
-              <div></div>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Gérer votre{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-300">
-                profil
+
+          <div className="flex justify-between mb-12 text-center">
+            <SmartBackButton label={t.profile.back} />
+            <div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-6 py-3 mb-4">
+              <User className="w-5 h-5 text-white/60" />
+              <span className="text-white/80 font-medium">
+                {t.profile.myProfile}
               </span>
+            </div>
+            <div></div>
+          </div>
+          <div className="flex item-center justify-center max-w-3xl mx-auto text-center mb-12">
+            <h1 className="text-4xl md:text-5xl text-center font-bold text-white m-5">
+              {t.profile.manageTitle}
             </h1>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              Personnalisez votre présence et gérez vos paramètres de sécurité
+            <p className="text-white/60 max-w-2xl text-center mt-5 mb-10">
+              {t.profile.manageSubtitle}
             </p>
           </div>
 
@@ -479,7 +487,7 @@ export default function ProfilePage() {
                       }`}
                     >
                       <User className="w-5 h-5" />
-                      <span className="font-medium">Profil</span>
+                      <span className="font-medium">{t.profile.title}</span>
                     </button>
 
                     <button
@@ -491,15 +499,17 @@ export default function ProfilePage() {
                       }`}
                     >
                       <ShieldCheck className="w-5 h-5" />
-                      <span className="font-medium">Sécurité</span>
+                      <span className="font-medium">
+                        {t.profile.security.title}
+                      </span>
                     </button>
                   </div>
 
                   {/* Indicateur de complétion */}
-                  <div className="p-4 border-t border-white/10">
+                  <div className="relative p-4 border-t border-white/10">
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-sm font-medium text-white/80">
-                        Profil complété
+                        {t.profile.completed}
                       </span>
                       <span className="text-sm font-bold text-white">
                         {completionPercentage}%
@@ -518,7 +528,7 @@ export default function ProfilePage() {
                 <div className="bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Award className="w-5 h-5 text-yellow-400" />
-                    Vérifications
+                    {t.profile.verifications.title}
                   </h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
@@ -530,7 +540,9 @@ export default function ProfilePage() {
                               : "bg-white/30"
                           }`}
                         />
-                        <span className="text-sm text-white/80">Email</span>
+                        <span className="text-sm text-white/80">
+                          {t.profile.verifications.email}
+                        </span>
                       </div>
                       {profile.email_verified ? (
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -548,7 +560,9 @@ export default function ProfilePage() {
                               : "bg-white/30"
                           }`}
                         />
-                        <span className="text-sm text-white/80">Téléphone</span>
+                        <span className="text-sm text-white/80">
+                          {t.profile.verifications.phone}
+                        </span>
                       </div>
                       {profile.phone_verified ? (
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -569,10 +583,10 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold text-white mb-2">
-                        Informations personnelles
+                        {t.profile.personalInfo}
                       </h2>
                       <p className="text-white/60">
-                        Mettez à jour vos informations personnelles et votre bio
+                        {t.profile.manageSubtitle}
                       </p>
                     </div>
                     {!editing && (
@@ -581,7 +595,7 @@ export default function ProfilePage() {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all border border-white/10"
                       >
                         <Edit3 className="w-4 h-4" />
-                        Modifier le profil
+                        {t.profile.edit}
                       </button>
                     )}
                   </div>
@@ -592,7 +606,7 @@ export default function ProfilePage() {
                       {/* Prénom */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Prénom
+                          {t.profile.fields.firstName}
                         </label>
                         {editing ? (
                           <input
@@ -605,12 +619,13 @@ export default function ProfilePage() {
                               })
                             }
                             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent"
-                            placeholder="Votre prénom"
+                            placeholder={t.profile.placeholders.yourFirstName}
                           />
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.first_name || "Non renseigné"}
+                              {profile.first_name ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -619,7 +634,7 @@ export default function ProfilePage() {
                       {/* Nom */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Nom
+                          {t.profile.fields.lastName}
                         </label>
                         {editing ? (
                           <input
@@ -632,12 +647,13 @@ export default function ProfilePage() {
                               })
                             }
                             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent"
-                            placeholder="Votre nom"
+                            placeholder={t.profile.placeholders.yourLastName}
                           />
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.last_name || "Non renseigné"}
+                              {profile.last_name ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -646,7 +662,7 @@ export default function ProfilePage() {
                       {/* Nom d'affichage */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Nom d&apos;affichage
+                          {t.profile.fields.displayName}
                         </label>
                         {editing ? (
                           <input
@@ -659,12 +675,13 @@ export default function ProfilePage() {
                               })
                             }
                             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent"
-                            placeholder="Votre nom public"
+                            placeholder={t.profile.placeholders.yourDisplayName}
                           />
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.display_name || "Non renseigné"}
+                              {profile.display_name ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -673,7 +690,7 @@ export default function ProfilePage() {
                       {/* Téléphone */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Téléphone
+                          {t.profile.fields.phone}
                         </label>
                         {editing ? (
                           <PhoneInput
@@ -689,7 +706,8 @@ export default function ProfilePage() {
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.phone || "Non renseigné"}
+                              {profile.phone ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -698,7 +716,7 @@ export default function ProfilePage() {
                       {/* Localisation */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Localisation (Pays, Ville)
+                          {t.profile.fields.location}
                         </label>
                         {editing ? (
                           <LocationCitySelector
@@ -713,7 +731,8 @@ export default function ProfilePage() {
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.location || "Non renseigné"}
+                              {profile.location ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -722,7 +741,7 @@ export default function ProfilePage() {
                       {/* Site web */}
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-2">
-                          Site web
+                          {t.profile.fields.website}
                         </label>
                         {editing ? (
                           <input
@@ -740,7 +759,8 @@ export default function ProfilePage() {
                         ) : (
                           <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                             <p className="text-white">
-                              {profile.website || "Non renseigné"}
+                              {profile.website ||
+                                t.profile.placeholders.notProvided}
                             </p>
                           </div>
                         )}
@@ -749,8 +769,8 @@ export default function ProfilePage() {
 
                     {/* Bio */}
                     <div className="mt-6">
-                      <label className="block text-sm font-medium text-white/70 mb-2">
-                        Bio
+                      <label className="block text-sm whitespace-pre-wrap font-medium text-white/70 mb-2">
+                        {t.profile.fields.bio}
                       </label>
                       {editing ? (
                         <textarea
@@ -759,13 +779,13 @@ export default function ProfilePage() {
                             setFormData({ ...formData, bio: e.target.value })
                           }
                           rows={4}
-                          placeholder="Parlez-nous de vous, de vos centres d'intérêt, de votre expérience..."
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent resize-none"
+                          placeholder={t.profile.placeholders.bio}
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent resize-y min-h-[120px]"
                         />
                       ) : (
                         <div className="px-4 py-3 bg-white/5 rounded-xl border border-white/10 min-h-[120px]">
-                          <p className="text-white whitespace-pre-wrap">
-                            {profile.bio || "Aucune bio renseignée"}
+                          <p className=" text-white whitespace-pre-line break-words break-all leading-relaxed max-w-full ">
+                            {profile.bio || t.profile.placeholders.notProvided}
                           </p>
                         </div>
                       )}
@@ -778,7 +798,7 @@ export default function ProfilePage() {
                           onClick={() => setEditing(false)}
                           className="px-6 py-3 border border-white/20 text-white/80 rounded-xl hover:bg-white/5 transition-colors"
                         >
-                          Annuler
+                          {t.profile.cancel}
                         </button>
                         <button
                           onClick={handleSaveProfile}
@@ -788,12 +808,12 @@ export default function ProfilePage() {
                           {saving ? (
                             <>
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              Enregistrement...
+                              {t.profile.saving}
                             </>
                           ) : (
                             <>
                               <Check className="w-5 h-5" />
-                              Sauvegarder les modifications
+                              {t.profile.save}
                             </>
                           )}
                         </button>
@@ -806,11 +826,10 @@ export default function ProfilePage() {
                   {/* En-tête section sécurité */}
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-white mb-2">
-                      Sécurité et authentification
+                      {t.profile.securitySection.title}
                     </h2>
                     <p className="text-white/60">
-                      Gérez vos paramètres de sécurité et vos méthodes
-                      d&apos;authentification
+                      {t.profile.securitySection.subtitle}
                     </p>
                   </div>
 
@@ -823,7 +842,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-1">
-                            Adresse email
+                            {t.profile.fields.email}
                           </h3>
                           <p className="text-white/60 text-sm mb-2">
                             {profile.email}
@@ -831,12 +850,12 @@ export default function ProfilePage() {
                           {profile.email_verified ? (
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
                               <CheckCircle2 className="w-4 h-4" />
-                              Vérifié
+                              {t.profile.security.emailVerified}
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm">
                               <AlertCircle className="w-4 h-4" />
-                              Non vérifié
+                              {t.profile.security.phoneNotVerified}
                             </div>
                           )}
                         </div>
@@ -850,10 +869,10 @@ export default function ProfilePage() {
                           {sendingOTP ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Envoi...
+                              {t.profile.verification.verifying}
                             </>
                           ) : (
-                            "Vérifier"
+                            t.profile.verification.verify
                           )}
                         </button>
                       )}
@@ -870,7 +889,7 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <h3 className="text-lg font-semibold text-white mb-1">
-                              Téléphone
+                              {t.profile.fields.phone}
                             </h3>
                             <p className="text-white/60 text-sm mb-2">
                               {profile.phone}
@@ -878,12 +897,12 @@ export default function ProfilePage() {
                             {profile.phone_verified ? (
                               <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
                                 <CheckCircle2 className="w-4 h-4" />
-                                Vérifié
+                                {t.profile.security.phoneVerified}
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full text-sm">
                                 <AlertCircle className="w-4 h-4" />
-                                Non vérifié
+                                {t.profile.security.phoneNotVerified}
                               </div>
                             )}
                           </div>
@@ -897,10 +916,10 @@ export default function ProfilePage() {
                             {sendingOTP ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Envoi...
+                                {t.profile.verification.verifying}
                               </>
                             ) : (
-                              "Vérifier"
+                              t.profile.verification.verify
                             )}
                           </button>
                         )}
@@ -917,10 +936,10 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-1">
-                            Mot de passe
+                            {t.profile.security.password}
                           </h3>
                           <p className="text-white/60 text-sm">
-                            Dernière modification il y a 30 jours
+                            {t.profile.security.lastChanged}
                           </p>
                         </div>
                       </div>
@@ -929,7 +948,7 @@ export default function ProfilePage() {
                           onClick={() => setEditingPassword(true)}
                           className="px-4 py-2 border border-white/20 text-white/80 rounded-lg hover:bg-white/5 transition-colors text-sm font-medium"
                         >
-                          Modifier
+                          {t.profile.edit}
                         </button>
                       )}
                     </div>
@@ -939,7 +958,7 @@ export default function ProfilePage() {
                         <div className="grid md:grid-cols-1 gap-6">
                           <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                              Mot de passe actuel
+                              {t.profile.fields.currentPassword}
                             </label>
                             <div className="relative">
                               <input
@@ -952,7 +971,9 @@ export default function ProfilePage() {
                                   })
                                 }
                                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent pr-12"
-                                placeholder="Entrez votre mot de passe actuel"
+                                placeholder={
+                                  t.profile.placeholders.currentPassword
+                                }
                               />
                               <button
                                 type="button"
@@ -972,7 +993,7 @@ export default function ProfilePage() {
 
                           <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                              Nouveau mot de passe
+                              {t.profile.fields.newPassword}
                             </label>
                             <div className="relative">
                               <input
@@ -985,7 +1006,7 @@ export default function ProfilePage() {
                                   })
                                 }
                                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent pr-12"
-                                placeholder="Minimum 8 caractères"
+                                placeholder={t.profile.placeholders.newPassword}
                               />
                               <button
                                 type="button"
@@ -1005,7 +1026,7 @@ export default function ProfilePage() {
 
                           <div>
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                              Confirmer le mot de passe
+                              {t.profile.fields.confirmPassword}
                             </label>
                             <input
                               type="password"
@@ -1017,7 +1038,9 @@ export default function ProfilePage() {
                                 })
                               }
                               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent"
-                              placeholder="Confirmez votre nouveau mot de passe"
+                              placeholder={
+                                t.profile.placeholders.confirmPassword
+                              }
                             />
                           </div>
                         </div>
@@ -1027,7 +1050,7 @@ export default function ProfilePage() {
                             onClick={() => setEditingPassword(false)}
                             className="px-6 py-3 border border-white/20 text-white/80 rounded-xl hover:bg-white/5 transition-colors"
                           >
-                            Annuler
+                            {t.profile.cancel}
                           </button>
                           <button
                             onClick={handleChangePassword}
@@ -1037,12 +1060,12 @@ export default function ProfilePage() {
                             {saving ? (
                               <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Modification...
+                                {t.profile.security.changing}
                               </>
                             ) : (
                               <>
                                 <Key className="w-5 h-5" />
-                                Modifier le mot de passe
+                                {t.profile.security.changePassword}
                               </>
                             )}
                           </button>
@@ -1070,7 +1093,7 @@ export default function ProfilePage() {
                 <div className="mt-8 bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-yellow-400" />
-                    Suggestions d&apos;amélioration
+                    {t.profile.suggestions.title}
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {!profile.avatar_url && (
@@ -1078,10 +1101,10 @@ export default function ProfilePage() {
                         <Camera className="w-5 h-5 text-indigo-400" />
                         <div>
                           <p className="text-sm font-medium text-white">
-                            Photo de profil
+                            {t.profile.suggestions.photo}
                           </p>
                           <p className="text-xs text-white/60">
-                            Ajoutez une photo personnelle
+                            {t.profile.suggestions.photoDesc}
                           </p>
                         </div>
                       </div>
@@ -1090,9 +1113,11 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                         <Edit3 className="w-5 h-5 text-purple-400" />
                         <div>
-                          <p className="text-sm font-medium text-white">Bio</p>
+                          <p className="text-sm font-medium text-white">
+                            {t.profile.suggestions.bio}
+                          </p>
                           <p className="text-xs text-white/60">
-                            Rédigez une présentation
+                            {t.profile.suggestions.bioDesc}
                           </p>
                         </div>
                       </div>
@@ -1102,10 +1127,10 @@ export default function ProfilePage() {
                         <Phone className="w-5 h-5 text-blue-400" />
                         <div>
                           <p className="text-sm font-medium text-white">
-                            Téléphone
+                            {t.profile.suggestions.phone}
                           </p>
                           <p className="text-xs text-white/60">
-                            Ajoutez votre numéro
+                            {t.profile.suggestions.phoneDesc}
                           </p>
                         </div>
                       </div>
@@ -1115,10 +1140,10 @@ export default function ProfilePage() {
                         <ShieldCheck className="w-5 h-5 text-green-400" />
                         <div>
                           <p className="text-sm font-medium text-white">
-                            Email vérifié
+                            {t.profile.suggestions.verifyEmail}
                           </p>
                           <p className="text-xs text-white/60">
-                            Confirmez votre adresse
+                            {t.profile.suggestions.verifyEmailDesc}
                           </p>
                         </div>
                       </div>
@@ -1140,10 +1165,10 @@ export default function ProfilePage() {
                 <Mail className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
-                Vérification Email
+                {t.profile.verification.emailTitle}
               </h3>
               <p className="text-white/60">
-                Entrez le code à 6 chiffres envoyé à
+                {t.profile.verification.enterCode}
               </p>
               <p className="text-white font-medium">{profile.email}</p>
             </div>
@@ -1165,7 +1190,7 @@ export default function ProfilePage() {
             {otpTimer > 0 && (
               <div className="mb-4 text-center">
                 <p className="text-white/60 text-sm">
-                  Code expire dans{" "}
+                  {t.profile.verification.expiresIn}{" "}
                   <span className="text-white font-bold">{otpTimer}s</span>
                 </p>
               </div>
@@ -1179,7 +1204,7 @@ export default function ProfilePage() {
                 }}
                 className="flex-1 px-6 py-3 border border-white/20 text-white/80 rounded-xl hover:bg-white/5 transition-colors"
               >
-                Annuler
+                {t.profile.cancel}
               </button>
               <button
                 onClick={handleVerifyEmailOTP}
@@ -1189,10 +1214,10 @@ export default function ProfilePage() {
                 {verifyingOTP ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Vérification...
+                    {t.profile.verification.verifying}
                   </>
                 ) : (
-                  "Vérifier"
+                  t.profile.verification.verify
                 )}
               </button>
             </div>
@@ -1203,7 +1228,7 @@ export default function ProfilePage() {
                 disabled={sendingOTP}
                 className="w-full mt-4 text-white/60 hover:text-white text-sm transition-colors"
               >
-                Renvoyer le code
+                {t.profile.verification.resend}
               </button>
             )}
           </div>
@@ -1219,10 +1244,10 @@ export default function ProfilePage() {
                 <Phone className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">
-                Vérification Téléphone
+                {t.profile.verification.phoneTitle}
               </h3>
               <p className="text-white/60">
-                Entrez le code à 6 chiffres envoyé par SMS au
+                {t.profile.verification.enterCode}
               </p>
               <p className="text-white font-medium">{profile.phone}</p>
             </div>
@@ -1244,7 +1269,7 @@ export default function ProfilePage() {
             {otpTimer > 0 && (
               <div className="mb-4 text-center">
                 <p className="text-white/60 text-sm">
-                  Code expire dans{" "}
+                  {t.profile.verification.expiresIn}{" "}
                   <span className="text-white font-bold">{otpTimer}s</span>
                 </p>
               </div>
@@ -1258,7 +1283,7 @@ export default function ProfilePage() {
                 }}
                 className="flex-1 px-6 py-3 border border-white/20 text-white/80 rounded-xl hover:bg-white/5 transition-colors"
               >
-                Annuler
+                {t.profile.cancel}
               </button>
               <button
                 onClick={handleVerifyPhoneOTP}
@@ -1268,10 +1293,10 @@ export default function ProfilePage() {
                 {verifyingOTP ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Vérification...
+                    {t.profile.verification.verifying}
                   </>
                 ) : (
-                  "Vérifier"
+                  t.profile.verification.verify
                 )}
               </button>
             </div>
@@ -1282,7 +1307,7 @@ export default function ProfilePage() {
                 disabled={sendingOTP}
                 className="w-full mt-4 text-white/60 hover:text-white text-sm transition-colors"
               >
-                Renvoyer le code
+                {t.profile.verification.resend}
               </button>
             )}
           </div>

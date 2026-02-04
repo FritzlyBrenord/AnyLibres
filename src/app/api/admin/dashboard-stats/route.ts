@@ -65,37 +65,130 @@ export async function GET(request: Request) {
       .select('id, total_cents, fees_cents, status, payment_status, created_at');
 
     const totalOrders = allOrders?.length || 0;
-    const pendingOrders = allOrders?.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length || 0;
-    const completedOrders = allOrders?.filter(o => o.status === 'completed').length || 0;
+    const pendingOrders = allOrders?.filter((o: any) => o.status !== 'completed' && o.status !== 'cancelled').length || 0;
+    const completedOrders = allOrders?.filter((o: any) => o.status === 'completed').length || 0;
 
     // 3. Statistiques de revenus
-    const paidOrders = allOrders?.filter(o => o.payment_status === 'succeeded') || [];
-    const totalRevenue = paidOrders.reduce((sum, order) =>
+    const paidOrders = allOrders?.filter((o: any) => o.payment_status === 'succeeded') || [];
+    const totalRevenue = paidOrders.reduce((sum: number, order: any) =>
       sum + ((order.total_cents + (order.fees_cents || 0)) / 100), 0
     );
 
-    // 4. Calculer l'historique des revenus (7 derniers jours)
-    const revenueHistory: number[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date();
-      dayStart.setDate(dayStart.getDate() - i);
-      dayStart.setHours(0, 0, 0, 0);
+    // 4. Calculer l'historique des revenus selon la période
+    const timeframe = searchParams.get('timeframe') || '7j';
+    const revenueHistory: { value: number; label: string }[] = [];
 
-      const dayEnd = new Date(dayStart);
-      dayEnd.setHours(23, 59, 59, 999);
+    const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc'];
 
-      const dayRevenue = paidOrders
-        .filter(order => {
-          const orderDate = new Date(order.created_at);
-          return orderDate >= dayStart && orderDate <= dayEnd;
-        })
-        .reduce((sum, order) => sum + ((order.total_cents + (order.fees_cents || 0)) / 100), 0);
+    if (timeframe === '24h') {
+      // Points pour chaque heure des dernières 24h
+      for (let i = 23; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 60 * 60 * 1000);
+        const lBound = new Date(date);
+        lBound.setMinutes(0, 0, 0);
+        const uBound = new Date(date);
+        uBound.setMinutes(59, 59, 999);
 
-      revenueHistory.push(Math.round(dayRevenue));
+        const val = paidOrders
+          .filter((o: any) => {
+            const d = new Date(o.created_at);
+            return d >= lBound && d <= uBound;
+          })
+          .reduce((sum: number, o: any) => sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0);
+
+        revenueHistory.push({
+          value: Math.round(val),
+          label: `${date.getHours()}h`
+        });
+      }
+    } else if (timeframe === '7j') {
+      // Points pour chaque jour (7 derniers jours)
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        const endD = new Date(d);
+        endD.setHours(23, 59, 59, 999);
+
+        const val = paidOrders
+          .filter((o: any) => {
+            const od = new Date(o.created_at);
+            return od >= d && od <= endD;
+          })
+          .reduce((sum: number, o: any) => sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0);
+
+        revenueHistory.push({
+          value: Math.round(val),
+          label: dayNames[d.getDay()]
+        });
+      }
+    } else if (timeframe === '30j') {
+      // Points pour chaque jour (30 derniers jours)
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        const endD = new Date(d);
+        endD.setHours(23, 59, 59, 999);
+
+        const val = paidOrders
+          .filter((o: any) => {
+            const od = new Date(o.created_at);
+            return od >= d && od <= endD;
+          })
+          .reduce((sum: number, o: any) => sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0);
+
+        revenueHistory.push({
+          value: Math.round(val),
+          label: `${d.getDate()}`
+        });
+      }
+    } else if (timeframe === '90j') {
+      // Points par semaine (12 dernières semaines)
+      for (let i = 12; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - (i * 7));
+        d.setHours(0, 0, 0, 0);
+        const endD = new Date(d);
+        endD.setDate(endD.getDate() + 7);
+
+        const val = paidOrders
+          .filter((o: any) => {
+            const od = new Date(o.created_at);
+            return od >= d && od < endD;
+          })
+          .reduce((sum: number, o: any) => sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0);
+
+        revenueHistory.push({
+          value: Math.round(val),
+          label: `S${13 - i}`
+        });
+      }
+    } else if (timeframe === '6m' || timeframe === '1an') {
+      // Points par mois (6 ou 12 derniers mois)
+      const months = timeframe === '6m' ? 5 : 11;
+      for (let i = months; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const lBound = new Date(d.getFullYear(), d.getMonth(), 1);
+        const uBound = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const val = paidOrders
+          .filter((o: any) => {
+            const od = new Date(o.created_at);
+            return od >= lBound && od <= uBound;
+          })
+          .reduce((sum: number, o: any) => sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0);
+
+        revenueHistory.push({
+          value: Math.round(val),
+          label: monthNames[lBound.getMonth()]
+        });
+      }
     }
 
-    console.log('[API DASHBOARD-STATS] Revenue history:', revenueHistory);
-    console.log('[API DASHBOARD-STATS] Total revenue:', totalRevenue);
+    console.log('[API DASHBOARD-STATS] Revenue history calculated for timeframe:', timeframe);
 
     // 5. Taux de performance (commandes complétées / total)
     const performanceScore = totalOrders > 0
@@ -111,20 +204,20 @@ export async function GET(request: Request) {
     thisWeekStart.setDate(thisWeekStart.getDate() - 7);
     thisWeekStart.setHours(0, 0, 0, 0);
 
-    const lastWeekOrders = paidOrders.filter(o => {
+    const lastWeekOrders = paidOrders.filter((o: any) => {
       const date = new Date(o.created_at);
       return date >= lastWeekStart && date < thisWeekStart;
     });
 
-    const thisWeekOrders = paidOrders.filter(o => {
+    const thisWeekOrders = paidOrders.filter((o: any) => {
       const date = new Date(o.created_at);
       return date >= thisWeekStart;
     });
 
-    const lastWeekRevenue = lastWeekOrders.reduce((sum, o) =>
+    const lastWeekRevenue = lastWeekOrders.reduce((sum: number, o: any) =>
       sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0
     );
-    const thisWeekRevenue = thisWeekOrders.reduce((sum, o) =>
+    const thisWeekRevenue = thisWeekOrders.reduce((sum: number, o: any) =>
       sum + ((o.total_cents + (o.fees_cents || 0)) / 100), 0
     );
 

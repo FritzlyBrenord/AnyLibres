@@ -17,6 +17,7 @@ import {
 import { compressImage } from "@/utils/lib/imageCompression";
 import { compressVideo } from "@/utils/lib/videoCompression";
 import { compressAudio } from "@/utils/lib/audioCompression";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -34,12 +35,14 @@ interface MessageInputProps {
   ) => Promise<void>;
   sending?: boolean;
   disabled?: boolean;
+  isDark?: boolean;
 }
 
 export function MessageInput({
   onSendMessage,
   sending = false,
   disabled = false,
+  isDark = false,
 }: MessageInputProps) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<FileWithPreview[]>([]);
@@ -51,6 +54,7 @@ export function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const compressionAbortControllers = useRef<Map<string, AbortController>>(new Map());
+  const { t } = useSafeLanguage();
 
   // Emojis populaires
   const popularEmojis = ["👍", "❤️", "😊", "😂", "🎉", "🔥", "👏", "🙏"];
@@ -64,7 +68,7 @@ export function MessageInput({
     // Vérifier si des fichiers sont en cours de compression
     const isCompressing = attachments.some((file) => file.compressing);
     if (isCompressing) {
-      setError("Veuillez attendre la fin de la compression ou annuler les fichiers en cours");
+      setError(t('messages.compressionWait'));
       return;
     }
 
@@ -87,7 +91,7 @@ export function MessageInput({
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'envoi du message";
+      const errorMessage = error instanceof Error ? error.message : t('messages.sendingError');
       setError(errorMessage);
     }
   };
@@ -140,7 +144,7 @@ export function MessageInput({
 
       // Vérifier si la compression a été annulée
       if (abortController.signal.aborted) {
-        throw new Error("Compression annulée");
+        throw new Error(t('messages.compressionCancelled'));
       }
 
       if (fileType.startsWith("image/")) {
@@ -179,7 +183,7 @@ export function MessageInput({
 
       // Vérifier à nouveau si annulé
       if (abortController.signal.aborted) {
-        throw new Error("Compression annulée");
+        throw new Error(t('messages.compressionCancelled'));
       }
 
       // Créer une prévisualisation pour les images et vidéos
@@ -220,13 +224,13 @@ export function MessageInput({
       });
 
       // Retourner le fichier avec l'erreur
-      const errorMessage = error instanceof Error ? error.message : "Erreur de compression";
+      const errorMessage = error instanceof Error ? error.message : t('messages.compressionError');
       return Object.assign(file, {
         compressed: false,
         originalSize,
         compressing: false,
         compressionError: errorMessage,
-        cancelled: errorMessage.includes("annulée"),
+        cancelled: errorMessage.includes(t('messages.cancelled')) || errorMessage.includes("annulée") || errorMessage.includes("cancelled"),
       });
     }
   };
@@ -321,12 +325,12 @@ export function MessageInput({
   };
 
   return (
-    <div className="border-t border-slate-200 bg-white p-4">
+    <div className={`border-t ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} p-4`}>
       {/* Error Message */}
       {error && (
-        <div className="mb-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className={`mb-3 flex items-center gap-2 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'} rounded-lg p-3`}>
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <p className="text-sm text-red-800 flex-1">{error}</p>
+          <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-800'} flex-1`}>{error}</p>
           <button
             onClick={() => setError(null)}
             className="text-red-600 hover:text-red-800"
@@ -348,10 +352,10 @@ export function MessageInput({
                 key={index}
                 className={`relative flex items-center gap-2 rounded-lg p-2 ${
                   file.compressionError
-                    ? "bg-red-50 border border-red-200"
+                    ? isDark ? "bg-red-500/10 border-red-500/20" : "bg-red-50 border border-red-200"
                     : file.cancelled
-                    ? "bg-gray-50 border border-gray-200 opacity-50"
-                    : "bg-slate-100"
+                    ? isDark ? "bg-slate-800 border-slate-700 opacity-50" : "bg-gray-50 border border-gray-200 opacity-50"
+                    : isDark ? "bg-slate-800 border border-slate-700" : "bg-slate-100"
                 }`}
               >
                 {/* Prévisualisation pour images et vidéos */}
@@ -371,13 +375,13 @@ export function MessageInput({
 
                 {/* Icône pour audio et documents */}
                 {(!file.preview || file.cancelled) && (
-                  <div className="w-16 h-16 flex items-center justify-center bg-slate-200 rounded-lg">
+                  <div className={`w-16 h-16 flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'} rounded-lg`}>
                     {getFileIcon(file)}
                   </div>
                 )}
 
                 <div className="flex-1 min-w-0 pr-6">
-                  <p className="font-medium text-slate-900 truncate max-w-[150px] text-sm">
+                  <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'} truncate max-w-[150px] text-sm`}>
                     {file.name}
                   </p>
                   <p className="text-xs text-slate-500">
@@ -400,12 +404,12 @@ export function MessageInput({
                     <div className="mt-1">
                       <div className="w-full bg-slate-300 rounded-full h-1.5">
                         <div
-                          className="bg-purple-600 h-1.5 rounded-full transition-all"
+                          className="bg-slate-800 h-1.5 rounded-full transition-all"
                           style={{ width: `${progress || 0}%` }}
                         />
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Compression... {progress || 0}%
+                        {t('common.loading')} {progress || 0}%
                       </p>
                     </div>
                   )}
@@ -419,7 +423,7 @@ export function MessageInput({
 
                   {/* Message annulé */}
                   {file.cancelled && (
-                    <p className="text-xs text-gray-600 mt-1">Annulé</p>
+                    <p className="text-xs text-gray-600 mt-1">{t('messages.cancelled')}</p>
                   )}
                 </div>
 
@@ -428,7 +432,7 @@ export function MessageInput({
                   <button
                     onClick={() => cancelCompression(index, file.name)}
                     className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors"
-                    title="Annuler la compression"
+                    title={t('common.cancel')}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -436,7 +440,6 @@ export function MessageInput({
                   <button
                     onClick={() => removeAttachment(index)}
                     className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                    title="Supprimer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -453,7 +456,7 @@ export function MessageInput({
           <button
             key={emoji}
             onClick={() => insertEmoji(emoji)}
-            className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors text-lg"
+            className={`w-8 h-8 flex items-center justify-center ${isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100'} rounded-lg transition-colors text-lg`}
             disabled={disabled || sending}
           >
             {emoji}
@@ -468,14 +471,14 @@ export function MessageInput({
           <button
             onClick={() => setShowFileMenu(!showFileMenu)}
             disabled={disabled || sending}
-            className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-10 h-10 flex items-center justify-center ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100'} rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <Paperclip className="w-5 h-5" />
           </button>
 
           {/* File Menu */}
           {showFileMenu && (
-            <div className="absolute bottom-full left-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[200px] z-10">
+            <div className={`absolute bottom-full left-0 mb-2 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} rounded-xl shadow-lg p-2 min-w-[200px] z-10`}>
               <button
                 onClick={() => {
                   if (fileInputRef.current) {
@@ -483,10 +486,10 @@ export function MessageInput({
                     fileInputRef.current.click();
                   }
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-3 py-2 ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-100'} rounded-lg transition-colors text-left`}
               >
-                <ImageIcon className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium">Image</span>
+                <ImageIcon className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                <span className="text-sm font-medium">{t('messages.attachImage')}</span>
               </button>
               <button
                 onClick={() => {
@@ -495,10 +498,10 @@ export function MessageInput({
                     fileInputRef.current.click();
                   }
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-3 py-2 ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-100'} rounded-lg transition-colors text-left`}
               >
-                <Video className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium">Vidéo</span>
+                <Video className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                <span className="text-sm font-medium">{t('messages.attachVideo')}</span>
               </button>
               <button
                 onClick={() => {
@@ -507,10 +510,10 @@ export function MessageInput({
                     fileInputRef.current.click();
                   }
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-3 py-2 ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-100'} rounded-lg transition-colors text-left`}
               >
-                <Music className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium">Audio</span>
+                <Music className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                <span className="text-sm font-medium">{t('messages.attachAudio')}</span>
               </button>
               <button
                 onClick={() => {
@@ -522,10 +525,10 @@ export function MessageInput({
                     fileInputRef.current.click();
                   }
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors text-left"
+                className={`w-full flex items-center gap-3 px-3 py-2 ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-100'} rounded-lg transition-colors text-left`}
               >
-                <FileText className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium">Document</span>
+                <FileText className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                <span className="text-sm font-medium">{t('messages.attachDocument')}</span>
               </button>
             </div>
           )}
@@ -550,9 +553,9 @@ export function MessageInput({
               handleSend();
             }
           }}
-          placeholder="Tapez votre message..."
+          placeholder={t('messages.inputPlaceholder')}
           disabled={disabled || sending}
-          className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`flex-1 px-4 py-2 ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-purple-500'} border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent resize-none max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed`}
           rows={1}
         />
 
@@ -562,7 +565,7 @@ export function MessageInput({
           disabled={
             (!text.trim() && attachments.length === 0) || sending || disabled
           }
-          className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          className={`w-10 h-10 flex items-center justify-center ${isDark ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-800 hover:bg-slate-900'} text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
         >
           {sending ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -574,7 +577,7 @@ export function MessageInput({
 
       {/* Help Text */}
       <p className="text-xs text-slate-500 mt-2">
-        Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne
+        {t('messages.inputHelp')}
       </p>
     </div>
   );

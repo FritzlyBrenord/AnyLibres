@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import HeaderProvider from "@/components/layout/HeaderProvider";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
 import {
   BarChart,
@@ -55,6 +56,7 @@ interface ConvertedAmountProps {
 }
 
 function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps) {
+  const { language } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
 
   useEffect(() => {
@@ -73,7 +75,7 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      return new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -82,12 +84,13 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
     } catch {
       return `${displayAmount.toFixed(2)} ${selectedCurrency}`;
     }
-  }, [displayAmount, selectedCurrency]);
+  }, [displayAmount, selectedCurrency, language]);
 
   return <>{formattedAmount}</>;
 }
 
 export default function AnalyticsRevenue() {
+  const { t, language } = useSafeLanguage();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -184,7 +187,7 @@ export default function AnalyticsRevenue() {
   // Fonction pour formater les montants avec la devise
   const formatAmount = (amount: number) => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      return new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -237,15 +240,15 @@ export default function AnalyticsRevenue() {
 
   const exportToCSV = () => {
     const csvData = earningsHistory.map(e => ({
-      Date: new Date(e.created_at).toLocaleDateString('fr-FR'),
-      Montant: (e.amount_cents / 100).toFixed(2),
-      Frais: (e.platform_fee_cents / 100).toFixed(2),
-      Net: (e.net_amount_cents / 100).toFixed(2),
-      Statut: e.status
+      [t.analytics.revenuePage.csv.date]: new Date(e.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'),
+      [t.analytics.revenuePage.csv.amount]: (e.amount_cents / 100).toFixed(2),
+      [t.analytics.revenuePage.csv.fees]: (e.platform_fee_cents / 100).toFixed(2),
+      [t.analytics.revenuePage.csv.net]: (e.net_amount_cents / 100).toFixed(2),
+      [t.analytics.revenuePage.csv.status]: e.status
     }));
 
-    const headers = Object.keys(csvData[0] || {}).join(',');
-    const rows = csvData.map(row => Object.values(row).join(','));
+    const headers = Object.keys(csvData[0] || {}).join(';');
+    const rows = csvData.map(row => Object.values(row).join(';'));
     const csv = [headers, ...rows].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -266,7 +269,7 @@ export default function AnalyticsRevenue() {
               <div className="absolute inset-0 border-4 border-green-200 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-green-600 rounded-full border-t-transparent animate-spin"></div>
             </div>
-            <p className="text-gray-600 font-medium">Chargement des revenus...</p>
+            <p className="text-gray-600 font-medium">{t.analytics.revenuePage.loading}</p>
           </div>
         </div>
       </div>
@@ -294,7 +297,7 @@ export default function AnalyticsRevenue() {
     const revenue = monthEarnings.reduce((acc: number, e: any) => acc + (e.net_amount_cents || 0), 0);
 
     return {
-      month: date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+      month: date.toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', { month: 'short', year: 'numeric' }),
       revenue: revenue / 100,
       count: monthEarnings.length
     };
@@ -330,7 +333,7 @@ export default function AnalyticsRevenue() {
       const revenue = serviceEarnings.reduce((acc: number, e: any) => acc + (e.net_amount_cents || 0), 0);
 
       return {
-        title: service.title?.fr || service.title?.en || 'Service',
+        title: service.title?.[language] || service.title?.fr || service.title?.en || t.analytics.reportsPage.header?.service || 'Service',
         revenue: revenue / 100,
         count: serviceEarnings.length
       };
@@ -341,10 +344,10 @@ export default function AnalyticsRevenue() {
 
   // Statuts des retraits
   const withdrawalsByStatus = [
-    { name: 'Complétés', value: withdrawals.filter(w => w.status === 'completed').length, color: '#10b981' },
-    { name: 'En cours', value: withdrawals.filter(w => w.status === 'processing').length, color: '#f59e0b' },
-    { name: 'En attente', value: withdrawals.filter(w => w.status === 'pending').length, color: '#3b82f6' },
-    { name: 'Annulés', value: withdrawals.filter(w => w.status === 'cancelled').length, color: '#ef4444' }
+    { name: t.analytics.revenuePage.charts.withdrawals.statuses.completed, value: withdrawals.filter(w => w.status === 'completed').length, color: '#10b981' },
+    { name: t.analytics.revenuePage.charts.withdrawals.statuses.processing, value: withdrawals.filter(w => w.status === 'processing').length, color: '#f59e0b' },
+    { name: t.analytics.revenuePage.charts.withdrawals.statuses.pending, value: withdrawals.filter(w => w.status === 'pending').length, color: '#3b82f6' },
+    { name: t.analytics.revenuePage.charts.withdrawals.statuses.cancelled, value: withdrawals.filter(w => w.status === 'cancelled').length, color: '#ef4444' }
   ].filter(s => s.value > 0);
 
   return (
@@ -357,11 +360,11 @@ export default function AnalyticsRevenue() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Vos Revenus
+                {t.analytics.revenuePage.title}
               </h1>
               <p className="text-gray-600 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
-                Suivez vos gains, retraits et performances financières
+                {t.analytics.revenuePage.subtitle}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -370,7 +373,7 @@ export default function AnalyticsRevenue() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                <span className="font-medium text-gray-700">Exporter CSV</span>
+                <span className="font-medium text-gray-700">{t.analytics.revenuePage.export}</span>
               </button>
               <button
                 onClick={fetchAllData}
@@ -378,7 +381,7 @@ export default function AnalyticsRevenue() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                <span className="font-medium text-gray-700">Actualiser</span>
+                <span className="font-medium text-gray-700">{t.analytics.revenuePage.refresh}</span>
               </button>
             </div>
           </div>
@@ -394,12 +397,12 @@ export default function AnalyticsRevenue() {
                 <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
                   <Wallet className="w-6 h-6 text-white" />
                 </div>
-                <span className="bg-white/20 px-2 py-1 rounded-lg text-xs font-semibold">Disponible</span>
+                <span className="bg-white/20 px-2 py-1 rounded-lg text-xs font-semibold">{t.analytics.revenuePage.stats.available.badge}</span>
               </div>
-              <p className="text-green-100 text-sm mb-1">Solde Disponible</p>
+              <p className="text-green-100 text-sm mb-1">{t.analytics.revenuePage.stats.available.title}</p>
               <p className="text-4xl font-bold mb-3">{formatAmount(convertedAmounts.availableBalance)}</p>
               <div className="pt-3 border-t border-white/20 text-xs text-green-100">
-                Prêt à être retiré maintenant
+                {t.analytics.revenuePage.stats.available.hint}
               </div>
             </div>
           </div>
@@ -411,9 +414,9 @@ export default function AnalyticsRevenue() {
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Revenus Totaux</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.revenuePage.stats.total.title}</p>
             <p className="text-4xl font-bold text-gray-900 mb-1">{formatAmount(convertedAmounts.totalEarned)}</p>
-            <p className="text-xs text-gray-400">Gains à vie (net)</p>
+            <p className="text-xs text-gray-400">{t.analytics.revenuePage.stats.total.hint}</p>
           </div>
 
           {/* En attente */}
@@ -423,9 +426,9 @@ export default function AnalyticsRevenue() {
                 <Clock className="w-6 h-6 text-amber-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">En Compensation</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.revenuePage.stats.pending.title}</p>
             <p className="text-4xl font-bold text-gray-900 mb-1">{formatAmount(convertedAmounts.pendingBalance)}</p>
-            <p className="text-xs text-gray-400">Disponible sous 14 jours</p>
+            <p className="text-xs text-gray-400">{t.analytics.revenuePage.stats.pending.hint}</p>
           </div>
 
           {/* Déjà retiré */}
@@ -435,9 +438,9 @@ export default function AnalyticsRevenue() {
                 <ArrowDownToLine className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-            <p className="text-gray-500 text-sm mb-1">Déjà Retiré</p>
+            <p className="text-gray-500 text-sm mb-1">{t.analytics.revenuePage.stats.withdrawn.title}</p>
             <p className="text-4xl font-bold text-gray-900 mb-1">{formatAmount(convertedAmounts.withdrawnAmount)}</p>
-            <p className="text-xs text-gray-400">{completedWithdrawals} retrait{completedWithdrawals > 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400">{t.analytics.revenuePage.stats.withdrawn.hint.replace('{count}', completedWithdrawals.toString()).replace('{s}', completedWithdrawals > 1 ? 's' : '')}</p>
           </div>
         </div>
 
@@ -445,29 +448,29 @@ export default function AnalyticsRevenue() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-600">Montant Restant</h3>
+              <h3 className="text-sm font-semibold text-gray-600">{t.analytics.revenuePage.stats.remaining.title}</h3>
               <DollarSign className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{formatAmount(convertedAmounts.availableBalance + convertedAmounts.pendingBalance)}</p>
-            <p className="text-xs text-gray-500 mt-2">Disponible + En attente</p>
+            <p className="text-xs text-gray-500 mt-2">{t.analytics.revenuePage.stats.remaining.hint}</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-600">Frais de Retrait</h3>
+              <h3 className="text-sm font-semibold text-gray-600">{t.analytics.revenuePage.stats.fees.title}</h3>
               <CreditCard className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{formatAmount(convertedAmounts.totalWithdrawalFees)}</p>
-            <p className="text-xs text-gray-500 mt-2">Total des frais (2.5%)</p>
+            <p className="text-xs text-gray-500 mt-2">{t.analytics.revenuePage.stats.fees.hint}</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-600">Modes de Paiement</h3>
+              <h3 className="text-sm font-semibold text-gray-600">{t.analytics.revenuePage.stats.methods.title}</h3>
               <CreditCard className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900">{paymentMethods.length}</p>
-            <p className="text-xs text-gray-500 mt-2">Méthode{paymentMethods.length > 1 ? 's' : ''} configurée{paymentMethods.length > 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-500 mt-2">{t.analytics.revenuePage.stats.methods.hint.replace('{s}', paymentMethods.length > 1 ? 's' : '')}</p>
           </div>
         </div>
 
@@ -477,8 +480,8 @@ export default function AnalyticsRevenue() {
           <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Évolution des Revenus</h3>
-                <p className="text-sm text-gray-500">6 derniers mois (revenus nets)</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{t.analytics.revenuePage.charts.revenue.title}</h3>
+                <p className="text-sm text-gray-500">{t.analytics.revenuePage.charts.revenue.subtitle}</p>
               </div>
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
@@ -496,7 +499,7 @@ export default function AnalyticsRevenue() {
                     axisLine={false}
                     tickLine={false}
                     tick={{fill: '#64748b', fontSize: 12}}
-                    tickFormatter={(value) => `${value}€`}
+                    tickFormatter={(value) => `${value}${t.common.currency}`}
                   />
                   <Tooltip
                     contentStyle={{
@@ -504,7 +507,7 @@ export default function AnalyticsRevenue() {
                       border: 'none',
                       boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
                     }}
-                    formatter={(value: any) => [`${value.toFixed(2)} €`, 'Revenus']}
+                    formatter={(value: any) => [`${value.toFixed(2)} ${t.common.currency}`, t.analytics.revenuePage.charts.revenue.label]}
                   />
                   <Bar dataKey="revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
                 </BarChart>
@@ -514,8 +517,8 @@ export default function AnalyticsRevenue() {
 
           {/* Withdrawal Status Distribution */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Statut des Retraits</h3>
-            <p className="text-sm text-gray-500 mb-6">Distribution par statut</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">{t.analytics.revenuePage.charts.withdrawals.title}</h3>
+            <p className="text-sm text-gray-500 mb-6">{t.analytics.revenuePage.charts.withdrawals.subtitle}</p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -561,8 +564,8 @@ export default function AnalyticsRevenue() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Revenus par Service</h3>
-                <p className="text-sm text-gray-500">Top 10 services les plus rentables</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{t.analytics.revenuePage.charts.byService.title}</h3>
+                <p className="text-sm text-gray-500">{t.analytics.revenuePage.charts.byService.subtitle}</p>
               </div>
               <Package className="w-6 h-6 text-purple-600" />
             </div>
@@ -585,7 +588,7 @@ export default function AnalyticsRevenue() {
                       border: 'none',
                       boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'
                     }}
-                    formatter={(value: any) => [`${value.toFixed(2)} €`, 'Revenus']}
+                    formatter={(value: any) => [`${value.toFixed(2)} ${t.common.currency}`, t.analytics.revenuePage.charts.byService.label]}
                   />
                   <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
                 </BarChart>
@@ -599,7 +602,7 @@ export default function AnalyticsRevenue() {
           {/* Payment Methods */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Modes de Paiement</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t.analytics.revenuePage.paymentMethods.title}</h3>
               <CreditCard className="w-6 h-6 text-blue-600" />
             </div>
             {paymentMethods.length > 0 ? (
@@ -619,7 +622,7 @@ export default function AnalyticsRevenue() {
                       )}
                       {method.is_default && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                          Par défaut
+                          {t.analytics.revenuePage.paymentMethods.defaultBadge}
                         </span>
                       )}
                     </div>
@@ -629,7 +632,7 @@ export default function AnalyticsRevenue() {
             ) : (
               <div className="text-center py-8 text-gray-400">
                 <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Aucun mode de paiement configuré</p>
+                <p className="text-sm">{t.analytics.revenuePage.paymentMethods.empty}</p>
               </div>
             )}
           </div>
@@ -637,7 +640,7 @@ export default function AnalyticsRevenue() {
           {/* Recent Withdrawals */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Retraits Récents</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t.analytics.revenuePage.withdrawals.title}</h3>
               <History className="w-6 h-6 text-purple-600" />
             </div>
             {withdrawals.length > 0 ? (
@@ -660,7 +663,7 @@ export default function AnalyticsRevenue() {
                           <ConvertedAmount amountCents={withdrawal.amount_cents} selectedCurrency={selectedCurrency} />
                         </p>
                         <p className="text-xs text-gray-500">
-                          {new Date(withdrawal.created_at).toLocaleDateString('fr-FR')}
+                          {new Date(withdrawal.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US')}
                         </p>
                       </div>
                     </div>
@@ -669,7 +672,7 @@ export default function AnalyticsRevenue() {
                         <ConvertedAmount amountCents={withdrawal.net_amount_cents} selectedCurrency={selectedCurrency} />
                       </p>
                       <p className="text-xs text-gray-500">
-                        Frais: <ConvertedAmount amountCents={withdrawal.fee_cents} selectedCurrency={selectedCurrency} />
+                        {t.analytics.revenuePage.withdrawals.feesLabel} <ConvertedAmount amountCents={withdrawal.fee_cents} selectedCurrency={selectedCurrency} />
                       </p>
                     </div>
                   </div>
@@ -678,7 +681,7 @@ export default function AnalyticsRevenue() {
             ) : (
               <div className="text-center py-8 text-gray-400">
                 <ArrowDownToLine className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Aucun retrait pour le moment</p>
+                <p className="text-sm">{t.analytics.revenuePage.withdrawals.empty}</p>
               </div>
             )}
           </div>

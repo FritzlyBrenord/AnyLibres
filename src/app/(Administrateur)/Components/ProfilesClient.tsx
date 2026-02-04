@@ -478,7 +478,7 @@ export default function ProfilesClient({
                       }`}
                     >
                       <p
-                        className={isDark ? "text-white/80" : "text-slate-700"}
+                        className={`${isDark ? "text-white/80" : "text-slate-700"} whitespace-pre-wrap break-words`}
                       >
                         {profile.bio}
                       </p>

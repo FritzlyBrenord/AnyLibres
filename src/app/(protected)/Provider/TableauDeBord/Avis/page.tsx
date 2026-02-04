@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import ProviderReviewResponse from "@/components/review/ProviderReviewResponse";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface Review {
   id: string;
@@ -66,6 +67,7 @@ interface Stats {
 }
 
 export default function ProviderReviewsPage() {
+  const { t, language } = useSafeLanguage();
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -92,10 +94,10 @@ export default function ProviderReviewsPage() {
         setReviews(data.reviews || []);
         setStats(data.stats || null);
       } else {
-        setError(data.error || "Erreur lors du chargement des avis");
+        setError(data.error || t.reviewsPage.error.fetch);
       }
     } catch (err: any) {
-      setError("Impossible de charger les avis");
+      setError(t.reviewsPage.error.generic);
     } finally {
       setLoading(false);
     }
@@ -138,7 +140,7 @@ export default function ProviderReviewsPage() {
           <div className="text-center">
             <Loader2 className="w-16 h-16 animate-spin text-purple-600 mx-auto mb-4" />
             <p className="text-gray-600 font-medium">
-              Chargement de vos avis...
+              {t.reviewsPage.loading}
             </p>
           </div>
         </div>
@@ -162,11 +164,11 @@ export default function ProviderReviewsPage() {
               <Star className="w-6 h-6 text-white fill-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
-              Mes Avis
+              {t.reviewsPage.title}
             </h1>
           </div>
           <p className="text-gray-600 ml-15">
-            Consultez tous les avis de vos clients et gérez vos réponses
+            {t.reviewsPage.subtitle}
           </p>
         </motion.div>
 
@@ -208,7 +210,7 @@ export default function ProviderReviewsPage() {
                   ))}
                 </div>
                 <p className="text-purple-100 text-sm">
-                  Note moyenne sur {stats.total_reviews} avis
+                  {t.reviewsPage.stats.averageRating.subtitle.replace('{count}', stats.total_reviews.toString())}
                 </p>
               </div>
 
@@ -223,7 +225,7 @@ export default function ProviderReviewsPage() {
                 <div className="text-3xl font-bold text-gray-900 mb-1">
                   {stats.total_reviews}
                 </div>
-                <p className="text-gray-600 text-sm">Total des avis</p>
+                <p className="text-gray-600 text-sm">{t.reviewsPage.stats.totalReviews.title}</p>
               </div>
 
               {/* Response Rate */}
@@ -238,7 +240,7 @@ export default function ProviderReviewsPage() {
                   {Math.round((stats.with_response / stats.total_reviews) * 100)}%
                 </div>
                 <p className="text-gray-600 text-sm">
-                  Taux de réponse ({stats.with_response}/{stats.total_reviews})
+                  {t.reviewsPage.stats.responseRate.title} ({stats.with_response}/{stats.total_reviews})
                 </p>
               </div>
 
@@ -257,7 +259,7 @@ export default function ProviderReviewsPage() {
                 <div className="text-3xl font-bold text-gray-900 mb-1">
                   {stats.without_response}
                 </div>
-                <p className="text-gray-600 text-sm">En attente de réponse</p>
+                <p className="text-gray-600 text-sm">{t.reviewsPage.stats.pendingResponse.title}</p>
               </div>
             </div>
 
@@ -267,7 +269,7 @@ export default function ProviderReviewsPage() {
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-purple-600" />
-                  Distribution des notes
+                  {t.reviewsPage.stats.distribution.title}
                 </h3>
                 <div className="space-y-3">
                   {[5, 4, 3, 2, 1].map((rating) => {
@@ -312,21 +314,21 @@ export default function ProviderReviewsPage() {
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Award className="w-5 h-5 text-purple-600" />
-                  Notes par critère
+                  {t.reviewsPage.stats.criteria.title}
                 </h3>
                 <div className="space-y-4">
                   <CriteriaBar
-                    label="Communication"
+                    label={t.reviewsPage.stats.criteria.communication}
                     value={stats.average_communication}
                     icon="💬"
                   />
                   <CriteriaBar
-                    label="Qualité du travail"
+                    label={t.reviewsPage.stats.criteria.quality}
                     value={stats.average_quality}
                     icon="✨"
                   />
                   <CriteriaBar
-                    label="Respect des délais"
+                    label={t.reviewsPage.stats.criteria.deadline}
                     value={stats.average_deadline}
                     icon="⏰"
                   />
@@ -346,7 +348,7 @@ export default function ProviderReviewsPage() {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-gray-900">Filtres</h3>
+              <h3 className="font-semibold text-gray-900">{t.reviewsPage.filters.title}</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -355,7 +357,7 @@ export default function ProviderReviewsPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder={t.reviewsPage.filters.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
@@ -370,12 +372,12 @@ export default function ProviderReviewsPage() {
                 }
                 className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
               >
-                <option value="">Toutes les notes</option>
-                <option value="5">⭐⭐⭐⭐⭐ (5 étoiles)</option>
-                <option value="4">⭐⭐⭐⭐ (4 étoiles)</option>
-                <option value="3">⭐⭐⭐ (3 étoiles)</option>
-                <option value="2">⭐⭐ (2 étoiles)</option>
-                <option value="1">⭐ (1 étoile)</option>
+                <option value="">{t.reviewsPage.filters.rating.all}</option>
+                <option value="5">⭐⭐⭐⭐⭐ ({t.reviewsPage.filters.rating.stars.replace('{count}', '5')})</option>
+                <option value="4">⭐⭐⭐⭐ ({t.reviewsPage.filters.rating.stars.replace('{count}', '4')})</option>
+                <option value="3">⭐⭐⭐ ({t.reviewsPage.filters.rating.stars.replace('{count}', '3')})</option>
+                <option value="2">⭐⭐ ({t.reviewsPage.filters.rating.stars.replace('{count}', '2')})</option>
+                <option value="1">⭐ ({t.reviewsPage.filters.rating.stars.replace('{count}', '1')})</option>
               </select>
 
               {/* Filter by Response */}
@@ -386,19 +388,19 @@ export default function ProviderReviewsPage() {
                 }
                 className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
               >
-                <option value="all">Tous les avis</option>
-                <option value="responded">Avec réponse</option>
-                <option value="pending">Sans réponse</option>
+                <option value="all">{t.reviewsPage.filters.response.all}</option>
+                <option value="responded">{t.reviewsPage.filters.response.responded}</option>
+                <option value="pending">{t.reviewsPage.filters.response.pending}</option>
               </select>
             </div>
 
             {/* Active Filters */}
             {(filterRating || filterResponse !== "all" || searchTerm) && (
               <div className="mt-4 flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-600">Filtres actifs:</span>
+                <span className="text-sm text-gray-600">{t.reviewsPage.filters.activeFilters}</span>
                 {filterRating && (
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm flex items-center gap-1">
-                    {filterRating} étoiles
+                    {t.reviewsPage.filters.rating.stars.replace('{count}', filterRating.toString())}
                     <button
                       onClick={() => setFilterRating(null)}
                       className="hover:text-purple-900"
@@ -410,8 +412,8 @@ export default function ProviderReviewsPage() {
                 {filterResponse !== "all" && (
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm flex items-center gap-1">
                     {filterResponse === "responded"
-                      ? "Avec réponse"
-                      : "Sans réponse"}
+                      ? t.reviewsPage.filters.response.responded
+                      : t.reviewsPage.filters.response.pending}
                     <button
                       onClick={() => setFilterResponse("all")}
                       className="hover:text-purple-900"
@@ -445,13 +447,13 @@ export default function ProviderReviewsPage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 {searchTerm || filterRating || filterResponse !== "all"
-                  ? "Aucun avis ne correspond aux filtres"
-                  : "Aucun avis pour le moment"}
+                  ? t.reviewsPage.empty.filtered.title
+                  : t.reviewsPage.empty.none.title}
               </h3>
               <p className="text-gray-600">
                 {searchTerm || filterRating || filterResponse !== "all"
-                  ? "Essayez de modifier vos critères de recherche"
-                  : "Vos premiers avis apparaîtront ici"}
+                  ? t.reviewsPage.empty.filtered.subtitle
+                  : t.reviewsPage.empty.none.subtitle}
               </p>
             </div>
           ) : (

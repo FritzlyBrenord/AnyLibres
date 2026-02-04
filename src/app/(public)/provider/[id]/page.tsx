@@ -254,17 +254,19 @@ export default function ProviderProfilePage() {
               </div>
 
               {/* Titre et informations */}
-              <h1 className="text-4xl lg:text-5xl font-bold mb-2 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 leading-tight break-words">
                 {provider.company_name || provider.profile?.display_name}
               </h1>
               
               
-              <div className="text-2xl text-amber-400 font-medium mb-6 flex items-center gap-2">
-                <Briefcase className="w-6 h-6" />
-                <TranslatedText text={provider.profession || "Expert Anylibre"} />
+              <div className="text-lg sm:text-xl md:text-2xl text-amber-400 font-medium mb-4 sm:mb-6 flex items-center gap-2">
+                <Briefcase className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                <span className="break-words">
+                  <TranslatedText text={provider.profession || "Expert Anylibre"} />
+                </span>
               </div>
 
-              <div className="text-xl text-gray-200 mb-8 leading-relaxed max-w-2xl">
+              <div className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 mb-6 sm:mb-8 leading-relaxed max-w-2xl break-words whitespace-pre-wrap">
                 <TranslatedText 
                   text={provider.tagline || provider.profile?.bio ||
                   "Prestataire professionnel offrant des services de qualité exceptionnelle"} 

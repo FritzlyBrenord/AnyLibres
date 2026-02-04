@@ -38,6 +38,7 @@ import { prepareFileForUpload, uploadFile } from "@/utils/lib/deliveryHelper";
 import DeliveryGallery, { MediaItem } from "@/components/order/DeliveryGallery";
 import Header from "@/components/layout/HeaderProvider";
 import ProviderOrderReviewSection from "@/components/review/ProviderOrderReviewSection";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
 
 // Hook pour obtenir la devise sélectionnée
@@ -99,6 +100,7 @@ function PriceDisplay({
   className = "",
   showLoading = true,
 }: PriceDisplayProps) {
+  const { language } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
   const [loading, setLoading] = useState(false);
 
@@ -129,13 +131,19 @@ function PriceDisplay({
 
   return (
     <span className={className}>
-      {formatCurrency(displayAmount, selectedCurrency)}
+      {new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
+        style: "currency",
+        currency: selectedCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(displayAmount)}
     </span>
   );
 }
 
 // Composants modulaires
 const OrderStatusBadge = ({ status }: { status: OrderStatus }) => {
+  const { t } = useSafeLanguage();
   const statusIcons = {
     pending: "⏳",
     paid: "✅",
@@ -156,21 +164,24 @@ const OrderStatusBadge = ({ status }: { status: OrderStatus }) => {
       className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${ORDER_STATUS_COLORS[status]} border transition-all duration-200`}
     >
       <span className="mr-1.5">{statusIcons[status]}</span>
-      {ORDER_STATUS_LABELS[status]}
+      {t.ordersPage.status[status] || status}
     </motion.span>
   );
 };
 
-const PriorityBadge = () => (
-  <motion.span
-    initial={{ scale: 0 }}
-    animate={{ scale: 1 }}
-    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-red-500 to-orange-500 text-white"
-  >
-    <Zap size={10} className="mr-1" />
-    Prioritaire
-  </motion.span>
-);
+const PriorityBadge = () => {
+  const { t } = useSafeLanguage();
+  return (
+    <motion.span
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-red-500 to-orange-500 text-white"
+    >
+      <Zap size={10} className="mr-1" />
+      {t.ordersPage.list.priorityBadge}
+    </motion.span>
+  );
+};
 
 const DeliveryTimer = ({ deadline }: { deadline: string }) => {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(deadline));
@@ -189,14 +200,14 @@ const DeliveryTimer = ({ deadline }: { deadline: string }) => {
     <div className="bg-white rounded-lg border p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-gray-900">
-          Délai de livraison
+          {t.ordersPage.timer.label}
         </span>
         <span
           className={`text-sm font-semibold ${
             timeLeft.days <= 2 ? "text-red-600" : "text-gray-600"
           }`}
         >
-          {timeLeft.days}j {timeLeft.hours}h
+          {t.ordersPage.timer.days.replace('{count}', timeLeft.days.toString())} {t.ordersPage.timer.hours.replace('{count}', timeLeft.hours.toString())}
         </span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -229,6 +240,7 @@ const OrderActions = ({
   onViewDetails: (order: any) => void;
   onExtend: (order: any) => void;
 }) => {
+  const { t } = useSafeLanguage();
   const getActions = () => {
     // Si une demande est en attente, on ne peut pas en refaire une
     const isExtensionPending = order.extension_status === "pending";
@@ -237,7 +249,7 @@ const OrderActions = ({
       case "paid":
         return [
           {
-            label: "Démarrer le service",
+            label: t.ordersPage.actions.start,
             icon: PlayCircle,
             onClick: () => onStart(order.id),
             variant: "primary" as const,
@@ -247,13 +259,13 @@ const OrderActions = ({
       case "delivery_delayed":
         return [
           {
-            label: "Livrer le travail",
+            label: t.ordersPage.actions.deliver,
             icon: Send,
             onClick: () => onDeliver(order, false),
             variant: "primary" as const,
           },
           {
-            label: isExtensionPending ? "⏳ Délai en attente" : "Demander un délai",
+            label: isExtensionPending ? t.ordersPage.actions.extensionPending : t.ordersPage.actions.requestExtension,
             icon: Clock,
             onClick: () => !isExtensionPending && onExtend(order),
             variant: "secondary" as const,
@@ -263,19 +275,19 @@ const OrderActions = ({
       case "revision_requested":
         return [
           {
-            label: "Voir les détails",
+            label: t.ordersPage.actions.viewDetails,
             icon: Eye,
             onClick: () => onViewDetails(order),
             variant: "secondary" as const,
           },
           {
-            label: "Livrer la révision",
+            label: t.ordersPage.actions.deliverRevision,
             icon: RefreshCw,
             onClick: () => onDeliver(order, true),
             variant: "primary" as const,
           },
           {
-            label: isExtensionPending ? "⏳ Délai en attente" : "Demander un délai",
+            label: isExtensionPending ? t.ordersPage.actions.extensionPending : t.ordersPage.actions.requestExtension,
             icon: Clock,
             onClick: () => !isExtensionPending && onExtend(order),
             variant: "secondary" as const,
@@ -286,7 +298,7 @@ const OrderActions = ({
       case "completed":
         return [
           {
-            label: "Voir les détails",
+            label: t.ordersPage.actions.viewDetails,
             icon: Eye,
             onClick: () => onViewDetails(order),
             variant: "secondary" as const,
@@ -350,6 +362,7 @@ const OrderCard = ({
   onExtend: (order: any) => void;
   selectedCurrency: string;
 }) => {
+  const { t, language } = useSafeLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -375,13 +388,13 @@ const OrderCard = ({
                   disabled={!order.client}
                 >
                   <h3 className="font-semibold text-gray-900">
-                    {order.client?.full_name || "Client Inconnu"}
+                    {order.client?.full_name || t.ordersPage.list.unknownClient}
                   </h3>
                 </button>
                 <button
                   onClick={() => order.client?.id && onViewClientProfile?.(order.client.id)}
                   className="p-1 rounded-md hover:bg-gray-100 text-gray-500"
-                  title="Voir le profil"
+                  title={t.ordersPage.list.viewProfile}
                   disabled={!order.client}
                 >
                   <User size={16} />
@@ -394,10 +407,10 @@ const OrderCard = ({
                 <button
                   onClick={() => onViewDetails?.(order)}
                   className="text-sm text-blue-600 hover:underline flex items-center font-semibold"
-                  title="Voir tous les détails de la commande"
+                  title={t.ordersPage.list.viewOrderDetailsTitle}
                 >
                   <Eye size={14} className="mr-1" />
-                  Voir la commande complète
+                  {t.ordersPage.list.viewCompleteOrder}
                 </button>
               </div>
             </div>
@@ -411,7 +424,7 @@ const OrderCard = ({
         {/* Content */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="space-y-1">
-            <p className="text-sm text-gray-600">Vous recevrez</p>
+            <p className="text-sm text-gray-600">{t.ordersPage.list.receiveAmount}</p>
             <p className="text-lg font-semibold text-gray-900">
               <PriceDisplay
                 amountCents={(() => {
@@ -428,9 +441,9 @@ const OrderCard = ({
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-gray-600">Date limite</p>
+            <p className="text-sm text-gray-600">{t.ordersPage.list.deadline}</p>
             <p className="text-sm font-medium text-gray-900">
-              {new Date(order.delivery_deadline).toLocaleDateString("fr-FR", {
+              {new Date(order.delivery_deadline).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
@@ -438,7 +451,7 @@ const OrderCard = ({
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-gray-600">Révisions</p>
+            <p className="text-sm text-gray-600">{t.ordersPage.list.revisions}</p>
             <p className="text-sm font-medium text-gray-900">
               {order.revision_count || 0}/{order.service_info?.max_revisions || order.service_info?.revisions_included || 0}
             </p>
@@ -473,7 +486,7 @@ const OrderCard = ({
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
                 <p className="text-sm font-medium text-red-800">
-                  Votre dernière demande de délai a été <strong>refusée</strong> par le client.
+                  {t.ordersPage.detail.extensionRejectedBanner.text}
                 </p>
               </div>
             </div>
@@ -488,17 +501,17 @@ const OrderCard = ({
               </div>
               <div className="ml-3 w-full">
                 <h3 className="text-sm font-bold text-green-800 mb-2">
-                  Livraisons ({order.order_deliveries.length})
+                  {t.ordersPage.detail.deliveriesSection.title.replace('{count}', order.order_deliveries.length.toString())}
                 </h3>
                 <div className="space-y-4">
                   {order.order_deliveries.map((delivery: any, idx: number) => (
                     <div key={delivery.id} className="bg-white/50 rounded-lg p-3 border border-green-100">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-green-700">
-                          Livraison #{delivery.delivery_number}
+                          {t.ordersPage.detail.deliveriesSection.deliveryNumber.replace('{number}', delivery.delivery_number.toString())}
                         </span>
                         <span className="text-[10px] text-gray-500">
-                          {new Date(delivery.delivered_at).toLocaleDateString("fr-FR")}
+                          {new Date(delivery.delivered_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US')}
                         </span>
                       </div>
                       
@@ -527,7 +540,7 @@ const OrderCard = ({
                           className="flex items-center gap-2 text-blue-600 text-xs font-semibold hover:underline"
                         >
                           <Link size={12} />
-                          Voir le lien externe
+                          {t.ordersPage.detail.deliveriesSection.viewExternalLink}
                         </a>
                       )}
                     </div>
@@ -572,18 +585,18 @@ const OrderCard = ({
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-600">ID Commande</p>
+                  <p className="text-gray-600">{t.ordersPage.list.idLabel}</p>
                   <p className="font-medium">{"#" + (order?.id?.split("-")[0] || "???")}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Date de création</p>
+                  <p className="text-gray-600">{t.ordersPage.list.createdAt}</p>
                   <p className="font-medium">
-                    {new Date(order.created_at).toLocaleDateString("fr-FR")}
+                    {new Date(order.created_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US')}
                   </p>
                 </div>
                 {order.message && (
                   <div className="md:col-span-2">
-                    <p className="text-gray-600">Message du client</p>
+                    <p className="text-gray-600">{t.ordersPage.list.clientMessage}</p>
                     <p className="font-medium">{order.message}</p>
                   </div>
                 )}
@@ -613,6 +626,7 @@ const DeliveryModal = ({
   uploadProgress: number;
   uploadStatus: string;
 }) => {
+  const { t } = useSafeLanguage();
   const [fileType, setFileType] = useState<
     "document" | "image" | "video" | "audio" | "link"
   >("document");
@@ -627,7 +641,7 @@ const DeliveryModal = ({
 
   const handleSubmit = () => {
     if (!message.trim()) {
-      alert("Veuillez ajouter un message de livraison");
+      alert(t.ordersPage.deliveryModal.errorRequiredMessage);
       return;
     }
     onDeliver({ message, file, link, fileType });
@@ -635,9 +649,7 @@ const DeliveryModal = ({
 
   useEffect(() => {
     if (isRevision && !message) {
-      setMessage(
-        "Voici les modifications demandées. N'hésitez pas si vous avez d'autres retours."
-      );
+      setMessage(t.ordersPage.deliveryModal.revisionDefaultMessage);
     }
   }, [isRevision]);
 
@@ -661,10 +673,12 @@ const DeliveryModal = ({
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                {isRevision ? "Livrer la révision" : "Livrer la commande"}
+                {isRevision ? t.ordersPage.deliveryModal.titleRevision : t.ordersPage.deliveryModal.titleDeliver}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Commande #{order?.id?.split("-")[0] || "???"} • {order?.client?.full_name || "Client Inconnu"}
+                {t.ordersPage.deliveryModal.subtitle
+                  .replace('{id}', order?.id?.split("-")[0] || "???")
+                  .replace('{client}', order?.client?.full_name || t.ordersPage.list.unknownClient)}
               </p>
             </div>
             <button
@@ -681,19 +695,19 @@ const DeliveryModal = ({
             {/* Type de livraison */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Type de livraison
+                {t.ordersPage.deliveryModal.typeLabel}
               </label>
               <div className="grid grid-cols-5 gap-2">
                 {[
                   {
                     type: "document" as const,
                     icon: FileText,
-                    label: "Document",
+                    label: t.ordersPage.deliveryModal.types.document,
                   },
-                  { type: "image", icon: Image, label: "Image" },
-                  { type: "video", icon: Video, label: "Vidéo" },
-                  { type: "audio", icon: Music, label: "Audio" },
-                  { type: "link", icon: Link, label: "Lien" },
+                  { type: "image", icon: Image, label: t.ordersPage.deliveryModal.types.image },
+                  { type: "video", icon: Video, label: t.ordersPage.deliveryModal.types.video },
+                  { type: "audio", icon: Music, label: t.ordersPage.deliveryModal.types.audio },
+                  { type: "link", icon: Link, label: t.ordersPage.deliveryModal.types.link },
                 ].map((item) => (
                   <button
                     key={item.type}
@@ -716,7 +730,7 @@ const DeliveryModal = ({
             {/* Message */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Message de livraison *
+                {t.ordersPage.deliveryModal.messageLabel}
               </label>
               <textarea
                 value={message}
@@ -724,8 +738,8 @@ const DeliveryModal = ({
                 rows={4}
                 placeholder={
                   isRevision
-                    ? "Décrivez les corrections apportées..."
-                    : "Décrivez le travail livré..."
+                    ? t.ordersPage.deliveryModal.messagePlaceholderRevision
+                    : t.ordersPage.deliveryModal.messagePlaceholder
                 }
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
               />
@@ -735,7 +749,7 @@ const DeliveryModal = ({
             {fileType !== "link" ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fichier livrable
+                  {t.ordersPage.deliveryModal.fileLabel}
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
                   <input
@@ -747,16 +761,16 @@ const DeliveryModal = ({
                   <label htmlFor="delivery-file" className="cursor-pointer">
                     <Upload size={32} className="mx-auto text-gray-400 mb-3" />
                     <p className="text-sm text-gray-600">
-                      Cliquez pour télécharger ou glissez votre fichier
+                      {t.ordersPage.deliveryModal.fileHint}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {fileType === "image"
-                        ? "JPG, PNG, GIF (max 10MB)"
+                        ? t.ordersPage.deliveryModal.fileTypes.image
                         : fileType === "video"
-                        ? "MP4, MOV (max 100MB)"
+                        ? t.ordersPage.deliveryModal.fileTypes.video
                         : fileType === "audio"
-                        ? "MP3, WAV (max 50MB)"
-                        : "PDF, DOC, ZIP (max 50MB)"}
+                        ? t.ordersPage.deliveryModal.fileTypes.audio
+                        : t.ordersPage.deliveryModal.fileTypes.generic}
                     </p>
                   </label>
                 </div>
@@ -778,13 +792,13 @@ const DeliveryModal = ({
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lien externe
+                  {t.ordersPage.deliveryModal.externalLinkLabel}
                 </label>
                 <input
                   type="url"
                   value={link}
                   onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://example.com/votre-travail"
+                  placeholder={t.ordersPage.deliveryModal.externalLinkPlaceholder}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
               </div>
@@ -819,7 +833,7 @@ const DeliveryModal = ({
                 disabled={isUploading}
                 className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Annuler
+                {t.ordersPage.deliveryModal.cancel}
               </button>
               <button
                 onClick={handleSubmit}
@@ -829,12 +843,12 @@ const DeliveryModal = ({
                 {isUploading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Envoi en cours...
+                    {t.ordersPage.deliveryModal.uploading}
                   </>
                 ) : (
                   <>
                     <Send size={18} className="mr-2" />
-                    {isRevision ? "Envoyer la révision" : "Livrer la commande"}
+                    {isRevision ? t.ordersPage.deliveryModal.submitRevision : t.ordersPage.deliveryModal.submitDeliver}
                   </>
                 )}
               </button>
@@ -870,6 +884,7 @@ const ExtensionRequestModal = ({
   const [days, setDays] = useState(1);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const { t } = useSafeLanguage();
 
   if (!isOpen) return null;
 
@@ -890,7 +905,7 @@ const ExtensionRequestModal = ({
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Clock className="text-blue-600" size={24} />
-                Demander un délai
+                {t.ordersPage.extensionModal.title}
             </h2>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} className="text-gray-500" />
@@ -900,7 +915,7 @@ const ExtensionRequestModal = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Jours supplémentaires demandés
+                {t.ordersPage.extensionModal.daysLabel}
               </label>
               <div className="flex items-center gap-4">
                   <input
@@ -912,14 +927,14 @@ const ExtensionRequestModal = ({
                     className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <span className="w-16 text-center font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
-                    {days}j
+                    {t.ordersPage.timer.days.replace('{count}', days.toString())}
                   </span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Raison de la demande *
+                {t.ordersPage.extensionModal.reasonLabel}
               </label>
               <textarea
                 value={reason}
@@ -927,14 +942,14 @@ const ExtensionRequestModal = ({
                 rows={4}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all resize-none text-sm"
-                placeholder="Expliquez brièvement pourquoi vous avez besoin de plus de temps..."
+                placeholder={t.ordersPage.extensionModal.reasonPlaceholder}
               />
             </div>
 
             <div className="bg-blue-50 p-4 rounded-xl flex gap-3 border border-blue-100">
                 <AlertTriangle className="text-blue-600 shrink-0" size={18} />
                 <p className="text-xs text-blue-800 leading-relaxed">
-                    Votre demande sera soumise au client. La date limite ne sera mise à jour qu'après son acceptation.
+                    {t.ordersPage.extensionModal.infoText}
                 </p>
             </div>
           </div>
@@ -945,12 +960,12 @@ const ExtensionRequestModal = ({
                 className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
                 disabled={loading}
               >
-                Annuler
+                {t.ordersPage.extensionModal.cancel}
               </button>
               <button
                 onClick={async () => {
                     if (!reason.trim()) {
-                        alert("Veuillez fournir une raison");
+                        alert(t.ordersPage.extensionModal.errorReason);
                         return;
                     }
                     setLoading(true);
@@ -960,7 +975,7 @@ const ExtensionRequestModal = ({
                 disabled={loading}
                 className="flex-[2] px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg shadow-blue-200 transition-all flex items-center justify-center"
               >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : "Envoyer la demande"}
+                {loading ? <Loader2 className="animate-spin" size={20} /> : t.ordersPage.extensionModal.submit}
               </button>
           </div>
         </motion.div>
@@ -971,6 +986,7 @@ const ExtensionRequestModal = ({
 
 // Composant principal refondu
 const OrderManagement = () => {
+  const { t } = useSafeLanguage();
   const router = useRouter();
   const selectedCurrency = useSelectedCurrency();
   const [orders, setOrders] = useState<any[]>([]);
@@ -1018,13 +1034,13 @@ const OrderManagement = () => {
 
   // Tabs configuration
   const tabs = [
-    { id: "all" as any, label: "Toutes", icon: Package, count: 0 },
-    { id: "priority" as any, label: "Priorité", icon: Zap, count: 0 },
-    { id: "paid" as any, label: "Payées", icon: DollarSign, count: 0 },
-    { id: "in_progress" as any, label: "En cours", icon: PlayCircle, count: 0 },
-    { id: "delivered" as any, label: "Livrées", icon: Send, count: 0 },
-    { id: "revision_requested" as any, label: "Révision", icon: RefreshCw, count: 0 },
-    { id: "completed" as any, label: "Terminées", icon: CheckCircle, count: 0 },
+    { id: "all" as any, label: t.ordersPage.list.tabs.all, icon: Package, count: 0 },
+    { id: "priority" as any, label: t.ordersPage.list.tabs.priority, icon: Zap, count: 0 },
+    { id: "paid" as any, label: t.ordersPage.list.tabs.paid, icon: DollarSign, count: 0 },
+    { id: "in_progress" as any, label: t.ordersPage.list.tabs.in_progress, icon: PlayCircle, count: 0 },
+    { id: "delivered" as any, label: t.ordersPage.list.tabs.delivered, icon: Send, count: 0 },
+    { id: "revision_requested" as any, label: t.ordersPage.list.tabs.revision_requested, icon: RefreshCw, count: 0 },
+    { id: "completed" as any, label: t.ordersPage.list.tabs.completed, icon: CheckCircle, count: 0 },
   ];
 
   useEffect(() => {
@@ -1227,9 +1243,7 @@ const OrderManagement = () => {
         // Basculer vers l'onglet "Livrées" pour voir la commande
         setActiveTab("delivered" as any);
 
-        alert(
-          "✅ Commande livrée avec succès ! Elle apparaît maintenant dans l'onglet 'Livrées'."
-        );
+        alert(t.ordersPage.deliveryModal.successAlert);
       } else {
         throw new Error(result.error);
       }
@@ -1260,11 +1274,11 @@ const OrderManagement = () => {
 
       const result = await response.json();
       if (result.success) {
-        alert("✅ Votre demande a été envoyée au client.");
+        alert(t.ordersPage.extensionModal.success);
         setExtensionModal({ isOpen: false, order: null });
         await fetchOrders();
       } else {
-        alert(result.error || "Erreur lors de l'envoi");
+        alert(result.error || t.ordersPage.extensionModal.errorSubmit);
       }
     } catch (e) {
       console.error(e);
@@ -1275,7 +1289,7 @@ const OrderManagement = () => {
   const handleViewClientProfile = async (clientId: string) => {
     if (!clientId) {
       console.error("Client ID is missing");
-      alert("ID du client introuvable");
+      alert(t.ordersPage.list.clientNotFound);
       return;
     }
 
@@ -1401,7 +1415,7 @@ const OrderManagement = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des commandes...</p>
+          <p className="text-gray-600">{t.ordersPage.list.loading}</p>
         </div>
       </div>
     );
@@ -1423,7 +1437,7 @@ const OrderManagement = () => {
               />
               <input
                 type="text"
-                placeholder="Rechercher une commande..."
+                placeholder={t.ordersPage.list.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -1436,19 +1450,19 @@ const OrderManagement = () => {
                 <div className="text-2xl font-bold text-gray-900">
                   {orders.length}
                 </div>
-                <div className="text-gray-600">Total</div>
+                <div className="text-gray-600">{t.ordersPage.list.stats.total}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
                   {counts.in_progress}
                 </div>
-                <div className="text-gray-600">En cours</div>
+                <div className="text-gray-600">{t.ordersPage.list.stats.inProgress}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
                   {counts.paid}
                 </div>
-                <div className="text-gray-600">Nouvelles</div>
+                <div className="text-gray-600">{t.ordersPage.list.stats.new}</div>
               </div>
             </div>
           </div>
@@ -1498,12 +1512,12 @@ const OrderManagement = () => {
           >
             <Package className="mx-auto text-gray-400 mb-4" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Aucune commande trouvée
+              {t.ordersPage.list.empty.title}
             </h3>
             <p className="text-gray-600 max-w-md mx-auto">
               {searchTerm
-                ? "Aucune commande ne correspond à votre recherche."
-                : "Vous n'avez pas de commandes pour le moment."}
+                ? t.ordersPage.list.empty.searchResult
+                : t.ordersPage.list.empty.subtitle}
             </p>
           </motion.div>
         ) : (
@@ -1531,11 +1545,11 @@ const OrderManagement = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
-                <div className="flex items-center text-sm text-gray-700">
-                  Affichage de {startIndex + 1} à{" "}
-                  {Math.min(endIndex, filteredOrders.length)} sur{" "}
-                  {filteredOrders.length} commandes
-                </div>
+              <div className="flex items-center text-sm text-gray-700">
+                {t.ordersPage.list.pagination.showing} {startIndex + 1} {t.ordersPage.list.pagination.to}{" "}
+                {Math.min(endIndex, filteredOrders.length)} {t.ordersPage.list.pagination.of}{" "}
+                {filteredOrders.length} {t.ordersPage.list.pagination.orders}
+              </div>
 
                 <div className="flex items-center space-x-2">
                   {/* Previous button */}
@@ -1544,7 +1558,7 @@ const OrderManagement = () => {
                     disabled={currentPage === 1}
                     className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Précédent
+                    {t.ordersPage.list.pagination.previous}
                   </button>
 
                   {/* Page numbers */}

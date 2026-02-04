@@ -10,9 +10,11 @@ import { MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConversations } from "@/hooks/useConversations";
 import { Conversation } from "@/types/messaging";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 export function MessagesMenu() {
   const { user } = useAuth();
+  const { t } = useSafeLanguage();
   const { conversations, loading, profileId } = useConversations();
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
@@ -54,11 +56,11 @@ export function MessagesMenu() {
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (seconds < 60) return "À l'instant";
-    if (seconds < 3600) return `Il y a ${Math.floor(seconds / 60)} min`;
-    if (seconds < 86400) return `Il y a ${Math.floor(seconds / 3600)} h`;
-    if (seconds < 604800) return `Il y a ${Math.floor(seconds / 86400)} j`;
-    return date.toLocaleDateString("fr-FR");
+    if (seconds < 60) return t.messages.justNow;
+    if (seconds < 3600) return t.messages.timeAgoMins.replace("{n}", Math.floor(seconds / 60).toString());
+    if (seconds < 86400) return t.messages.timeAgoHours.replace("{n}", Math.floor(seconds / 3600).toString());
+    if (seconds < 604800) return t.messages.timeAgoDays.replace("{n}", Math.floor(seconds / 86400).toString());
+    return date.toLocaleDateString(t.language === 'en' ? 'en-US' : t.language === 'es' ? 'es-ES' : 'fr-FR');
   };
 
   const getInitials = (name?: string) => {
@@ -95,14 +97,14 @@ export function MessagesMenu() {
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">Messages</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t.messages.title}</h3>
             <Link
               href="/messages"
               onClick={() => setIsOpen(false)}
               className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 transition-colors"
             >
               <Send className="w-3 h-3" />
-              Nouveau message
+              {t.messages.newMessage}
             </Link>
           </div>
 
@@ -119,9 +121,9 @@ export function MessagesMenu() {
             ) : recentConversations.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-500">
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm font-medium">Aucun message pour le moment</p>
+                <p className="text-sm font-medium">{t.messages.noMessageYet}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Vos conversations apparaîtront ici
+                  {t.messages.noMessagesSub}
                 </p>
               </div>
             ) : (
@@ -152,7 +154,7 @@ export function MessagesMenu() {
                               src={conversation.other_participant_avatar}
                               alt={
                                 conversation.other_participant_name ||
-                                "Utilisateur"
+                                t.messages.userDefault
                               }
                               className="w-10 h-10 rounded-full object-cover border border-gray-100"
                             />
@@ -176,7 +178,7 @@ export function MessagesMenu() {
                               }`}
                             >
                               {conversation.other_participant_name ||
-                                "Utilisateur"}
+                                t.messages.userDefault}
                             </p>
                             <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
                               {formatTimeAgo(conversation.last_message_at)}
@@ -188,10 +190,10 @@ export function MessagesMenu() {
                             }`}
                           >
                             {conversation.last_message_sender_id === profileId
-                              ? "Vous: "
+                              ? `${t.messages.you}: `
                               : ""}
                             {conversation.last_message_text ||
-                              "Nouvelle conversation"}
+                              t.messages.startConversation}
                           </p>
                         </div>
                       </div>
@@ -209,7 +211,7 @@ export function MessagesMenu() {
               onClick={() => setIsOpen(false)}
               className="block w-full py-3 text-sm text-center text-indigo-600 font-medium hover:text-indigo-800 hover:bg-gray-100 transition-colors rounded-b-lg"
             >
-              Voir toutes les conversations
+              {t.messages.viewAll}
             </Link>
           </div>
         </div>

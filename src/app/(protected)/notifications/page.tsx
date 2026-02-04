@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import {
   Bell,
   Package,
@@ -18,6 +19,7 @@ import {
 import Link from "next/link";
 
 export default function NotificationsPage() {
+  const { t, language } = useSafeLanguage();
   const { notifications, loading, markAsRead, markAllAsRead, refresh } =
     useNotifications();
 
@@ -45,7 +47,8 @@ export default function NotificationsPage() {
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat("fr-FR", {
+    const locale = language || 'fr-FR';
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: "long",
       timeStyle: "short",
     }).format(date);
@@ -58,9 +61,9 @@ export default function NotificationsPage() {
       <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Notifications</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{t('notifications.title')}</h1>
             <p className="text-slate-600 mt-2">
-              Consultez votre historique d'activité
+              {t('notifications.subtitle')}
             </p>
           </div>
           {notifications.length > 0 && notifications.some((n) => !n.read) && (
@@ -69,7 +72,7 @@ export default function NotificationsPage() {
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
             >
               <CheckCheck className="w-4 h-4" />
-              Tout marquer comme lu
+              {t('notifications.markAllRead')}
             </button>
           )}
         </div>
@@ -84,10 +87,10 @@ export default function NotificationsPage() {
               <Bell className="w-8 h-8 text-slate-400" />
             </div>
             <h3 className="text-lg font-semibold text-slate-900">
-              Aucune notification
+              {t('notifications.noNotifications')}
             </h3>
             <p className="text-slate-500 mt-2">
-              Vous n'avez pas encore reçu de notifications.
+              {t('notifications.noNotificationsDesc')}
             </p>
           </div>
         ) : (
@@ -135,7 +138,7 @@ export default function NotificationsPage() {
                             }}
                             className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                           >
-                            Voir les détails
+                            {t('notifications.viewDetails')}
                           </Link>
                         )}
                         {!notification.read && (
@@ -143,7 +146,7 @@ export default function NotificationsPage() {
                             onClick={() => markAsRead(notification.id)}
                             className="text-sm text-slate-500 hover:text-slate-700"
                           >
-                            Marquer comme lu
+                            {t('notifications.markAsRead')}
                           </button>
                         )}
                       </div>

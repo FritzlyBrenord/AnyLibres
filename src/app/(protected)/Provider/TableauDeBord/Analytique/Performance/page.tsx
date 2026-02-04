@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import HeaderProvider from "@/components/layout/HeaderProvider";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
 import {
   Eye,
@@ -52,6 +53,7 @@ interface ConvertedAmountProps {
 }
 
 function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps) {
+  const { language } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      return new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US', {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -95,6 +97,7 @@ export default function AnalyticsPerformance({
   isAdmin = false,
   isDark = false,
 }: AnalyticsPerformanceProps) {
+  const { t, language } = useSafeLanguage();
   const { user, loading: authLoading } = useAuth();
   const [services, setServices] = useState<ServicePerformance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -284,12 +287,12 @@ export default function AnalyticsPerformance({
 
   const performanceDistribution = [
     {
-      name: "Excellente (>5%)",
+      name: t.analytics.performancePage.charts.distribution.excellent,
       value: services.filter((s) => parseFloat(s.conversion_rate) > 5).length,
       color: "#10b981",
     },
     {
-      name: "Bonne (2-5%)",
+      name: t.analytics.performancePage.charts.distribution.good,
       value: services.filter(
         (s) =>
           parseFloat(s.conversion_rate) >= 2 &&
@@ -298,7 +301,7 @@ export default function AnalyticsPerformance({
       color: "#f59e0b",
     },
     {
-      name: "Faible (<2%)",
+      name: t.analytics.performancePage.charts.distribution.poor,
       value: services.filter((s) => parseFloat(s.conversion_rate) < 2).length,
       color: "#ef4444",
     },
@@ -311,7 +314,7 @@ export default function AnalyticsPerformance({
         <div className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-4"></div>
-            <p className="text-gray-500">Chargement des données...</p>
+            <p className="text-gray-500">{t.analytics.performancePage.loading}</p>
           </div>
         </div>
       );
@@ -326,7 +329,7 @@ export default function AnalyticsPerformance({
               <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
             </div>
             <p className="text-gray-600 font-medium">
-              Chargement des performances...
+              {t.analytics.performancePage.loading}
             </p>
           </div>
         </div>
@@ -360,7 +363,7 @@ export default function AnalyticsPerformance({
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Performance des Services
+                  {t.analytics.performancePage.title}
                 </h1>
                 <p
                   className={`flex items-center gap-2 ${
@@ -368,7 +371,7 @@ export default function AnalyticsPerformance({
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" />
-                  Analysez les performances détaillées de vos services{" "}
+                  {t.analytics.performancePage.subtitle}
                 </p>
               </div>
               <button
@@ -383,7 +386,7 @@ export default function AnalyticsPerformance({
                 <RefreshCw
                   className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
                 />
-                <span className="font-medium">Actualiser</span>
+                <span className="font-medium">{t.analytics.performancePage.refresh}</span>
               </button>
             </div>
           </div>
@@ -414,7 +417,7 @@ export default function AnalyticsPerformance({
                     isDark ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  Total
+                  {t.analytics.performancePage.kpi.total}
                 </p>
                 <p
                   className={`text-3xl font-bold ${
@@ -430,14 +433,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-gray-300" : "text-gray-600"
               }`}
             >
-              Vues Totales
+              {t.analytics.performancePage.kpi.totalViews}
             </p>
             <p
               className={`text-xs mt-1 ${
                 isDark ? "text-gray-500" : "text-gray-400"
               }`}
             >
-              Sur tous vos services
+              {t.analytics.performancePage.kpi.totalViewsSub}
             </p>
           </div>
 
@@ -464,7 +467,7 @@ export default function AnalyticsPerformance({
                     isDark ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  Total
+                  {t.analytics.performancePage.kpi.total}
                 </p>
                 <p
                   className={`text-3xl font-bold ${
@@ -480,14 +483,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-gray-300" : "text-gray-600"
               }`}
             >
-              Commandes Totales
+              {t.analytics.performancePage.kpi.totalOrders}
             </p>
             <p
               className={`text-xs mt-1 ${
                 isDark ? "text-gray-500" : "text-gray-400"
               }`}
             >
-              Conversions réussies
+              {t.analytics.performancePage.kpi.totalOrdersSub}
             </p>
           </div>
 
@@ -514,7 +517,7 @@ export default function AnalyticsPerformance({
                     isDark ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  Moyen
+                  {t.analytics.performancePage.kpi.average}
                 </p>
                 <p
                   className={`text-3xl font-bold ${
@@ -530,14 +533,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-gray-300" : "text-gray-600"
               }`}
             >
-              Taux de Conversion
+              {t.analytics.performancePage.kpi.conversionRate}
             </p>
             <p
               className={`text-xs mt-1 ${
                 isDark ? "text-gray-500" : "text-gray-400"
               }`}
             >
-              Performance moyenne
+              {t.analytics.performancePage.kpi.conversionRateSub}
             </p>
           </div>
 
@@ -564,7 +567,7 @@ export default function AnalyticsPerformance({
                     isDark ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  Total
+                  {t.analytics.performancePage.kpi.total}
                 </p>
                 <p
                   className={`text-3xl font-bold ${
@@ -580,14 +583,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-gray-300" : "text-gray-600"
               }`}
             >
-              Revenus Générés
+              {t.analytics.performancePage.kpi.totalRevenue}
             </p>
             <p
               className={`text-xs mt-1 ${
                 isDark ? "text-gray-500" : "text-gray-400"
               }`}
             >
-              Earnings nets cumulés
+              {t.analytics.performancePage.kpi.totalRevenueSub}
             </p>
           </div>
         </div>
@@ -609,14 +612,14 @@ export default function AnalyticsPerformance({
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Top 5 Services par Revenus
+                  {t.analytics.performancePage.charts.topServices.title}
                 </h3>
                 <p
                   className={`text-sm ${
                     isDark ? "text-gray-400" : "text-gray-500"
                   }`}
                 >
-                  Comparaison revenus et commandes
+                  {t.analytics.performancePage.charts.topServices.subtitle}
                 </p>
               </div>
               <Award className="w-6 h-6 text-purple-600" />
@@ -647,7 +650,7 @@ export default function AnalyticsPerformance({
                       fontSize: 12,
                     }}
                     label={{
-                      value: "Revenus (€)",
+                      value: t.analytics.performancePage.charts.topServices.revenueLabel.replace('{currency}', selectedCurrency === 'USD' ? '$' : selectedCurrency),
                       angle: -90,
                       position: "insideLeft",
                       style: { fill: isDark ? "#9ca3af" : "#64748b" },
@@ -663,7 +666,7 @@ export default function AnalyticsPerformance({
                       fontSize: 12,
                     }}
                     label={{
-                      value: "Commandes",
+                      value: t.analytics.performancePage.charts.topServices.ordersLabel,
                       angle: 90,
                       position: "insideRight",
                       style: { fill: isDark ? "#9ca3af" : "#64748b" },
@@ -684,14 +687,14 @@ export default function AnalyticsPerformance({
                     dataKey="revenus"
                     fill="#8b5cf6"
                     radius={[8, 8, 0, 0]}
-                    name="Revenus (€)"
+                    name={t.analytics.performancePage.charts.topServices.revenueLabel.replace('{currency}', selectedCurrency === 'USD' ? '$' : selectedCurrency)}
                   />
                   <Bar
                     yAxisId="right"
                     dataKey="commandes"
                     fill="#10b981"
                     radius={[8, 8, 0, 0]}
-                    name="Commandes"
+                    name={t.analytics.performancePage.charts.topServices.ordersLabel}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -711,14 +714,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-white" : "text-gray-900"
               }`}
             >
-              Distribution des Performances
+              {t.analytics.performancePage.charts.distribution.title}
             </h3>
             <p
               className={`text-sm mb-6 ${
                 isDark ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              Taux de conversion par catégorie
+              {t.analytics.performancePage.charts.distribution.subtitle}
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -796,14 +799,14 @@ export default function AnalyticsPerformance({
                 isDark ? "text-white" : "text-gray-900"
               }`}
             >
-              Détails des Services
+              {t.analytics.performancePage.table.title}
             </h3>
             <p
               className={`text-sm ${
                 isDark ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              Cliquez sur les en-têtes pour trier
+              {t.analytics.performancePage.table.sortingHint}
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -821,7 +824,7 @@ export default function AnalyticsPerformance({
                       isDark ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    Service
+                    {t.analytics.performancePage.table.header.service}
                   </th>
                   <th
                     className={`px-6 py-4 text-right text-xs font-semibold uppercase cursor-pointer transition-colors ${
@@ -832,7 +835,7 @@ export default function AnalyticsPerformance({
                     onClick={() => handleSort("views_count")}
                   >
                     <div className="flex items-center justify-end gap-1">
-                      Vues <ArrowUpDown className="w-3 h-3" />
+                      {t.analytics.performancePage.table.header.views} <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
                   <th
@@ -844,7 +847,7 @@ export default function AnalyticsPerformance({
                     onClick={() => handleSort("orders_count")}
                   >
                     <div className="flex items-center justify-end gap-1">
-                      Commandes <ArrowUpDown className="w-3 h-3" />
+                      {t.analytics.performancePage.table.header.orders} <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
                   <th
@@ -856,7 +859,7 @@ export default function AnalyticsPerformance({
                     onClick={() => handleSort("conversion_rate")}
                   >
                     <div className="flex items-center justify-end gap-1">
-                      Conversion <ArrowUpDown className="w-3 h-3" />
+                      {t.analytics.performancePage.table.header.conversion} <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
                   <th
@@ -868,7 +871,7 @@ export default function AnalyticsPerformance({
                     onClick={() => handleSort("revenue_estimated_cents")}
                   >
                     <div className="flex items-center justify-end gap-1">
-                      Revenus Nets <ArrowUpDown className="w-3 h-3" />
+                      {t.analytics.performancePage.table.header.revenue} <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </th>
                   <th
@@ -876,7 +879,7 @@ export default function AnalyticsPerformance({
                       isDark ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    Évaluation
+                    {t.analytics.performancePage.table.header.rating}
                   </th>
                 </tr>
               </thead>
@@ -914,7 +917,7 @@ export default function AnalyticsPerformance({
                                   isDark ? "text-gray-500" : "text-gray-500"
                                 }`}
                               >
-                                Prix:{" "}
+                                {t.analytics.performancePage.table.pricePrefix}{" "}
                                 <ConvertedAmount amountCents={service.base_price_cents} selectedCurrency={selectedCurrency} />
                               </div>
                             </div>
@@ -983,7 +986,7 @@ export default function AnalyticsPerformance({
                               isDark ? "text-gray-500" : "text-gray-500"
                             }`}
                           >
-                            Net après frais
+                            {t.analytics.performancePage.table.netAfterFees}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -1023,14 +1026,14 @@ export default function AnalyticsPerformance({
                           isDark ? "text-gray-400" : "text-gray-500"
                         }`}
                       >
-                        Aucun service trouvé
+                        {t.analytics.performancePage.table.empty}
                       </p>
                       <p
                         className={`text-sm mt-1 ${
                           isDark ? "text-gray-600" : "text-gray-400"
                         }`}
                       >
-                        Créez votre premier service pour voir les statistiques
+                        {t.analytics.performancePage.table.emptySub}
                       </p>
                     </td>
                   </tr>

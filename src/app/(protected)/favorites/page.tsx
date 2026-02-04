@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 import {
   Heart,
@@ -60,6 +61,7 @@ interface Favorite {
 export default function FavoritesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useSafeLanguage();
 
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,9 +96,7 @@ export default function FavoritesPage() {
   };
 
   const handleRemoveFavorite = async (serviceId: string) => {
-    if (
-      !confirm("Êtes-vous sûr de vouloir retirer ce service de vos favoris?")
-    ) {
+    if (!confirm(t.favorites.confirmRemove)) {
       return;
     }
 
@@ -111,11 +111,11 @@ export default function FavoritesPage() {
       if (data.success) {
         setFavorites(favorites.filter((f) => f.service_id !== serviceId));
       } else {
-        alert("Erreur: " + data.error);
+        alert(t.favorites.errors.prefix + data.error);
       }
     } catch (error) {
       console.error("Error removing favorite:", error);
-      alert("Erreur lors de la suppression");
+      alert(t.favorites.errors.remove);
     } finally {
       setRemoving(null);
     }
@@ -141,7 +141,7 @@ export default function FavoritesPage() {
     const fullName = `${profile.first_name || ""} ${
       profile.last_name || ""
     }`.trim();
-    return fullName || "Prestataire";
+    return fullName || t.favorites.card.providerVerified;
   };
 
   if (authLoading || loading) {
@@ -179,20 +179,19 @@ export default function FavoritesPage() {
               <div className="inline-flex items-center gap-3 mb-6 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
                 <Sparkles className="w-5 h-5 text-yellow-300" />
                 <span className="text-sm font-medium text-white/90">
-                  Vos préférences
+                  {t.favorites.heroBadge}
                 </span>
               </div>
 
               <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">
-                Mes{" "}
+                {t.favorites.heroTitle.replace('{highlight}', '')}{" "}
                 <span className="bg-gradient-to-r from-yellow-300 to-pink-300 bg-clip-text text-transparent">
-                  Favoris
+                  {t.favorites.heroHighlight}
                 </span>
               </h1>
 
               <p className="text-xl text-white/80 max-w-2xl mb-8 leading-relaxed">
-                Retrouvez tous les services que vous avez aimés. Votre
-                collection personnelle d'excellence.
+                {t.favorites.heroSubtitle}
               </p>
             </div>
 
@@ -206,8 +205,10 @@ export default function FavoritesPage() {
                     {favorites.length}
                   </div>
                   <div className="text-white/70">
-                    service{favorites.length > 1 ? "s" : ""} sauvegardé
-                    {favorites.length > 1 ? "s" : ""}
+                    {t.favorites.stats.total
+                      .replace('{count}', favorites.length.toString())
+                      .replace('{s}', favorites.length > 1 ? 's' : '')
+                      .replace('{s}', favorites.length > 1 ? 's' : '')}
                   </div>
                 </div>
               </div>
@@ -229,11 +230,10 @@ export default function FavoritesPage() {
               </div>
 
               <h3 className="text-3xl font-bold text-slate-900 mb-4">
-                Votre collection est vide
+                {t.favorites.emptyState.title}
               </h3>
               <p className="text-slate-600 text-lg mb-10 max-w-md mx-auto leading-relaxed">
-                Commencez à collectionner les meilleurs services. Ajoutez vos
-                favoris pour les retrouver facilement plus tard.
+                {t.favorites.emptyState.description}
               </p>
 
               <Link
@@ -241,7 +241,7 @@ export default function FavoritesPage() {
                 className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-slate-900 via-indigo-900 to-purple-900 text-white font-semibold rounded-xl hover:shadow-2xl transition-all duration-300 shadow-xl hover:scale-[1.02]"
               >
                 <ShoppingBag className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                <span className="text-lg">Explorer les services premium</span>
+                <span className="text-lg">{t.favorites.emptyState.button}</span>
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
               </Link>
             </div>
@@ -262,7 +262,7 @@ export default function FavoritesPage() {
                             0
                           ) / favorites.length || 0}
                         </div>
-                        <div className="text-slate-600">Note moyenne</div>
+                        <div className="text-slate-600">{t.favorites.stats.averageRating}</div>
                       </div>
                     </div>
                   </div>
@@ -281,9 +281,9 @@ export default function FavoritesPage() {
                               0
                             ) / favorites.length
                           ).toFixed(2) || 0}
-                          j
+                          {t.favorites.stats.days}
                         </div>
-                        <div className="text-slate-600">Délai moyen</div>
+                        <div className="text-slate-600">{t.favorites.stats.averageDelivery}</div>
                       </div>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ export default function FavoritesPage() {
                         <div className="text-2xl font-bold text-slate-900">
                           {favorites.length}
                         </div>
-                        <div className="text-slate-600">Services favoris</div>
+                        <div className="text-slate-600">{t.favorites.stats.favoriteServices}</div>
                       </div>
                     </div>
                   </div>
@@ -355,7 +355,7 @@ export default function FavoritesPage() {
                                 {service.rating_avg.toFixed(1)}
                               </div>
                               <div className="text-xs text-slate-600">
-                                {service.review_count} avis
+                                {service.review_count} {t.favorites.stats.reviews}
                               </div>
                             </div>
                           </div>
@@ -385,7 +385,7 @@ export default function FavoritesPage() {
                               {providerName}
                             </div>
                             <div className="text-sm text-slate-500">
-                              Prestataire vérifié
+                              {t.favorites.card.providerVerified}
                             </div>
                           </div>
                         </div>
@@ -412,13 +412,12 @@ export default function FavoritesPage() {
                             <div className="flex items-center gap-2 text-slate-600">
                               <Clock className="w-4 h-4" />
                               <span className="text-sm font-medium">
-                                {service.delivery_time_days} jour
-                                {service.delivery_time_days > 1 ? "s" : ""}
+                                {service.delivery_time_days} {service.delivery_time_days > 1 ? t.favorites.card.days : t.favorites.card.day}
                               </span>
                             </div>
                             <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
                             <div className="text-sm font-medium text-slate-600">
-                              En ligne
+                              {t.favorites.card.online}
                             </div>
                           </div>
 
@@ -435,9 +434,9 @@ export default function FavoritesPage() {
                           href={`/service/${service.id}`}
                           className="group/btn w-full flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-900 to-purple-900 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 shadow-lg hover:scale-[1.02]"
                         >
-                          <span>Voir les détails</span>
+                          <span>{t.favorites.card.viewDetails}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm opacity-80">Explorer</span>
+                            <span className="text-sm opacity-80">{t.favorites.card.explore}</span>
                             <ChevronRight className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" />
                           </div>
                         </Link>
@@ -451,18 +450,17 @@ export default function FavoritesPage() {
               <div className="mt-16 text-center">
                 <div className="bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 rounded-3xl p-12 shadow-2xl">
                   <h3 className="text-3xl font-bold text-white mb-4">
-                    Besoin de plus d'inspiration ?
+                    {t.favorites.cta.title}
                   </h3>
                   <p className="text-white/80 text-lg mb-8 max-w-2xl mx-auto">
-                    Découvrez notre collection exclusive de services premium
-                    sélectionnés spécialement pour vous.
+                    {t.favorites.cta.description}
                   </p>
                   <Link
                     href="/services"
                     className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 font-semibold rounded-xl hover:bg-white/90 transition-all duration-300 shadow-xl hover:scale-[1.02]"
                   >
                     <Sparkles className="w-5 h-5" />
-                    Explorer tous les services
+                    {t.favorites.cta.button}
                   </Link>
                 </div>
               </div>

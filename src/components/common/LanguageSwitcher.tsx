@@ -80,11 +80,11 @@ export default function SimpleLanguageSwitcher() {
       <div
         className={`
         absolute top-0 right-0
-        transition-all duration-300 ease-out
+        transition-all duration-300 ease-out origin-right
         ${
           isOpen
-            ? "translate-x-0 opacity-100 visible"
-            : "translate-x-full opacity-0 invisible"
+            ? "opacity-100 visible scale-100"
+            : "opacity-0 invisible scale-95"
         }
       `}
       >
@@ -94,7 +94,6 @@ export default function SimpleLanguageSwitcher() {
           border border-slate-700
           rounded-l-xl
           shadow-xl shadow-slate-900/50
-          overflow-hidden
           ml-1
         "
         >

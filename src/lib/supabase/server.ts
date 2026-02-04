@@ -9,7 +9,48 @@ import { cookies } from 'next/headers';
 
 export async function createClient() {
   const cookieStore = await cookies();
+  const isRoot = cookieStore.get('anylibre_root_session')?.value === 'true';
 
+  // 👑 SI ROOT : On retourne un client Admin (Service Role) qui bypass le RLS
+  if (isRoot && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.log('👑 Client Supabase Root: Utilisation du Service Role');
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // On mock les fonctions auth pour que le reste du code croie qu'on est loggé
+    const mockUser = {
+      id: '00000000-0000-0000-0000-000000000000',
+      email: process.env.ROOT_ADMIN_EMAIL || 'root@anylibre.com',
+      role: 'super_admin',
+      user_metadata: { display_name: 'Root Super Admin', role: 'super_admin' },
+      aud: 'authenticated',
+      created_at: new Date().toISOString()
+    };
+
+    // Extension du client pour simuler une session valide
+    return new Proxy(adminClient, {
+      get(target, prop, receiver) {
+        if (prop === 'auth') {
+          return {
+            ...target.auth,
+            getUser: async () => ({ data: { user: mockUser }, error: null }),
+            getSession: async () => ({ data: { session: { user: mockUser } }, error: null }),
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      }
+    }) as any;
+  }
+
+  // 📁 CLIENT STANDARD
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

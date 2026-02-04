@@ -57,26 +57,39 @@ export async function POST(request: NextRequest) {
 
     let finalConversationId = conversation_id;
 
-    // Si pas de conversation_id, créer une nouvelle conversation
+    // Si pas de conversation_id, vérifier si une conversation existe déjà entre ces participants
     if (!conversation_id) {
-      const { data: newConversation, error: convError } = await supabase
+      const { data: existingConversation, error: existingConvError } = await supabase
         .from('conversations')
-        .insert({
-          participants: [profile.id, receiver_id],
-          unread_count: { [receiver_id]: 0 },
-        })
-        .select()
-        .single();
+        .select('id')
+        .contains('participants', [profile.id])
+        .contains('participants', [receiver_id])
+        .limit(1)
+        .maybeSingle();
 
-      if (convError) {
-        console.error('Error creating conversation:', convError);
-        return NextResponse.json(
-          { error: 'Failed to create conversation' },
-          { status: 500 }
-        );
+      if (existingConversation) {
+        finalConversationId = existingConversation.id;
+      } else {
+        // Créer une nouvelle conversation si aucune n'existe
+        const { data: newConversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            participants: [profile.id, receiver_id],
+            unread_count: { [receiver_id]: 0 },
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error('Error creating conversation:', convError);
+          return NextResponse.json(
+            { error: 'Failed to create conversation' },
+            { status: 500 }
+          );
+        }
+
+        finalConversationId = newConversation.id;
       }
-
-      finalConversationId = newConversation.id;
     } else {
       // Vérifier que l'utilisateur est participant
       const { data: conversation } = await supabase

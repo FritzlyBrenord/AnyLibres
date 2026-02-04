@@ -12,6 +12,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { CurrencyConverter } from "@/components/common/CurrencyConverter";
 
+import { usePermissions } from "@/contexts/PermissionsContext";
+
 interface RefundRequest {
   id: string;
   order_id: string;
@@ -46,6 +48,11 @@ export function AdminRefundSection({
   providerId,
   isDark = false,
 }: AdminRefundSectionProps) {
+  const { hasPermission } = usePermissions();
+  const canApprove = hasPermission('orders.refunds.approve');
+  const canReject = hasPermission('orders.refunds.reject');
+  const canView = hasPermission('orders.refunds.view');
+
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [providerBalance, setProviderBalance] = useState<ProviderBalance | null>(null);
@@ -313,33 +320,39 @@ export function AdminRefundSection({
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApproveRefund(refund.id)}
-                    disabled={processingRefund === refund.id}
-                    className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-sm flex items-center justify-center gap-2"
-                  >
-                    {processingRefund === refund.id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Traitement...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Approuver
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleRejectRefund(refund.id)}
-                    disabled={processingRefund === refund.id}
-                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium text-sm flex items-center justify-center gap-2"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Rejeter
-                  </button>
-                </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApproveRefund(refund.id)}
+                      disabled={processingRefund === refund.id || !canApprove}
+                      className={`flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-sm flex items-center justify-center gap-2 ${
+                        !canApprove ? 'cursor-not-allowed opacity-50' : ''
+                      }`}
+                      title={!canApprove ? "Permission manquante" : "Approuver"}
+                    >
+                      {processingRefund === refund.id ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Traitement...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Approuver
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleRejectRefund(refund.id)}
+                      disabled={processingRefund === refund.id || !canReject}
+                      className={`flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium text-sm flex items-center justify-center gap-2 ${
+                        !canReject ? 'cursor-not-allowed opacity-50' : ''
+                      }`}
+                      title={!canReject ? "Permission manquante" : "Rejeter"}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Rejeter
+                    </button>
+                  </div>
               </motion.div>
             ))}
           </div>
@@ -462,15 +475,19 @@ export function AdminRefundSection({
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleApproveRefund(selectedRefund.id)}
-                      disabled={processingRefund === selectedRefund.id}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+                      disabled={processingRefund === selectedRefund.id || !canApprove}
+                      className={`flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium ${
+                        !canApprove ? 'cursor-not-allowed opacity-50' : ''
+                      }`}
                     >
                       {processingRefund === selectedRefund.id ? "Traitement..." : "Approuver"}
                     </button>
                     <button
                       onClick={() => handleRejectRefund(selectedRefund.id)}
-                      disabled={processingRefund === selectedRefund.id}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                      disabled={processingRefund === selectedRefund.id || !canReject}
+                      className={`flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium ${
+                        !canReject ? 'cursor-not-allowed opacity-50' : ''
+                      }`}
                     >
                       Rejeter
                     </button>

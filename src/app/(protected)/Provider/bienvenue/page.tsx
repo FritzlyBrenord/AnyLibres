@@ -14,8 +14,11 @@ import {
   Target,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 export default function ProviderBienvenuePage() {
+  const { t } = useSafeLanguage();
+  const tb = t.providerBienvenue;
   const router = useRouter();
   const { user } = useAuth();
   const [countdown, setCountdown] = useState(5);
@@ -81,15 +84,15 @@ export default function ProviderBienvenuePage() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
             <h1 className="text-4xl md:text-5xl font-bold text-white">
-              Félicitations !
+              {tb.congratulations}
             </h1>
             <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
           </div>
           <p className="text-xl text-white/90 mb-2">
-            Vous êtes maintenant prestataire sur AnyLibre
+            {tb.subtitle}
           </p>
           <p className="text-white/75">
-            Votre aventure en tant que prestataire commence maintenant !
+            {tb.adventure}
           </p>
         </div>
 
@@ -97,18 +100,18 @@ export default function ProviderBienvenuePage() {
         <div className="grid md:grid-cols-3 gap-4 mb-8">
           <BenefitCard
             icon={<Star className="w-6 h-6" />}
-            title="Créez vos services"
-            description="Proposez vos compétences"
+            title={tb.benefits.createServices.title}
+            description={tb.benefits.createServices.description}
           />
           <BenefitCard
             icon={<Trophy className="w-6 h-6" />}
-            title="Recevez des commandes"
-            description="Commencez à gagner"
+            title={tb.benefits.receiveOrders.title}
+            description={tb.benefits.receiveOrders.description}
           />
           <BenefitCard
             icon={<Target className="w-6 h-6" />}
-            title="Développez votre activité"
-            description="Augmentez vos revenus"
+            title={tb.benefits.growActivity.title}
+            description={tb.benefits.growActivity.description}
           />
         </div>
 
@@ -118,35 +121,37 @@ export default function ProviderBienvenuePage() {
             onClick={handleGoToDashboard}
             className="inline-flex items-center gap-2 px-8 py-4 bg-white text-purple-600 text-lg font-semibold rounded-xl hover:bg-slate-50 transition-all shadow-2xl hover:shadow-3xl hover:scale-105"
           >
-            Accéder au tableau de bord
+            {tb.dashboardButton}
             <ArrowRight className="w-5 h-5" />
           </button>
           <p className="text-white/75 text-sm mt-4">
-            Redirection automatique dans {countdown} seconde
-            {countdown > 1 ? "s" : ""}...
+            {t('providerBienvenue.redirect', { 
+              count: countdown, 
+              plural: countdown > 1 ? 's' : '' 
+            })}
           </p>
         </div>
 
         {/* Next Steps */}
         <div className="mt-12 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
           <h3 className="text-xl font-bold text-white mb-4">
-            Prochaines étapes :
+            {tb.nextSteps.title}
           </h3>
           <ul className="space-y-3 text-white/90">
             <li className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-300 flex-shrink-0 mt-0.5" />
-              <span>Créez votre premier service pour attirer des clients</span>
+              <span>{tb.nextSteps.step1}</span>
             </li>
             <li className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-300 flex-shrink-0 mt-0.5" />
               <span>
-                Complétez votre profil avec un portfolio et des certifications
+                {tb.nextSteps.step2}
               </span>
             </li>
             <li className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-green-300 flex-shrink-0 mt-0.5" />
               <span>
-                Explorez votre tableau de bord pour gérer votre activité
+                {tb.nextSteps.step3}
               </span>
             </li>
           </ul>

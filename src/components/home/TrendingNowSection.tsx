@@ -11,8 +11,10 @@ import { TrendingUp, ArrowRight, Flame } from 'lucide-react';
 import { Carousel } from '@/components/ui/Carousel';
 import { ServiceCard } from '@/components/service/ServiceCard';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 export function TrendingNowSection() {
+  const { t } = useSafeLanguage();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,10 +68,10 @@ export function TrendingNowSection() {
             </div>
             <div>
               <h2 className="font-heading font-bold text-2xl text-slate-900">
-                Tendances du moment
+                {t.home.connected.trending.title}
               </h2>
               <p className="text-sm text-slate-600">
-                Les services les plus populaires en ce moment
+                {t.home.connected.trending.subtitle}
               </p>
             </div>
           </div>
@@ -78,7 +80,7 @@ export function TrendingNowSection() {
             href="/explorer?sort=trending"
             className="hidden sm:flex items-center gap-2 text-orange-600 hover:text-orange-700 font-semibold transition-colors group"
           >
-            Voir tout
+            {t.home.connected.viewAll}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -96,7 +98,7 @@ export function TrendingNowSection() {
               {/* Badge "Tendance" avec position */}
               <div className="absolute top-2 left-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
-                #{index + 1} Tendance
+                #{index + 1} {t.home.connected.trending.badge}
               </div>
             </div>
           ))}
@@ -107,7 +109,7 @@ export function TrendingNowSection() {
           href="/explorer?sort=trending"
           className="sm:hidden flex items-center justify-center gap-2 text-orange-600 hover:text-orange-700 font-semibold mt-6 transition-colors"
         >
-          Voir tout
+          {t.home.connected.viewAll}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 import MediationChatBot from "@/components/dispute/MediationChatBot";
 import PresenceVerification from "@/components/dispute/PresenceVerification";
 import MediationChatRoom from "@/components/dispute/MediationChatRoom";
@@ -11,6 +12,7 @@ import { Loader2 } from "lucide-react";
 type MediationStep = "loading" | "rules" | "presence" | "chat";
 
 export default function MediationPage() {
+  const { t } = useSafeLanguage();
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -53,14 +55,22 @@ export default function MediationPage() {
 
         if (profileError || !profile) {
           console.error("❌ Profile not found for user:", user!.id);
-          alert(`Erreur: Profil introuvable pour l'ID ${user!.id}`);
+          alert(t('mediation.profileNotFound', { id: user!.id }));
           router.push("/");
           return;
         }
 
         const realAuthUid = profile.user_id; // This is the real Auth UID
         setAuthUid(realAuthUid);
-        setResolvedUserName(profile.first_name || (user as any).user_metadata?.first_name || "Utilisateur");
+        setResolvedUserName(profile.first_name || (user as any).user_metadata?.first_name || t('mediation.none'));
+
+        console.log("🔍 Mediation Auth Check:", {
+          role: profile.role,
+          authUid: realAuthUid,
+          profileId: profile.id,
+          orderClientId: data.dispute.order.client_id,
+          orderProviderId: data.dispute.order.provider_id
+        });
 
         // Resolve Provider ID locally for extra verification
         const supabase = (await import("@/lib/supabase/client")).createClient();
@@ -72,15 +82,21 @@ export default function MediationPage() {
         
         const currentProviderId = providerInfo?.id;
 
-        if (profile.role === "admin") {
+        // 1. Robust ADMIN Check
+        if (profile.role && String(profile.role).toLowerCase() === "admin") {
+          console.log("✅ Admin access granted");
           setUserRole("admin");
-          // Admin can always access chat if started, or presence otherwise
           if (data.dispute.session_status === 'active') {
              setStep("chat");
           } else {
              setStep("presence");
           }
-        } else if (data.dispute.order.client_id === realAuthUid) {
+          return; // Strictly stop here for admins
+        } 
+
+        // 2. CLIENT Check (using Auth UID)
+        if (data.dispute.order.client_id === realAuthUid) {
+          console.log("✅ Client access granted");
           setUserRole("client");
           if (data.dispute.session_status === 'active') {
             setStep("chat");
@@ -89,10 +105,15 @@ export default function MediationPage() {
           } else {
             setStep("rules");
           }
-        } else if (
+          return;
+        } 
+
+        // 3. PROVIDER Check (using Provider ID or Auth UID)
+        if (
           data.dispute.order.provider_id === currentProviderId || 
           data.dispute.order.provider?.user_id === realAuthUid
         ) {
+          console.log("✅ Provider access granted");
           setUserRole("provider");
           if (data.dispute.session_status === 'active') {
             setStep("chat");
@@ -101,33 +122,58 @@ export default function MediationPage() {
           } else {
             setStep("rules");
           }
-        } else {
-          console.log("❌ Authorization failed:", {
-            userId: user!.id,
-            authUid: realAuthUid,
-            currentProviderId,
-            orderClientId: data.dispute.order.client_id,
-            orderProviderId: data.dispute.order.provider_id,
-            role: profile.role
-          });
-          alert(`Accès Refusé.
-Votre profil ne correspond ni au client ni au prestataire de cette commande.
-
-Détails:
-- ID Auth: ${realAuthUid}
-- ID Prestataire: ${currentProviderId || "Aucun"}
-- Client dans Commande: ${data.dispute.order.client_id}
-- Prestataire dans Commande: ${data.dispute.order.provider_id}`);
-          router.push("/");
           return;
         }
+
+        // 4. FALLBACK - Not Authorized
+        console.error("❌ Authorization failed:", {
+          userId: user!.id,
+          authUid: realAuthUid,
+          currentProviderId,
+          orderClientId: data.dispute.order.client_id,
+          orderProviderId: data.dispute.order.provider_id,
+          role: profile.role
+        });
+        alert(`${t('mediation.errors.authFailed')}
+ 
+${t('mediation.errors.details')}
+- ${t('mediation.authId')}: ${realAuthUid}
+- Role: ${profile.role}
+- ${t('mediation.clientInOrder')}: ${data.dispute.order.client_id}
+- ${t('mediation.providerInOrder')}: ${data.dispute.order.provider_id}`);
+        router.push("/");
+        return;
+
+        // 6a. Fix missing Provider User ID if necessary
+        const disputeData = { ...data.dispute };
+        if (disputeData.order && !disputeData.order.provider && disputeData.order.provider_id) {
+            console.warn("⚠️ Provider profile missing in dispute data, fetching locally...");
+            const supabase = (await import("@/lib/supabase/client")).createClient();
+            const { data: pData } = await supabase
+                .from("providers")
+                .select("profile_id, profiles(user_id, first_name, last_name)")
+                .eq("id", disputeData.order.provider_id)
+                .single();
+            
+            if (pData && pData.profiles) {
+                console.log("✅ Recovered Provider User ID:", pData.profiles.user_id);
+                // Manually reconstruct the provider object
+                disputeData.order.provider = {
+                    user_id: pData.profiles.user_id,
+                    first_name: pData.profiles.first_name,
+                    last_name: pData.profiles.last_name,
+                };
+            }
+        }
+
+        setDispute(disputeData);
       } else {
-        alert("Litige introuvable");
+        alert(t('mediation.disputeNotFound'));
         router.push("/");
       }
     } catch (error) {
       console.error("Error loading dispute:", error);
-      alert("Erreur de chargement");
+      alert(t('mediation.loadError'));
       router.push("/");
     } finally {
       setLoading(false);
@@ -152,7 +198,7 @@ Détails:
   };
 
   const handleRejectRules = () => {
-    if (confirm("Êtes-vous sûr de vouloir quitter la médiation ?")) {
+    if (confirm(t('mediation.confirmExit'))) {
       router.back();
     }
   };
@@ -166,7 +212,7 @@ Détails:
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50 to-slate-50">
         <div className="text-center">
           <Loader2 className="w-16 h-16 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-lg text-gray-700">Chargement de la médiation...</p>
+          <p className="text-lg text-gray-700">{t('mediation.loadingMediation')}</p>
         </div>
       </div>
     );
@@ -191,11 +237,11 @@ Détails:
 
       {step === "presence" && (
         <PresenceVerification
-          disputeId={disputeId}
+           disputeId={disputeId}
           currentUserId={authUid}
           currentUserRole={userRole}
-          clientName={dispute.order.client ? `${dispute.order.client.first_name} ${dispute.order.client.last_name}` : "Client Inconnu"}
-          providerName={dispute.order.provider ? `${dispute.order.provider.first_name} ${dispute.order.provider.last_name}` : "Prestataire Inconnu"}
+          clientName={dispute.order.client ? `${dispute.order.client.first_name} ${dispute.order.client.last_name}` : t('mediation.unknownClient')}
+          providerName={dispute.order.provider ? `${dispute.order.provider.first_name} ${dispute.order.provider.last_name}` : t('mediation.unknownProvider')}
           onBothPresent={handleBothPresent}
         />
       )}
@@ -206,10 +252,10 @@ Détails:
           currentUserId={authUid}
           currentUserRole={userRole}
           currentUserName={resolvedUserName}
-          clientId={dispute.order.client_id}
-          providerId={dispute.order.provider_id}
-          clientName={dispute.order.client ? `${dispute.order.client.first_name} ${dispute.order.client.last_name}` : "Client"}
-          providerName={dispute.order.provider ? `${dispute.order.provider.first_name} ${dispute.order.provider.last_name}` : "Prestataire"}
+          clientId={dispute.order.client_id || dispute.order.client?.user_id}
+          providerId={dispute.order.provider?.user_id || dispute.order.provider_id}
+          clientName={dispute.order.client ? `${dispute.order.client.first_name} ${dispute.order.client.last_name}` : t('mediation.roles.client')}
+          providerName={dispute.order.provider ? `${dispute.order.provider.first_name} ${dispute.order.provider.last_name}` : t('mediation.roles.provider')}
         />
       )}
     </>

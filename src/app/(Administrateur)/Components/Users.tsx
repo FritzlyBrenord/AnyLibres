@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 
 import { CurrencyConverter } from "@/components/common/CurrencyConverter";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -108,6 +109,7 @@ interface Provider {
 interface Stats {
   total_clients: number;
   total_providers: number;
+  total_system_users: number;
   active_clients: number;
   active_providers: number;
   new_clients_today: number;
@@ -119,11 +121,19 @@ interface Stats {
 export default function Userss({ isDark = false }: UserProps) {
   const router = useRouter();
   const { t, language } = useLanguageContext();
+  const { hasPermission } = usePermissions();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
 
+  // Vérifier les permissions
+  const canViewUsers = hasPermission('users.view');
+  const canManageStatus = hasPermission('users.manage_status');
+  const canDeleteUsers = hasPermission('users.delete');
+  const canImpersonate = hasPermission('users.impersonate');
+  const canExport = hasPermission('users.export');
+
   // États pour la navigation
-  const [selectedTab, setSelectedTab] = useState<"clients" | "providers">(
+  const [selectedTab, setSelectedTab] = useState<"clients" | "providers" | "system">(
     "clients"
   );
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -134,6 +144,7 @@ export default function Userss({ isDark = false }: UserProps) {
   // États pour les données
   const [clients, setClients] = useState<Client[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -176,8 +187,8 @@ export default function Userss({ isDark = false }: UserProps) {
       // Charger les statistiques
       await loadStats();
 
-      // Charger les clients et prestataires en parallèle
-      await Promise.all([loadClients(), loadProviders()]);
+      // Charger les clients, prestataires et users système en parallèle
+      await Promise.all([loadClients(), loadProviders(), loadSystemUsers()]);
     } catch (err: any) {
       setError(err.message || (tAny.admin?.users?.errors?.loadingError || "Erreur de chargement"));
       console.error("Erreur:", err);
@@ -288,6 +299,20 @@ export default function Userss({ isDark = false }: UserProps) {
     } catch (error) {
       console.error("[USERS]", tAny.admin?.users?.errors?.providersError || "Erreur chargement providers:", error);
       throw error;
+    }
+  };
+
+  const loadSystemUsers = async () => {
+    try {
+      const response = await fetch("/api/admin/system-users", {
+        headers: { "x-is-admin": "true" },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSystemUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error("[USERS] Erreur chargement users système:", error);
     }
   };
 
@@ -498,6 +523,9 @@ export default function Userss({ isDark = false }: UserProps) {
   // Filtrer les données selon les critères
   const filteredClients = useMemo(() => {
     return clients.filter((client) => {
+      // Filtrer strictement par rôle client (éviter les admins/modérateurs qui sont dans profiles)
+      if (client.role && client.role !== 'client') return false;
+
       // Filtre par statut
       if (statusFilter === "active" && !client.is_active) return false;
       if (statusFilter === "inactive" && client.is_active) return false;
@@ -544,13 +572,29 @@ export default function Userss({ isDark = false }: UserProps) {
         if (dateRange === "month" && diffDays > 30) return false;
       }
 
-      return true;
+          return true;
     });
   }, [providers, statusFilter, verificationFilter, dateRange]);
 
+  const filteredSystemUsers = useMemo(() => {
+    return systemUsers.filter((user) => {
+      // Filtre par recherche locale si besoin (en plus du fetch)
+      if (searchQuery) {
+        const lowSearch = searchQuery.toLowerCase();
+        const matches = 
+          user.display_name?.toLowerCase().includes(lowSearch) || 
+          user.email?.toLowerCase().includes(lowSearch) ||
+          user.first_name?.toLowerCase().includes(lowSearch) ||
+          user.last_name?.toLowerCase().includes(lowSearch);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [systemUsers, searchQuery]);
+
   // Calculer les statistiques de la vue
   const currentData =
-    selectedTab === "clients" ? filteredClients : filteredProviders;
+    selectedTab === "clients" ? filteredClients : selectedTab === "providers" ? filteredProviders : filteredSystemUsers;
   const selectedCount = selectedIds.length;
 
   // Charger les données au montage
@@ -622,6 +666,23 @@ export default function Userss({ isDark = false }: UserProps) {
             {tAny.admin?.users?.loading || "Chargement des données..."}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Si pas de permission de voir les utilisateurs
+  if (!canViewUsers) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-red-50 text-red-600">
+          <ShieldAlert className="w-10 h-10" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+          Accès Refusé
+        </h2>
+        <p className="max-w-md text-gray-600 dark:text-gray-400">
+          Vous n'avez pas la permission de voir les utilisateurs. Contactez un administrateur système.
+        </p>
       </div>
     );
   }
@@ -758,6 +819,35 @@ export default function Userss({ isDark = false }: UserProps) {
                   }`}
                 >
                   {stats.total_providers}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setSelectedTab("system")}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+                selectedTab === "system"
+                  ? isDark
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
+                    : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
+                  : isDark
+                  ? "text-white/60 hover:text-white hover:bg-slate-700"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <Shield className="w-5 h-5" />
+              {tAny.admin?.users?.tabs?.system || "Système"}
+              {stats && (
+                <span
+                  className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                    selectedTab === "system"
+                      ? "bg-white/20"
+                      : isDark
+                      ? "bg-slate-700 text-white/80"
+                      : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {stats.total_system_users}
                 </span>
               )}
             </button>
@@ -1034,13 +1124,17 @@ export default function Userss({ isDark = false }: UserProps) {
               >
                 {selectedTab === "clients"
                   ? (tAny.admin?.users?.list?.clientsTitle || "Liste des clients")
-                  : (tAny.admin?.users?.list?.providersTitle || "Liste des prestataires")}
+                  : selectedTab === "providers"
+                  ? (tAny.admin?.users?.list?.providersTitle || "Liste des prestataires")
+                  : "Liste des utilisateurs système"}
               </h2>
               <p className={isDark ? "text-white/60" : "text-slate-600"}>
                 {currentData.length}{" "}
                 {selectedTab === "clients"
                   ? (tAny.admin?.users?.list?.clientsCount || "client(s)")
-                  : (tAny.admin?.users?.list?.providersCount || "prestataire(s)")}{" "}
+                  : selectedTab === "providers"
+                  ? (tAny.admin?.users?.list?.providersCount || "prestataire(s)")
+                  : "utilisateur(s) système"}{" "}
                 {tAny.admin?.users?.list?.found || "trouvé(s)"}
               </p>
             </div>
@@ -1137,7 +1231,9 @@ export default function Userss({ isDark = false }: UserProps) {
                       >
                         {selectedTab === "clients"
                           ? (tAny.admin?.users?.table?.headers?.orders || "Commandes")
-                          : (tAny.admin?.users?.table?.headers?.rating || "Note")}
+                          : selectedTab === "providers"
+                          ? (tAny.admin?.users?.table?.headers?.rating || "Note")
+                          : "Rôle"}
                       </span>
                     </th>
                     <th className="p-4 text-left">
@@ -1146,7 +1242,9 @@ export default function Userss({ isDark = false }: UserProps) {
                       >
                         {selectedTab === "clients"
                           ? (tAny.admin?.users?.table?.headers?.totalSpent || "Total dépensé")
-                          : (tAny.admin?.users?.table?.headers?.revenue || "Revenus")}
+                          : selectedTab === "providers"
+                          ? (tAny.admin?.users?.table?.headers?.revenue || "Revenus")
+                          : "Identifiant"}
                       </span>
                     </th>
                     <th className="p-4 text-left">
@@ -1403,7 +1501,8 @@ export default function Userss({ isDark = false }: UserProps) {
                           </td>
                         </tr>
                       ))
-                    : filteredProviders.map((provider) => (
+                    : selectedTab === "providers"
+                    ? filteredProviders.map((provider) => (
                         <tr
                           key={provider.id}
                           className={`border-b last:border-b-0 hover:bg-opacity-10 ${
@@ -1641,7 +1740,118 @@ export default function Userss({ isDark = false }: UserProps) {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      ))
+                    : filteredSystemUsers.map((user) => {
+                        const displayRole = typeof user.role === 'object' ? user.role?.name : user.role;
+                        return (
+                          <tr
+                            key={user.id}
+                            className={`border-b last:border-b-0 hover:bg-opacity-10 ${
+                              isDark
+                                ? "border-slate-700 hover:bg-white/5"
+                                : "border-slate-100 hover:bg-slate-50/80"
+                            } transition-colors`}
+                          >
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                                  {user.avatar_url ? (
+                                    <img
+                                      src={user.avatar_url}
+                                      alt={user.display_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Shield className="w-6 h-6 text-indigo-500 mx-auto mt-2" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h4
+                                    className={`font-semibold ${
+                                      isDark ? "text-white" : "text-slate-900"
+                                    }`}
+                                  >
+                                    {user.display_name ||
+                                      `${user.first_name} ${user.last_name}`}
+                                  </h4>
+                                  <p
+                                    className={`text-sm ${
+                                      isDark ? "text-white/60" : "text-slate-600"
+                                    }`}
+                                  >
+                                    ID: {user.id.substring(0, 8)}...
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-slate-400" />
+                                  <span
+                                    className={
+                                      isDark ? "text-white/80" : "text-slate-700"
+                                    }
+                                  >
+                                    {user.email}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${isDark ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
+                                {displayRole || 'Admin'}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`text-sm font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {user.user_id?.substring(0, 15)}...
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={`w-2 h-2 rounded-full ${
+                                    user.is_active !== false
+                                      ? "bg-green-500"
+                                      : "bg-red-500"
+                                  }`}
+                                />
+                                <span
+                                  className={`font-medium ${
+                                    user.is_active !== false
+                                      ? isDark
+                                        ? "text-green-400"
+                                        : "text-green-600"
+                                      : isDark
+                                      ? "text-red-400"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  {user.is_active !== false
+                                    ? "Actif"
+                                    : "Inactif"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleImpersonate(user.id, user.display_name)}
+                                  className={`p-2 rounded-lg transition-colors ${
+                                    isDark
+                                      ? "bg-blue-900/30 text-blue-400 hover:bg-blue-900/50"
+                                      : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                  }`}
+                                  title="Se connecter en tant que"
+                                >
+                                  <LogIn className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                    })}
                 </tbody>
               </table>
             </div>

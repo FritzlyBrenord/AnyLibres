@@ -24,9 +24,14 @@ import {
   Reply,
   MicOff,
   VolumeX,
-  Clock, // Added Clock
+  Clock,
+  Languages,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
+import { TranslatedMessageText } from "@/components/messaging/TranslatedMessageText";
 
 // --- Types ---
 type UserRole = "client" | "provider" | "admin";
@@ -74,6 +79,7 @@ export default function MediationChatRoom({
   providerName,
   isDark = false,
 }: MediationChatRoomProps) {
+  const { t, language } = useSafeLanguage();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -104,6 +110,11 @@ export default function MediationChatRoom({
   >({});
   const [processingMute, setProcessingMute] = useState<string | null>(null);
   const isMuted = participantMutes[currentUserId] || false;
+
+  // Translation State
+  const [isAutoTranslateActive, setIsAutoTranslateActive] = useState(false);
+  const [targetTranslationLanguage, setTargetTranslationLanguage] = useState<string>(language || "fr");
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
   // Timer State
   const [mediationStartedAt, setMediationStartedAt] = useState<string | null>(
@@ -202,7 +213,7 @@ export default function MediationChatRoom({
   };
 
   const formatMessageTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString("fr-FR", {
+    return new Date(dateStr).toLocaleTimeString(undefined, {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -235,15 +246,15 @@ export default function MediationChatRoom({
   const getRepliedMessageContent = (msg: Message) => {
     switch (msg.message_type) {
       case "image":
-        return "📷 Photo";
+        return t('mediation.chat.media.photo');
       case "video":
-        return "🎥 Vidéo";
+        return t('mediation.chat.media.video');
       case "voice":
-        return "🎤 Message vocal";
+        return t('mediation.chat.media.voice');
       case "audio":
-        return "🎵 Audio";
+        return t('mediation.chat.media.audio');
       case "document":
-        return "📄 Document";
+        return t('mediation.chat.media.document');
       default:
         return msg.content;
     }
@@ -251,11 +262,15 @@ export default function MediationChatRoom({
 
   // --- API / Logic ---
 
+  const [presenceData, setPresenceData] = useState<{user_id: string, role: string}[]>([]);
+
+  // --- API / Logic ---
+
   const loadPresenceState = async () => {
     try {
       const { data, error } = await supabase
         .from("mediation_presence")
-        .select("user_id, is_muted")
+        .select("user_id, is_muted, role")
         .eq("dispute_id", disputeId);
 
       if (!error && data) {
@@ -264,6 +279,7 @@ export default function MediationChatRoom({
           mutes[p.user_id] = p.is_muted;
         });
         setParticipantMutes(mutes);
+        setPresenceData(data); // Store for ID fallback
       }
     } catch (error) {
       console.error("Error loading presence state:", error);
@@ -279,6 +295,7 @@ export default function MediationChatRoom({
       }
     } catch (error) {
       console.error("Error loading messages:", error);
+      alert(t('mediation.chat.errors.load'));
     } finally {
       setLoading(false);
     }
@@ -405,11 +422,11 @@ export default function MediationChatRoom({
       if (data.success) {
         setResolutionStep(3);
       } else {
-        alert(data.error || "Une erreur est survenue");
+        alert(data.error || t('mediation.errors.default'));
       }
     } catch (e) {
       console.error(e);
-      alert("Erreur de connexion");
+      alert(t('mediation.waitingRoom.errors.connection'));
     } finally {
       setIsSubmitting(false);
     }
@@ -462,7 +479,7 @@ export default function MediationChatRoom({
       }
     } catch (error) {
       console.error("Error sending message", error);
-      alert("Erreur d'envoi");
+      alert(t('mediation.chat.errors.send'));
     }
   };
 
@@ -524,7 +541,7 @@ export default function MediationChatRoom({
           }
         } catch (error) {
           console.error("Upload error", error);
-          alert("Erreur d'upload");
+          alert(t('mediation.chat.errors.upload'));
         }
       }
     };
@@ -594,7 +611,7 @@ export default function MediationChatRoom({
       setIsRecording(true);
     } catch (err) {
       console.error("Error accessing microphone", err);
-      alert("Accès micro refusé ou impossible");
+      alert(t('mediation.chat.errors.mic'));
     }
   };
 
@@ -658,9 +675,7 @@ export default function MediationChatRoom({
         if (playPromise !== undefined) {
           playPromise.catch((error) => {
             console.error("Audio playback error:", error);
-            alert(
-              "Impossible de lire l'audio. Format non supporté ou fichier inaccessible.",
-            );
+            alert(t('mediation.chat.errors.audioPlayback'));
             setPlayingAudio(null);
           });
         }
@@ -700,6 +715,14 @@ export default function MediationChatRoom({
     const newMute = !currentMute;
 
     try {
+      if (!userId) {
+        // Find user to show role in error
+        const user = users.find(u => !u.id && (u.role === "client" || u.role === "provider")); // Heuristic
+        alert(`Erreur: ID de l'utilisateur manquant pour l'action Silence. (Role: ${user?.role || 'Inconnu'})`);
+        console.error("Missing userId for mute. Users:", users);
+        return;
+      }
+
       const response = await fetch("/api/mediation/toggle-mute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -707,7 +730,7 @@ export default function MediationChatRoom({
       });
       const data = await response.json();
       if (!data.success) {
-        alert(data.error || "Erreur lors du changement d'état");
+        alert(data.error || t('mediation.chat.errors.muteToggle'));
       }
     } catch (error) {
       console.error("Error toggling mute:", error);
@@ -762,10 +785,15 @@ export default function MediationChatRoom({
     }
   };
 
+  const getPresenceId = (role: string, fallbackId: string) => {
+    if (fallbackId) return fallbackId;
+    return presenceData.find(p => p.role === role)?.user_id || ""; // Fallback to loaded presence
+  };
+
   const users = [
-    { id: clientId, name: clientName, role: "client", avatar: "👤" },
-    { id: providerId, name: providerName, role: "provider", avatar: "🛠️" },
-    { id: currentUserId, name: "Médiateur", role: "admin", avatar: "⚖️" },
+    { id: getPresenceId("client", clientId), name: clientName, role: "client", avatar: "👤" },
+    { id: getPresenceId("provider", providerId), name: providerName, role: "provider", avatar: "🛠️" },
+    { id: currentUserId, name: t('mediation.waitingRoom.mediator'), role: "admin", avatar: "⚖️" },
   ];
 
   if (loading) {
@@ -777,26 +805,45 @@ export default function MediationChatRoom({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col h-screen">
-      {/* Header Premium */}
-      <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl flex items-center justify-center shadow-lg shadow-amber-900/50">
-                <span className="text-2xl">⚖️</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
-                  Salle de Médiation
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col h-screen overflow-hidden">
+      {/* Header Premium - Responsive & Collapsible */}
+      <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 sm:py-4">
+          <div className="flex flex-col gap-2">
+            
+            {/* Top Row: Logo, Title, Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl flex items-center justify-center shadow-lg shadow-amber-900/50 flex-shrink-0">
+                   <span className="text-xl">⚖️</span>
+                </div>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent truncate max-w-[200px] sm:max-w-md">
+                   {t('mediation.chat.title') || t('mediation.waitingRoom.title')}
                 </h1>
-                <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
-                  <span>
-                    Session active - {clientName} ↔ {providerName}
-                  </span>
+              </div>
+
+               {/* Mobile Toggle Button */}
+               <button 
+                 onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                 className="sm:hidden p-2 text-slate-400 hover:text-amber-400 transition-colors"
+               >
+                 {isHeaderExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+               </button>
+            </div>
+
+            {/* Collapsible Content (Always visible on SM+, Toggled on Mobile) */}
+            <div className={`
+              flex flex-col sm:flex-row items-center justify-between gap-4 
+              overflow-hidden transition-all duration-300 ease-in-out
+              ${isHeaderExpanded ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0 sm:max-h-none sm:opacity-100 sm:mt-0'}
+            `}>
+              {/* Session Info & Timer */}
+               <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 w-full sm:w-auto">
+                  <p className="text-xs text-slate-400 text-center sm:text-left">
+                    {t('mediation.chat.activeSession', { client: clientName, provider: providerName })}
+                  </p>
                   {mediationStartedAt && (
-                    <span
-                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono font-medium border ${
+                    <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-xs font-medium border ${
                         mediationEndedAt
                           ? "bg-slate-800 text-slate-400 border-slate-700"
                           : "bg-amber-900/30 text-amber-400 border-amber-500/30 animate-pulse"
@@ -806,13 +853,38 @@ export default function MediationChatRoom({
                       {formatDuration(elapsedTime)}
                     </span>
                   )}
-                </p>
-              </div>
-            </div>
+               </div>
 
-            <div className="flex items-center gap-6">
+               {/* Controls & Participants */}
+               <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                 
+                  {/* Translation Controls */}
+                  <div className="flex items-center gap-2 bg-slate-800/80 p-1 rounded-xl border border-slate-700 shadow-inner">
+                    <select
+                      value={targetTranslationLanguage}
+                      onChange={(e) => setTargetTranslationLanguage(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-amber-400 outline-none px-2 cursor-pointer appearance-none hover:text-amber-300 transition-colors"
+                    >
+                      <option value="fr" className="bg-slate-800">FR</option>
+                      <option value="en" className="bg-slate-800">EN</option>
+                      <option value="es" className="bg-slate-800">ES</option>
+                    </select>
+                    <div className="w-[1px] h-3 bg-slate-700 mx-0.5"></div>
+                    <button
+                      onClick={() => setIsAutoTranslateActive(!isAutoTranslateActive)}
+                      className={`p-1.5 rounded-lg transition-all ${
+                        isAutoTranslateActive
+                          ? "bg-amber-600 text-white shadow-lg shadow-amber-900/40"
+                          : "text-slate-500 hover:text-amber-400 hover:bg-slate-700/50"
+                      }`}
+                      title={isAutoTranslateActive ? "Désactiver la traduction" : "Traduire tout"}
+                    >
+                      <Languages className="w-4 h-4" />
+                    </button>
+                  </div>
+
               {/* Participants */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center -space-x-2 sm:space-x-4">
                 {users.map((u) => {
                   const isUserMuted = participantMutes[u.id];
                   const isProcessing = processingMute === u.id;
@@ -820,19 +892,19 @@ export default function MediationChatRoom({
                   return (
                     <div
                       key={u.id}
-                      className="flex flex-col items-center gap-2"
+                      className="flex flex-col items-center gap-1 sm:gap-2"
                     >
                       {/* Avatar Circle with Control Overlay */}
-                      <div className="relative group w-14 h-14">
+                      <div className="relative group w-10 h-10 sm:w-14 sm:h-14">
                         <div
-                          className={`w-full h-full rounded-full ${getRoleStyles(u.role).bg} border-[3px] ${isUserMuted ? "border-slate-600 grayscale opacity-50" : getRoleStyles(u.role).border} flex items-center justify-center shadow-lg overflow-hidden transition-all`}
+                          className={`w-full h-full rounded-full ${getRoleStyles(u.role).bg} border-2 sm:border-[3px] ${isUserMuted ? "border-slate-600 grayscale opacity-50" : getRoleStyles(u.role).border} flex items-center justify-center shadow-lg overflow-hidden transition-all`}
                         >
-                          <span className="text-2xl">{u.avatar}</span>
+                          <span className="text-lg sm:text-2xl">{u.avatar}</span>
                         </div>
 
                         {/* Online indicator */}
                         {!isUserMuted && !isProcessing && (
-                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-slate-900 shadow-sm z-20 pointer-events-none"></div>
+                          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 rounded-full border-2 border-slate-900 shadow-sm z-20 pointer-events-none"></div>
                         )}
 
                         {/* Admin Controls Overlay */}
@@ -849,8 +921,8 @@ export default function MediationChatRoom({
                             }`}
                             title={
                               isUserMuted
-                                ? "Réactiver la parole"
-                                : "Mettre en pause"
+                                ? t('mediation.chat.unmuteSpeaker')
+                                : t('mediation.chat.muteSpeaker')
                             }
                           >
                             {isProcessing ? (
@@ -873,10 +945,10 @@ export default function MediationChatRoom({
                           className={`text-[9px] uppercase tracking-wider font-bold ${isUserMuted ? "text-red-400" : "text-amber-500/80"}`}
                         >
                           {u.role === "client"
-                            ? "Client"
+                            ? t('mediation.roles.client')
                             : u.role === "provider"
-                              ? "Prestataire"
-                              : "Médiateur"}
+                              ? t('mediation.roles.provider')
+                              : t('mediation.roles.admin')}
                         </span>
                       </div>
                     </div>
@@ -894,7 +966,7 @@ export default function MediationChatRoom({
                       : "bg-red-600 hover:bg-red-700"
                   } shadow-lg`}
                 >
-                  {isPaused ? "▶️ Reprendre" : "⏸️ Pause"}
+                  {isPaused ? `▶️ ${t('common.resume') || 'Reprendre'}` : `⏸️ ${t('common.pause') || 'Pause'}`}
                 </button>
               )}
 
@@ -904,9 +976,10 @@ export default function MediationChatRoom({
                   onClick={handleOpenDecisionModal}
                   className="px-6 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 rounded-lg font-semibold shadow-lg shadow-amber-900/50 transition-all hover:scale-105"
                 >
-                  Prendre une décision
+                  {t('mediation.chat.takeDecision')}
                 </button>
               )}
+            </div>
             </div>
           </div>
 
@@ -915,8 +988,7 @@ export default function MediationChatRoom({
             <div className="mt-3 px-4 py-2 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-400" />
               <span className="text-sm text-red-300">
-                Discussion en pause - L'administrateur a temporairement suspendu
-                les échanges
+                {t('mediation.chat.pausedNotice')}
               </span>
             </div>
           )}
@@ -937,7 +1009,7 @@ export default function MediationChatRoom({
 
             const senderName = message.sender
               ? `${message.sender.first_name} ${message.sender.last_name}`
-              : "Utilisateur";
+              : t('mediation.none');
 
             // Find replied message if exists
             const repliedMessage = message.reply_to_id
@@ -969,13 +1041,13 @@ export default function MediationChatRoom({
                     <span
                       className={`text-xs px-2 py-0.5 rounded ${styles.badge} flex items-center gap-1`}
                     >
-                      {role === "admin" && <span>⚖️</span>}
+                        {role === "admin" && <span>⚖️</span>}
                       {role === "client"
-                        ? "Client"
+                        ? t('mediation.roles.client')
                         : role === "provider"
-                          ? "Prestataire"
+                          ? t('mediation.roles.provider')
                           : role === "admin"
-                            ? "Médiateur"
+                            ? t('mediation.roles.admin')
                             : role}
                     </span>
                   </div>
@@ -989,7 +1061,7 @@ export default function MediationChatRoom({
                   >
                     {isSenderAdmin && (
                       <div className="text-[10px] font-bold text-amber-500/80 uppercase tracking-widest mb-1 pointer-events-none select-none">
-                        Transmission Officielle
+                        {t('mediation.chat.officialTransmission')}
                       </div>
                     )}
                     {/* Reply Context */}
@@ -1001,7 +1073,7 @@ export default function MediationChatRoom({
                         }}
                       >
                         <p className="text-xs text-amber-500 font-semibold mb-1">
-                          {repliedMessage.sender?.first_name || "Utilisateur"}
+                          {repliedMessage.sender?.first_name || t('mediation.none')}
                         </p>
                         <p className="text-slate-300 line-clamp-1">
                           {getRepliedMessageContent(repliedMessage)}
@@ -1010,11 +1082,12 @@ export default function MediationChatRoom({
                     )}
 
                     {message.message_type === "text" && (
-                      <p
-                        className={`${styles.text} ${styles.font} leading-relaxed whitespace-pre-wrap`}
-                      >
-                        {renderWithLinks(message.content)}
-                      </p>
+                      <TranslatedMessageText
+                        text={message.content}
+                        isAutoTranslateActive={isAutoTranslateActive}
+                        targetLanguage={targetTranslationLanguage}
+                        isOwn={isCurrentUser}
+                      />
                     )}
 
                     {message.message_type === "image" && message.media_url && (
@@ -1024,9 +1097,12 @@ export default function MediationChatRoom({
                           alt={message.media_name}
                           className="rounded-lg max-w-md max-h-64 object-cover"
                         />
-                        <p className={`${styles.text} text-sm`}>
-                          {message.content}
-                        </p>
+                        <TranslatedMessageText
+                          text={message.content}
+                          isAutoTranslateActive={isAutoTranslateActive}
+                          targetLanguage={targetTranslationLanguage}
+                          isOwn={isCurrentUser}
+                        />
                       </div>
                     )}
 
@@ -1037,11 +1113,14 @@ export default function MediationChatRoom({
                           className="rounded-lg max-w-md max-h-64"
                         >
                           <source src={message.media_url} />
-                          Votre navigateur ne supporte pas la lecture de vidéos.
+                          {t('mediation.chat.errors.videoPlayback') || 'Votre navigateur ne supporte pas la lecture de vidéos.'}
                         </video>
-                        <p className={`${styles.text} text-sm`}>
-                          {message.content}
-                        </p>
+                        <TranslatedMessageText
+                          text={message.content}
+                          isAutoTranslateActive={isAutoTranslateActive}
+                          targetLanguage={targetTranslationLanguage}
+                          isOwn={isCurrentUser}
+                        />
                       </div>
                     )}
 
@@ -1055,7 +1134,7 @@ export default function MediationChatRoom({
                             >
                               {message.media_name}
                             </p>
-                            <p className="text-xs text-slate-400">Document</p>
+                            <p className="text-xs text-slate-400">{t('mediation.chat.media.documentLabel')}</p>
                           </div>
                           <a
                             href={message.media_url}
@@ -1144,13 +1223,13 @@ export default function MediationChatRoom({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-slate-700/50 bg-slate-800/50 px-6 py-4">
+      <div className="border-t border-slate-700/50 bg-slate-800/50 px-4 sm:px-6 py-4">
         {/* Reply Preview Banner */}
         {replyingTo && (
           <div className="mb-2 flex items-center justify-between bg-slate-800/80 border-l-4 border-amber-500 rounded-r-lg p-3 animate-fade-in">
             <div className="flex-1">
               <p className="text-xs text-amber-500 font-semibold mb-1">
-                Réponse à {replyingTo.sender?.first_name || "Utilisateur"}
+                {t('mediation.chat.replyingTo', { name: replyingTo.sender?.first_name || t('mediation.none') })}
               </p>
               <p className="text-sm text-slate-300 line-clamp-1">
                 {getRepliedMessageContent(replyingTo)}
@@ -1170,7 +1249,7 @@ export default function MediationChatRoom({
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
               <span className="text-red-300 font-medium">
-                Enregistrement en cours...
+                {t('mediation.chat.recordingInProgress')}
               </span>
               <span className="text-red-400 font-mono">
                 {formatTime(recordingTime)}
@@ -1209,28 +1288,28 @@ export default function MediationChatRoom({
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-white"
                 >
                   <Image className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm">Image</span>
+                  <span className="text-sm">{t('mediation.chat.media.imageLabel')}</span>
                 </button>
                 <button
                   onClick={() => handleFileUpload("video")}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-white"
                 >
                   <Video className="w-5 h-5 text-purple-400" />
-                  <span className="text-sm">Vidéo</span>
+                  <span className="text-sm">{t('mediation.chat.media.videoLabel')}</span>
                 </button>
                 <button
                   onClick={() => handleFileUpload("audio")}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-white"
                 >
                   <Music className="w-5 h-5 text-purple-400" />
-                  <span className="text-sm">Audio</span>
+                  <span className="text-sm">{t('mediation.chat.media.audioLabel')}</span>
                 </button>
                 <button
                   onClick={() => handleFileUpload("document")}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-slate-700 rounded-lg transition-colors text-white"
                 >
                   <FileText className="w-5 h-5 text-green-400" />
-                  <span className="text-sm">Document</span>
+                  <span className="text-sm">{t('mediation.chat.media.documentLabel')}</span>
                 </button>
               </div>
             )}
@@ -1251,10 +1330,10 @@ export default function MediationChatRoom({
               disabled={isPaused || isMuted}
               placeholder={
                 isPaused
-                  ? "Discussion en pause..."
+                  ? t('mediation.chat.pausedNoticeShort') || t('mediation.chat.pausedNotice')
                   : isMuted
-                    ? "Vous avez été rendu silencieux par le médiateur"
-                    : "Écrivez votre message..."
+                    ? t('mediation.chat.mutedNotice')
+                    : t('mediation.chat.placeholder') || "Écrivez votre message..."
               }
               className={`w-full px-5 py-3 rounded-xl border focus:outline-none focus:ring-2 transition-all ${
                 isPaused || isMuted
@@ -1296,12 +1375,12 @@ export default function MediationChatRoom({
 
       {/* Decision Modal */}
       {showDecisionModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full p-8 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
-                {resolutionStep === 3 ? "Confirmation" : "Décision finale"}
+                {resolutionStep === 3 ? t('mediation.resolution.confirmation') : t('mediation.resolution.closedTitle')}
               </h2>
               {resolutionStep !== 3 && (
                 <button
@@ -1317,8 +1396,7 @@ export default function MediationChatRoom({
             {resolutionStep === 1 && (
               <>
                 <p className="text-slate-300 mb-8 leading-relaxed">
-                  Vous êtes sur le point de clore cette médiation. Cette action
-                  est <strong>définitive</strong> et ne pourra pas être annulée.
+                  {t('mediation.resolution.warningFinal')}
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -1328,9 +1406,9 @@ export default function MediationChatRoom({
                     <div className="relative flex flex-col items-center gap-3">
                       <CheckCircle className="w-12 h-12" />
                       <div>
-                        <p className="font-bold text-lg">Accord trouvé</p>
+                        <p className="font-bold text-lg">{t('mediation.resolution.agreementFound')}</p>
                         <p className="text-sm text-green-100">
-                          Nous avons trouvé une solution
+                          {t('mediation.resolution.agreementSubtitle')}
                         </p>
                       </div>
                     </div>
@@ -1343,9 +1421,9 @@ export default function MediationChatRoom({
                     <div className="relative flex flex-col items-center gap-3">
                       <XCircle className="w-12 h-12" />
                       <div>
-                        <p className="font-bold text-lg">Pas d'accord</p>
+                        <p className="font-bold text-lg">{t('mediation.resolution.noAgreement')}</p>
                         <p className="text-sm text-red-100">
-                          Impossible de s'entendre
+                          {t('mediation.resolution.noAgreementSubtitle')}
                         </p>
                       </div>
                     </div>
@@ -1362,16 +1440,16 @@ export default function MediationChatRoom({
                     <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
                       <CheckCircle className="text-green-500 w-6 h-6" />
                       <p className="text-green-200">
-                        Félicitations pour avoir trouvé un terrain d'entente.
+                        {t('mediation.resolution.congrats')}
                       </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Note de conclusion (Optionnel)
+                        {t('mediation.resolution.noteLabel')}
                       </label>
                       <textarea
                         className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-green-500/50 outline-none h-32 resize-none"
-                        placeholder="Décrivez brièvement les termes de l'accord..."
+                        placeholder={t('mediation.resolution.notePlaceholder')}
                         value={resolutionNote}
                         onChange={(e) => setResolutionNote(e.target.value)}
                       />
@@ -1382,17 +1460,16 @@ export default function MediationChatRoom({
                     <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
                       <AlertCircle className="text-red-500 w-6 h-6" />
                       <p className="text-red-200">
-                        Nous sommes désolés qu'aucune solution n'ait été
-                        trouvée.
+                        {t('mediation.resolution.sorryNoSolution')}
                       </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Quel est le problème principal ?
+                        {t('mediation.resolution.mainProblemLabel')}
                       </label>
                       <textarea
                         className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-red-500/50 outline-none h-32 resize-none"
-                        placeholder="Expliquez pourquoi aucun accord n'a été possible..."
+                        placeholder={t('mediation.resolution.problemPlaceholder')}
                         value={resolutionNote}
                         onChange={(e) => setResolutionNote(e.target.value)}
                       />
@@ -1409,7 +1486,7 @@ export default function MediationChatRoom({
                         htmlFor="refund"
                         className="text-slate-300 cursor-pointer select-none"
                       >
-                        Je souhaite demander un remboursement intégral
+                        {t('mediation.resolution.refundRequest')}
                       </label>
                     </div>
                   </>
@@ -1420,7 +1497,7 @@ export default function MediationChatRoom({
                     onClick={() => setResolutionStep(1)}
                     className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
                   >
-                    Retour
+                    {t('mediation.detail.back') || t('mediation.resolution.back') || 'Retour'}
                   </button>
                   <button
                     onClick={handleSubmitResolution}
@@ -1434,10 +1511,10 @@ export default function MediationChatRoom({
                     {isSubmitting ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-5 h-5 animate-spin" />{" "}
-                        Traitement...
+                        {t('mediation.resolution.processing')}
                       </span>
                     ) : (
-                      "Confirmer la clôture"
+                      t('mediation.resolution.confirmResolution')
                     )}
                   </button>
                 </div>
@@ -1451,21 +1528,19 @@ export default function MediationChatRoom({
                   <Check className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-4">
-                  La dispute est close
+                  {t('mediation.resolution.closedTitle')}
                 </h3>
 
                 {resolutionType === "agreement" ? (
                   <p className="text-slate-300 mb-8 max-w-md mx-auto">
-                    Merci d'avoir utilisé notre plateforme de médiation.
-                    L'accord a été enregistré avec succès.
+                    {t('mediation.resolution.thanksAgreement')}
                   </p>
                 ) : (
                   <p className="text-slate-300 mb-8 max-w-md mx-auto">
-                    Votre demande a été prise en compte.
+                    {t('mediation.resolution.thanksNoAgreement')}
                     {wantsRefund && (
                       <span className="block mt-2 text-amber-400 font-medium">
-                        Un agent vous contactera sous peu concernant votre
-                        demande de remboursement.
+                        {t('mediation.resolution.refundNextSteps')}
                       </span>
                     )}
                   </p>
@@ -1475,7 +1550,7 @@ export default function MediationChatRoom({
                   onClick={handleCloseAndRedirect}
                   className="px-8 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-semibold transition-colors w-full sm:w-auto"
                 >
-                  Quitter la salle
+                  {t('mediation.resolution.leaveRoom')}
                 </button>
               </div>
             )}

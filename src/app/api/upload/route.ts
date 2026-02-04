@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const type = formData.get('type') as string; // 'image' | 'video' | 'audio' | 'document'
+    const context = formData.get('context') as string || 'message'; // 'service' | 'message'
 
     if (!file) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
@@ -74,14 +75,24 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Determine the bucket name based on type
+    // Determine the bucket name based on type and context
     const bucketMap = {
-      image: 'message-images',
-      video: 'message-videos',
-      audio: 'message-audio',
-      document: 'message-documents'
+      service: {
+        image: 'service-images',
+        video: 'service-videos',
+        audio: 'service-audio',
+        document: 'service-documents'
+      },
+      message: {
+        image: 'message-images',
+        video: 'message-videos',
+        audio: 'message-audio',
+        document: 'message-documents'
+      }
     };
-    const bucketName = bucketMap[type as keyof typeof bucketMap];
+
+    const contextBuckets = bucketMap[context as keyof typeof bucketMap] || bucketMap.message;
+    const bucketName = contextBuckets[type as keyof typeof contextBuckets];
 
     // Upload to Supabase Storage
     const { data, error: uploadError } = await supabase.storage

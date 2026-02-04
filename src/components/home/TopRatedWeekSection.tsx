@@ -11,8 +11,10 @@ import { Award, ArrowRight, Star } from 'lucide-react';
 import { Carousel } from '@/components/ui/Carousel';
 import { ServiceCard } from '@/components/service/ServiceCard';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 export function TopRatedWeekSection() {
+  const { t } = useSafeLanguage();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,10 +67,10 @@ export function TopRatedWeekSection() {
             </div>
             <div>
               <h2 className="font-heading font-bold text-2xl text-slate-900">
-                Meilleurs notés de la semaine
+                {t.home.connected.topRated.title}
               </h2>
               <p className="text-sm text-slate-600">
-                Les services les mieux évalués cette semaine
+                {t.home.connected.topRated.subtitle}
               </p>
             </div>
           </div>
@@ -77,7 +79,7 @@ export function TopRatedWeekSection() {
             href="/explorer?sort=top-rated"
             className="hidden sm:flex items-center gap-2 text-yellow-600 hover:text-yellow-700 font-semibold transition-colors group"
           >
-            Voir tout
+            {t.home.connected.topRated.viewAll}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -110,7 +112,7 @@ export function TopRatedWeekSection() {
           href="/explorer?sort=top-rated"
           className="sm:hidden flex items-center justify-center gap-2 text-yellow-600 hover:text-yellow-700 font-semibold mt-6 transition-colors"
         >
-          Voir tout
+          {t.home.connected.topRated.viewAll}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

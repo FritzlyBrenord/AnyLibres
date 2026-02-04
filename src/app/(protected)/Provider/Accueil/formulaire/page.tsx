@@ -20,6 +20,7 @@ import {
   Star,
   X,
 } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface FormData {
   // Étape 1: Informations de base
@@ -53,43 +54,45 @@ interface ValidationErrors {
   [key: string]: string;
 }
 
-const availabilityOptions = [
-  { value: "available", label: "Disponible maintenant" },
-  { value: "busy", label: "Occupé (peut accepter des projets)" },
-  { value: "unavailable", label: "Non disponible" },
-];
-
-const responseTimeOptions = [
-  { value: 1, label: "Moins d'1 heure" },
-  { value: 2, label: "1-2 heures" },
-  { value: 6, label: "2-6 heures" },
-  { value: 12, label: "6-12 heures" },
-  { value: 24, label: "Moins de 24 heures" },
-  { value: 48, label: "1-2 jours" },
-  { value: 72, label: "2-3 jours" },
-];
-
-const languageOptions = [
-  { code: "fr", label: "Français" },
-  { code: "en", label: "Anglais" },
-  { code: "es", label: "Espagnol" },
-  { code: "de", label: "Allemand" },
-  { code: "it", label: "Italien" },
-  { code: "pt", label: "Portugais" },
-  { code: "ar", label: "Arabe" },
-  { code: "zh", label: "Chinois" },
-  { code: "ja", label: "Japonais" },
-  { code: "ru", label: "Russe" },
-];
-
-const languageLevels = [
-  { value: "native", label: "Langue maternelle" },
-  { value: "fluent", label: "Courant" },
-  { value: "intermediate", label: "Intermédiaire" },
-  { value: "basic", label: "Basique" },
-];
-
 export default function ProviderFormulairePage() {
+  const { t } = useSafeLanguage();
+  const tp = t.providerForm;
+
+  const availabilityOptions = [
+    { value: "available", label: tp.availability.available },
+    { value: "busy", label: tp.availability.busy },
+    { value: "unavailable", label: tp.availability.unavailable },
+  ];
+
+  const responseTimeOptions = [
+    { value: 1, label: tp.responseTime.lessThan1 },
+    { value: 2, label: tp.responseTime["1to2"] },
+    { value: 6, label: tp.responseTime["2to6"] },
+    { value: 12, label: tp.responseTime["6to12"] },
+    { value: 24, label: tp.responseTime.lessThan24 },
+    { value: 48, label: tp.responseTime["1to2days"] },
+    { value: 72, label: tp.responseTime["2to3days"] },
+  ];
+
+  const languageLevels = [
+    { value: "native", label: tp.languageLevels.native },
+    { value: "fluent", label: tp.languageLevels.fluent },
+    { value: "intermediate", label: tp.languageLevels.intermediate },
+    { value: "basic", label: tp.languageLevels.basic },
+  ];
+
+  const languageOptions = [
+    { code: "fr", label: tp.languages.fr },
+    { code: "en", label: tp.languages.en },
+    { code: "es", label: tp.languages.es },
+    { code: "de", label: tp.languages.de },
+    { code: "it", label: tp.languages.it },
+    { code: "pt", label: tp.languages.pt },
+    { code: "ar", label: tp.languages.ar },
+    { code: "zh", label: tp.languages.zh },
+    { code: "ja", label: tp.languages.ja },
+    { code: "ru", label: tp.languages.ru },
+  ];
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -130,38 +133,35 @@ export default function ProviderFormulairePage() {
     const newErrors: ValidationErrors = {};
 
     if (!formData.company_name.trim()) {
-      newErrors.company_name =
-        "Veuillez entrer le nom de votre entreprise ou votre nom";
+      newErrors.company_name = tp.errors.companyNameRequired;
     } else if (formData.company_name.trim().length < 2) {
-      newErrors.company_name = "Le nom doit contenir au moins 2 caractères";
+      newErrors.company_name = tp.errors.companyNameMin;
     }
 
     if (!formData.profession.trim()) {
-      newErrors.profession = "Veuillez entrer votre profession";
+      newErrors.profession = tp.errors.professionRequired;
     } else if (formData.profession.trim().length < 3) {
-      newErrors.profession =
-        "La profession doit contenir au moins 3 caractères";
+      newErrors.profession = tp.errors.professionMin;
     }
 
     if (!formData.tagline.trim()) {
-      newErrors.tagline = "Veuillez entrer un slogan";
+      newErrors.tagline = tp.errors.taglineRequired;
     } else if (formData.tagline.trim().length < 10) {
-      newErrors.tagline = "Le slogan doit contenir au moins 10 caractères";
+      newErrors.tagline = tp.errors.taglineMin;
     } else if (formData.tagline.trim().length > 100) {
-      newErrors.tagline = "Le slogan ne peut pas dépasser 100 caractères";
+      newErrors.tagline = tp.errors.taglineMax;
     }
 
     if (!formData.about.trim()) {
-      newErrors.about = "Veuillez décrire votre expérience";
+      newErrors.about = tp.errors.aboutRequired;
     } else if (formData.about.trim().length < 50) {
-      newErrors.about = "La description doit contenir au moins 50 caractères";
+      newErrors.about = tp.errors.aboutMin;
     } else if (formData.about.trim().length > 1000) {
-      newErrors.about = "La description ne peut pas dépasser 1000 caractères";
+      newErrors.about = tp.errors.aboutMax;
     }
 
     if (formData.experience_years === 0) {
-      newErrors.experience_years =
-        "Veuillez sélectionner votre niveau d'expérience";
+      newErrors.experience_years = tp.errors.experienceRequired;
     }
 
     setErrors(newErrors);
@@ -173,25 +173,23 @@ export default function ProviderFormulairePage() {
     const newErrors: ValidationErrors = {};
 
     if (formData.categories.length === 0) {
-      newErrors.categories = "Veuillez sélectionner au moins une catégorie";
+      newErrors.categories = tp.errors.categoriesRequired;
     } else if (formData.categories.length > 5) {
-      newErrors.categories =
-        "Vous ne pouvez sélectionner que 5 catégories maximum";
+      newErrors.categories = tp.errors.categoriesMax;
     }
 
     if (formData.skills.length === 0) {
-      newErrors.skills = "Veuillez ajouter au moins une compétence";
+      newErrors.skills = tp.errors.skillsRequired;
     } else if (formData.skills.length > 10) {
-      newErrors.skills = "Vous ne pouvez ajouter que 10 compétences maximum";
+      newErrors.skills = tp.errors.skillsMax;
     }
 
     if (!formData.availability) {
-      newErrors.availability = "Veuillez sélectionner votre disponibilité";
+      newErrors.availability = tp.errors.availabilityRequired;
     }
 
     if (!formData.response_time_hours) {
-      newErrors.response_time_hours =
-        "Veuillez indiquer votre temps de réponse";
+      newErrors.response_time_hours = tp.errors.responseTimeRequired;
     }
 
     setErrors(newErrors);
@@ -203,16 +201,15 @@ export default function ProviderFormulairePage() {
     const newErrors: ValidationErrors = {};
 
     if (!formData.location.country) {
-      newErrors.location_country = "Veuillez sélectionner votre pays";
+      newErrors.location_country = tp.errors.countryRequired;
     }
 
     if (!formData.location.region) {
-      newErrors.location_region =
-        "Veuillez sélectionner votre région/département";
+      newErrors.location_region = tp.errors.regionRequired;
     }
 
     if (!formData.location.city) {
-      newErrors.location_city = "Veuillez sélectionner votre ville";
+      newErrors.location_city = tp.errors.cityRequired;
     }
 
     setErrors(newErrors);
@@ -224,15 +221,15 @@ export default function ProviderFormulairePage() {
     const newErrors: ValidationErrors = {};
 
     if (formData.starting_price <= 0) {
-      newErrors.starting_price = "Le prix de départ doit être supérieur à 0";
+      newErrors.starting_price = tp.errors.startingPriceMin;
     } else if (formData.starting_price > 100000) {
-      newErrors.starting_price = "Le prix de départ semble trop élevé";
+      newErrors.starting_price = tp.errors.startingPriceMax;
     }
 
     if (formData.hourly_rate <= 0) {
-      newErrors.hourly_rate = "Le tarif horaire doit être supérieur à 0";
+      newErrors.hourly_rate = tp.errors.hourlyRateMin;
     } else if (formData.hourly_rate > 10000) {
-      newErrors.hourly_rate = "Le tarif horaire semble trop élevé";
+      newErrors.hourly_rate = tp.errors.hourlyRateMax;
     }
 
     setErrors(newErrors);
@@ -282,27 +279,27 @@ export default function ProviderFormulairePage() {
     const skill = skillInput.trim();
 
     if (!skill) {
-      setErrors({ ...errors, skills: "Veuillez entrer une compétence" });
+      setErrors({ ...errors, skills: tp.errors.skillsEnter });
       return;
     }
 
     if (skill.length < 2) {
       setErrors({
         ...errors,
-        skills: "La compétence doit contenir au moins 2 caractères",
+        skills: tp.errors.skillsMin,
       });
       return;
     }
 
     if (formData.skills.includes(skill)) {
-      setErrors({ ...errors, skills: "Cette compétence existe déjà" });
+      setErrors({ ...errors, skills: tp.errors.skillsDuplicate });
       return;
     }
 
     if (formData.skills.length >= 10) {
       setErrors({
         ...errors,
-        skills: "Vous ne pouvez ajouter que 10 compétences maximum",
+        skills: tp.errors.skillsMax,
       });
       return;
     }
@@ -334,7 +331,7 @@ export default function ProviderFormulairePage() {
       if (formData.categories.length >= 5) {
         setErrors({
           ...errors,
-          categories: "Vous ne pouvez sélectionner que 5 catégories maximum",
+          categories: tp.errors.categoriesMax,
         });
         return;
       }
@@ -356,20 +353,20 @@ export default function ProviderFormulairePage() {
 
   const addLanguage = () => {
     if (!selectedLanguage) {
-      setErrors({ ...errors, languages: "Veuillez sélectionner une langue" });
+      setErrors({ ...errors, languages: tp.errors.languagesSelect });
       return;
     }
 
     // Vérifier si la langue existe déjà
     if (formData.languages.some((lang) => lang.code === selectedLanguage)) {
-      setErrors({ ...errors, languages: "Cette langue a déjà été ajoutée" });
+      setErrors({ ...errors, languages: tp.errors.languagesDuplicate });
       return;
     }
 
     if (formData.languages.length >= 5) {
       setErrors({
         ...errors,
-        languages: "Vous ne pouvez ajouter que 5 langues maximum",
+        languages: tp.errors.languagesMax,
       });
       return;
     }
@@ -427,7 +424,7 @@ export default function ProviderFormulairePage() {
     } catch (error: any) {
       console.error("Erreur lors de la soumission:", error);
       setSubmitError(
-        error.message || "Une erreur est survenue. Veuillez réessayer."
+        error.message || tp.errors.general
       );
     } finally {
       setLoading(false);
@@ -477,10 +474,10 @@ export default function ProviderFormulairePage() {
               ))}
             </div>
             <div className="flex justify-between text-sm text-slate-600">
-              <span>Informations</span>
-              <span>Compétences</span>
-              <span>Localisation</span>
-              <span>Tarification</span>
+              <span>{tp.steps.info}</span>
+              <span>{tp.steps.skills}</span>
+              <span>{tp.steps.location}</span>
+              <span>{tp.steps.pricing}</span>
             </div>
           </div>
 
@@ -490,7 +487,7 @@ export default function ProviderFormulairePage() {
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h4 className="font-semibold text-red-900 mb-1">
-                  Erreur de soumission
+                  {tp.errors.submitTitle}
                 </h4>
                 <p className="text-sm text-red-800">{submitError}</p>
               </div>
@@ -505,15 +502,15 @@ export default function ProviderFormulairePage() {
                 <div className="flex items-center gap-3 mb-6">
                   <Briefcase className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-slate-900">
-                    Informations de base
+                    {tp.step1.title}
                   </h2>
                 </div>
 
                 {/* Nom de l'entreprise / Nom */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Nom de l'entreprise ou votre nom{" "}
-                    <span className="text-red-500">*</span>
+                    {tp.step1.companyName}{" "}
+                    <span className="text-red-500">{tp.required}</span>
                   </label>
                   <input
                     type="text"
@@ -521,7 +518,7 @@ export default function ProviderFormulairePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, company_name: e.target.value })
                     }
-                    placeholder="Ex: Mon Entreprise, Jean Dupont..."
+                    placeholder={tp.step1.companyNamePlaceholder}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.company_name
                         ? "border-red-500"
@@ -529,7 +526,7 @@ export default function ProviderFormulairePage() {
                     }`}
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    Le nom qui apparaîtra sur votre profil
+                    {tp.step1.companyNameHelp}
                   </p>
                   {errors.company_name && (
                     <p className="mt-1 text-sm text-red-600">
@@ -541,7 +538,7 @@ export default function ProviderFormulairePage() {
                 {/* Profession */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Titre professionnel <span className="text-red-500">*</span>
+                    {tp.step1.profession} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <input
                     type="text"
@@ -549,7 +546,7 @@ export default function ProviderFormulairePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, profession: e.target.value })
                     }
-                    placeholder="Ex: Développeur Full Stack, Designer Graphique..."
+                    placeholder={tp.step1.professionPlaceholder}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.profession ? "border-red-500" : "border-slate-300"
                     }`}
@@ -564,7 +561,7 @@ export default function ProviderFormulairePage() {
                 {/* Tagline */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Slogan professionnel <span className="text-red-500">*</span>
+                    {tp.step1.tagline} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <input
                     type="text"
@@ -572,14 +569,14 @@ export default function ProviderFormulairePage() {
                     onChange={(e) =>
                       setFormData({ ...formData, tagline: e.target.value })
                     }
-                    placeholder="Ex: Je crée des sites web modernes et performants"
+                    placeholder={tp.step1.taglinePlaceholder}
                     maxLength={100}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.tagline ? "border-red-500" : "border-slate-300"
                     }`}
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    {formData.tagline.length}/100 caractères
+                    {t('providerForm.step1.taglineCount', { count: formData.tagline.length })}
                   </p>
                   {errors.tagline && (
                     <p className="mt-1 text-sm text-red-600">
@@ -591,7 +588,7 @@ export default function ProviderFormulairePage() {
                 {/* À propos */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Présentez-vous <span className="text-red-500">*</span>
+                    {tp.step1.about} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <textarea
                     value={formData.about}
@@ -600,13 +597,13 @@ export default function ProviderFormulairePage() {
                     }
                     rows={5}
                     maxLength={1000}
-                    placeholder="Parlez de votre expérience, vos compétences, ce qui vous rend unique..."
+                    placeholder={tp.step1.aboutPlaceholder}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
                       errors.about ? "border-red-500" : "border-slate-300"
                     }`}
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    {formData.about.length}/1000 caractères (minimum 50)
+                    {t('providerForm.step1.aboutCount', { count: formData.about.length })}
                   </p>
                   {errors.about && (
                     <p className="mt-1 text-sm text-red-600">{errors.about}</p>
@@ -616,7 +613,7 @@ export default function ProviderFormulairePage() {
                 {/* Niveau d'expérience */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Niveau d'expérience <span className="text-red-500">*</span>
+                    {tp.step1.experience} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {experienceLevels.map((level, index) => (
@@ -656,17 +653,17 @@ export default function ProviderFormulairePage() {
                 <div className="flex items-center gap-3 mb-6">
                   <Star className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-slate-900">
-                    Compétences et disponibilité
+                    {tp.step2.title}
                   </h2>
                 </div>
 
                 {/* Catégories */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Catégories de services{" "}
-                    <span className="text-red-500">*</span>
+                    {tp.step2.categories}{" "}
+                    <span className="text-red-500">{tp.required}</span>
                     <span className="text-slate-500 font-normal ml-2">
-                      (max 5)
+                      {tp.step2.categoriesMax}
                     </span>
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -702,16 +699,16 @@ export default function ProviderFormulairePage() {
                     </p>
                   )}
                   <p className="mt-2 text-sm text-slate-500">
-                    {formData.categories.length}/5 catégories sélectionnées
+                    {t('providerForm.step2.categoriesCount', { count: formData.categories.length })}
                   </p>
                 </div>
 
                 {/* Compétences */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Compétences clés <span className="text-red-500">*</span>
+                    {tp.step2.skills} <span className="text-red-500">{tp.required}</span>
                     <span className="text-slate-500 font-normal ml-2">
-                      (max 10)
+                      {tp.step2.skillsMax}
                     </span>
                   </label>
                   <div className="flex gap-2 mb-3">
@@ -725,7 +722,7 @@ export default function ProviderFormulairePage() {
                           addSkill();
                         }
                       }}
-                      placeholder="Ex: React, Photoshop, SEO..."
+                      placeholder={tp.step2.skillsPlaceholder}
                       className="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                     <button
@@ -733,7 +730,7 @@ export default function ProviderFormulairePage() {
                       onClick={addSkill}
                       className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
                     >
-                      Ajouter
+                      {tp.step2.skillsAdd}
                     </button>
                   </div>
                   {formData.skills.length > 0 && (
@@ -759,16 +756,16 @@ export default function ProviderFormulairePage() {
                     <p className="mt-1 text-sm text-red-600">{errors.skills}</p>
                   )}
                   <p className="mt-2 text-sm text-slate-500">
-                    {formData.skills.length}/10 compétences ajoutées
+                    {t('providerForm.step2.skillsCount', { count: formData.skills.length })}
                   </p>
                 </div>
 
                 {/* Langues */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Langues parlées <span className="text-red-500">*</span>
+                    {tp.step2.languages} <span className="text-red-500">{tp.required}</span>
                     <span className="text-slate-500 font-normal ml-2">
-                      (max 5)
+                      {tp.step2.languagesMax}
                     </span>
                   </label>
                   <div className="flex gap-2 mb-3">
@@ -777,7 +774,7 @@ export default function ProviderFormulairePage() {
                       onChange={(e) => setSelectedLanguage(e.target.value)}
                       className="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     >
-                      <option value="">Sélectionnez une langue</option>
+                      <option value="">{tp.step2.languagesSelect}</option>
                       {languageOptions.map((lang) => (
                         <option key={lang.code} value={lang.code}>
                           {lang.label}
@@ -801,7 +798,7 @@ export default function ProviderFormulairePage() {
                       disabled={!selectedLanguage}
                       className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Ajouter
+                      {tp.step2.languagesAdd}
                     </button>
                   </div>
                   {formData.languages.length > 0 && (
@@ -844,7 +841,7 @@ export default function ProviderFormulairePage() {
                 {/* Disponibilité */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Disponibilité <span className="text-red-500">*</span>
+                    {tp.step2.availability} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <div className="space-y-2">
                     {availabilityOptions.map((option) => (
@@ -879,8 +876,8 @@ export default function ProviderFormulairePage() {
                 {/* Temps de réponse */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Temps de réponse moyen{" "}
-                    <span className="text-red-500">*</span>
+                    {tp.step2.responseTime}{" "}
+                    <span className="text-red-500">{tp.required}</span>
                   </label>
                   <select
                     value={formData.response_time_hours}
@@ -917,14 +914,13 @@ export default function ProviderFormulairePage() {
                 <div className="flex items-center gap-3 mb-6">
                   <MapPin className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-slate-900">
-                    Localisation
+                    {tp.step3.title}
                   </h2>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
                   <p className="text-sm text-blue-800">
-                    Indiquez votre localisation pour aider les clients à vous
-                    trouver. Ces informations seront visibles sur votre profil.
+                    {tp.step3.description || "Indiquez votre localisation pour aider les clients à vous trouver. Ces informations seront visibles sur votre profil."}
                   </p>
                 </div>
 
@@ -960,21 +956,20 @@ export default function ProviderFormulairePage() {
                 <div className="flex items-center gap-3 mb-6">
                   <DollarSign className="w-6 h-6 text-purple-600" />
                   <h2 className="text-2xl font-bold text-slate-900">
-                    Tarification
+                    {tp.step4.title}
                   </h2>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
                   <p className="text-sm text-amber-800">
-                    Définissez vos tarifs. Vous pourrez les modifier à tout
-                    moment depuis votre tableau de bord.
+                    {tp.step4.description || "Définissez vos tarifs. Vous pourrez les modifier à tout moment depuis votre tableau de bord."}
                   </p>
                 </div>
 
                 {/* Prix de départ */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Prix de départ ($) <span className="text-red-500">*</span>
+                    {tp.step4.startingPrice} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
@@ -1000,7 +995,7 @@ export default function ProviderFormulairePage() {
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    Le prix minimum pour vos services
+                    {tp.step4.startingPriceHelp}
                   </p>
                   {errors.starting_price && (
                     <p className="mt-1 text-sm text-red-600">
@@ -1012,7 +1007,7 @@ export default function ProviderFormulairePage() {
                 {/* Tarif horaire */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Tarif horaire ($) <span className="text-red-500">*</span>
+                    {tp.step4.hourlyRate} <span className="text-red-500">{tp.required}</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
@@ -1038,7 +1033,7 @@ export default function ProviderFormulairePage() {
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    Votre tarif par heure de travail
+                    {tp.step4.hourlyRateHelp}
                   </p>
                   {errors.hourly_rate && (
                     <p className="mt-1 text-sm text-red-600">
@@ -1099,7 +1094,7 @@ export default function ProviderFormulairePage() {
                 }`}
               >
                 <ArrowLeft className="w-5 h-5" />
-                Précédent
+                {tp.buttons.previous}
               </button>
 
               <button
@@ -1111,16 +1106,16 @@ export default function ProviderFormulairePage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Traitement...
+                    {currentStep === 4 ? tp.buttons.submit : tp.buttons.next}
                   </>
                 ) : currentStep === 4 ? (
                   <>
-                    Terminer l'inscription
+                    {tp.buttons.submit}
                     <CheckCircle2 className="w-5 h-5" />
                   </>
                 ) : (
                   <>
-                    Suivant
+                    {tp.buttons.next}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { convertFromUSD } from "@/utils/lib/currencyConversion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 // Composant pour afficher un montant converti depuis USD
 interface ConvertedAmountProps {
@@ -22,25 +23,29 @@ interface ConvertedAmountProps {
 }
 
 function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps) {
+  const { t } = useSafeLanguage();
   const [displayAmount, setDisplayAmount] = useState<number>(amountCents / 100);
 
   useEffect(() => {
+    let isMounted = true;
     const convert = async () => {
       if (selectedCurrency === 'USD') {
-        setDisplayAmount(amountCents / 100);
+        if (isMounted) setDisplayAmount(amountCents / 100);
         return;
       }
       const converted = await convertFromUSD(amountCents / 100, selectedCurrency);
-      if (converted !== null) {
+      if (isMounted && converted !== null) {
         setDisplayAmount(converted);
       }
     };
     convert();
+    return () => { isMounted = false; };
   }, [amountCents, selectedCurrency]);
 
   const formattedAmount = useMemo(() => {
     try {
-      return new Intl.NumberFormat('fr-FR', {
+      const locale = t.lang === 'en' ? 'en-US' : t.lang === 'es' ? 'es-ES' : 'fr-FR';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: selectedCurrency,
         minimumFractionDigits: 2,
@@ -49,13 +54,15 @@ function ConvertedAmount({ amountCents, selectedCurrency }: ConvertedAmountProps
     } catch {
       return `${displayAmount.toFixed(2)} ${selectedCurrency}`;
     }
-  }, [displayAmount, selectedCurrency]);
+  }, [displayAmount, selectedCurrency, t.lang]);
 
   return <>{formattedAmount}</>;
 }
 
 // Widget de résumé des commandes pour le tableau de bord
 export default function ActiveOrdersSummaryWidget() {
+  const { t } = useSafeLanguage();
+  const tao = t.providerDashboard.activeOrders;
   const router = useRouter();
   const [stats, setStats] = useState({
     total: 0,
@@ -132,11 +139,11 @@ export default function ActiveOrdersSummaryWidget() {
   };
 
   const formatTimeRemaining = (hours: number) => {
-    if (hours < 0) return "En retard";
-    if (hours < 1) return "< 1h";
-    if (hours < 24) return `${hours}h`;
+    if (hours < 0) return tao.priority.timeRemaining.late;
+    if (hours < 1) return tao.priority.timeRemaining.lessThan1h;
+    if (hours < 24) return t('providerDashboard.activeOrders.priority.timeRemaining.hours', { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days}j`;
+    return t('providerDashboard.activeOrders.priority.timeRemaining.days', { count: days });
   };
 
   if (loading) {
@@ -145,7 +152,7 @@ export default function ActiveOrdersSummaryWidget() {
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600 text-sm">Chargement...</p>
+            <p className="text-gray-600 text-sm">{tao.loading}</p>
           </div>
         </div>
       </div>
@@ -163,11 +170,11 @@ export default function ActiveOrdersSummaryWidget() {
                 <Package className="w-6 h-6 text-blue-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900">
-                Aperçu des commandes
+                {tao.title}
               </h2>
             </div>
             <p className="text-sm text-gray-600">
-              Gérez vos commandes actives et respectez vos délais
+              {tao.subtitle}
             </p>
           </div>
 
@@ -176,7 +183,7 @@ export default function ActiveOrdersSummaryWidget() {
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
           >
             <Eye className="w-4 h-4" />
-            Voir tout
+            {tao.viewAll}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -190,7 +197,7 @@ export default function ActiveOrdersSummaryWidget() {
             <Clock className="w-5 h-5 text-blue-600" />
             <span className="text-2xl font-bold text-blue-600">{stats.active}</span>
           </div>
-          <p className="text-sm font-medium text-gray-700">En cours</p>
+          <p className="text-sm font-medium text-gray-700">{tao.stats.inProgress}</p>
           <p className="text-xs text-gray-500 mt-1">
             <ConvertedAmount amountCents={Math.round(stats.totalValue * 100)} selectedCurrency={selectedCurrency} />
           </p>
@@ -204,9 +211,9 @@ export default function ActiveOrdersSummaryWidget() {
               {stats.late}
             </span>
           </div>
-          <p className="text-sm font-medium text-gray-700">En retard</p>
+          <p className="text-sm font-medium text-gray-700">{tao.stats.late}</p>
           {stats.late > 0 && (
-            <p className="text-xs text-red-600 font-medium mt-1">⚠️ Action requise</p>
+            <p className="text-xs text-red-600 font-medium mt-1">{tao.stats.actionRequired}</p>
           )}
         </div>
 
@@ -218,9 +225,9 @@ export default function ActiveOrdersSummaryWidget() {
               {stats.urgent}
             </span>
           </div>
-          <p className="text-sm font-medium text-gray-700">Urgentes</p>
+          <p className="text-sm font-medium text-gray-700">{tao.stats.urgent}</p>
           {stats.urgent > 0 && (
-            <p className="text-xs text-orange-600 font-medium mt-1">⏰ &lt; 48h</p>
+            <p className="text-xs text-orange-600 font-medium mt-1">{tao.stats.urgentTiming}</p>
           )}
         </div>
 
@@ -230,8 +237,8 @@ export default function ActiveOrdersSummaryWidget() {
             <CheckCircle className="w-5 h-5 text-green-600" />
             <span className="text-2xl font-bold text-green-600">{stats.delivered}</span>
           </div>
-          <p className="text-sm font-medium text-gray-700">Livrées</p>
-          <p className="text-xs text-gray-500 mt-1">En attente validation</p>
+          <p className="text-sm font-medium text-gray-700">{tao.stats.delivered}</p>
+          <p className="text-xs text-gray-500 mt-1">{tao.stats.waitingValidation}</p>
         </div>
       </div>
 
@@ -240,7 +247,7 @@ export default function ActiveOrdersSummaryWidget() {
         <div className="p-6">
           <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-600" />
-            Commandes prioritaires ({urgentOrders.length})
+            {t('providerDashboard.activeOrders.priority.title', { count: urgentOrders.length })}
           </h3>
           <div className="space-y-3">
             {urgentOrders.map((order) => (
@@ -261,7 +268,7 @@ export default function ActiveOrdersSummaryWidget() {
                       </h4>
                       {order.is_late && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-red-600 text-white font-semibold">
-                          EN RETARD
+                          {tao.priority.lateLabel}
                         </span>
                       )}
                     </div>
@@ -284,7 +291,7 @@ export default function ActiveOrdersSummaryWidget() {
                   <div className="flex items-center gap-4 text-xs text-gray-600">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {new Date(order.created_at).toLocaleDateString('fr-FR')}
+                      {new Date(order.created_at).toLocaleDateString(t.lang === 'en' ? 'en-US' : t.lang === 'es' ? 'es-ES' : 'fr-FR')}
                     </span>
                   </div>
                   <ArrowRight className="w-4 h-4 text-gray-400" />
@@ -300,17 +307,17 @@ export default function ActiveOrdersSummaryWidget() {
             <Package className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Aucune commande pour le moment
+            {tao.empty.noOrders.title}
           </h3>
           <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-            Créez vos premiers services pour commencer à recevoir des commandes
+            {tao.empty.noOrders.description}
           </p>
           <button
             onClick={() => router.push("/Provider/services/create")}
             className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors inline-flex items-center gap-2"
           >
             <Package className="w-4 h-4" />
-            Créer un service
+            {tao.empty.noOrders.button}
           </button>
         </div>
       ) : stats.active === 0 ? (
@@ -320,16 +327,16 @@ export default function ActiveOrdersSummaryWidget() {
             <CheckCircle className="w-8 h-8 text-blue-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Aucune commande en cours
+            {tao.empty.noActive.title}
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            Vous n'avez pas de commandes actives pour le moment
+            {tao.empty.noActive.description}
           </p>
           <button
             onClick={() => router.push("/Provider/TableauDeBord/Order")}
             className="text-sm text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1"
           >
-            Voir l'historique des commandes
+            {tao.empty.noActive.history}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -340,16 +347,16 @@ export default function ActiveOrdersSummaryWidget() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Tout est sous contrôle ! 🎉
+            {tao.empty.allGood.title}
           </h3>
           <p className="text-sm text-gray-600 mb-4">
-            Aucune commande urgente ou en retard
+            {tao.empty.allGood.description}
           </p>
           <button
             onClick={() => router.push("/Provider/TableauDeBord/Order")}
             className="text-sm text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1"
           >
-            Voir toutes les commandes
+            {tao.empty.allGood.viewAll}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

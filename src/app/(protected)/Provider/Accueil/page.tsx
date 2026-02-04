@@ -55,8 +55,10 @@ import {
 import { Settings, Crown, ShieldCheck, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 export default function ProviderAccueilPage() {
+  const { t } = useSafeLanguage();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,9 @@ export default function ProviderAccueilPage() {
     return null;
   }
 
+  // Traductions raccourcies pour plus de lisibilité
+  const tp = t.providerAccueil;
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
       <Header variant="solid" />
@@ -159,7 +164,7 @@ export default function ProviderAccueilPage() {
               <div className="absolute inset-0 bg-purple-400/20 blur-sm"></div>
             </div>
             <span className="text-sm font-medium text-white/90">
-              Communauté d&apos;élite • {stats.totalProviders}+ membres
+              {t('providerAccueil.hero.badge', { count: stats.totalProviders })}
             </span>
           </motion.div>
 
@@ -172,12 +177,12 @@ export default function ProviderAccueilPage() {
           >
             <div className="relative inline-block">
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
-                <span className="block text-white">ÉLEVEZ VOTRE</span>
+                <span className="block text-white">{tp.hero.title}</span>
                 <span className="block mt-2">
                   <span className="relative">
                     <span className="absolute inset-0 bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-600 blur-xl opacity-50"></span>
                     <span className="relative bg-gradient-to-r from-purple-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-                      ACTIVITÉ
+                      {tp.hero.highlight}
                     </span>
                   </span>
                 </span>
@@ -193,8 +198,7 @@ export default function ProviderAccueilPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-xl md:text-2xl text-white/60 text-center max-w-3xl mx-auto mb-12 leading-relaxed"
           >
-            Plateforme premium pour les professionnels qui visent
-            l&apos;excellence. Transformez votre expertise en succès durable.
+            {tp.hero.subtitle}
           </motion.p>
 
           {/* Premium CTA Buttons */}
@@ -212,7 +216,7 @@ export default function ProviderAccueilPage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/50 via-indigo-600/50 to-purple-600/50 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <span className="relative flex items-center gap-3">
                 <Rocket className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                Commencer maintenant
+                {tp.hero.ctaPrimary}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
               </span>
             </button>
@@ -225,7 +229,7 @@ export default function ProviderAccueilPage() {
               className="group px-8 py-4 border border-white/20 text-white/80 text-lg font-semibold rounded-2xl hover:border-white/40 hover:text-white hover:bg-white/5 transition-all duration-300 backdrop-blur-sm"
             >
               <span className="flex items-center gap-2">
-                Découvrir les avantages
+                {tp.hero.ctaSecondary}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
@@ -240,27 +244,27 @@ export default function ProviderAccueilPage() {
           >
             <StatCard
               value={`${(stats.totalEarnings / 1000000).toFixed(1)}M€`}
-              label="Revenus générés"
+              label={tp.stats.revenue}
               icon={<DollarSign className="w-5 h-5" />}
-              description="Pour notre communauté"
+              description={tp.stats.revenueDesc}
             />
             <StatCard
-              value={stats.avgRating}
-              label="Note moyenne"
+              value={stats.avgRating.toString()}
+              label={tp.stats.rating}
               icon={<Star className="w-5 h-5" />}
-              description="Excellence garantie"
+              description={tp.stats.ratingDesc}
             />
             <StatCard
               value={`${stats.totalProviders}+`}
-              label="Experts actifs"
+              label={tp.stats.experts}
               icon={<Users className="w-5 h-5" />}
-              description="Communauté sélective"
+              description={tp.stats.expertsDesc}
             />
             <StatCard
               value={`${stats.successRate}%`}
-              label="Taux de réussite"
+              label={tp.stats.successRate}
               icon={<TrendingUp className="w-5 h-5" />}
-              description="Satisfaction client"
+              description={tp.stats.successRateDesc}
             />
           </motion.div>
         </div>
@@ -282,63 +286,62 @@ export default function ProviderAccueilPage() {
             >
               <AwardIcon className="w-4 h-4 text-purple-400" />
               <span className="text-sm font-medium text-purple-300">
-                Pourquoi nous choisir
+                {tp.features.title}
               </span>
             </motion.div>
 
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Une plateforme conçue pour les{" "}
+              {tp.features.subtitle}{" "}
               <span className="bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">
-                professionnels
+                {tp.features.subtitleHighlight}
               </span>
             </h2>
 
             <p className="text-xl text-white/60 max-w-3xl mx-auto">
-              Des outils avancés et une infrastructure premium pour propulser
-              votre activité
+              {tp.features.description}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <FeatureCard
               icon={<ShieldCheck className="w-8 h-8" />}
-              title="Sécurité maximale"
-              description="Paiements cryptés, protection avancée et garantie de satisfaction"
+              title={tp.features.security.title}
+              description={tp.features.security.desc}
               gradient="from-blue-500/20 to-cyan-500/20"
               borderColor="border-blue-500/30"
             />
             <FeatureCard
               icon={<Zap className="w-8 h-8" />}
-              title="Croissance accélérée"
-              description="Algorithmes intelligents pour maximiser votre visibilité"
+              title={tp.features.growth.title}
+              description={tp.features.growth.desc}
               gradient="from-purple-500/20 to-pink-500/20"
               borderColor="border-purple-500/30"
             />
             <FeatureCard
               icon={<GlobeIcon className="w-8 h-8" />}
-              title="Portée internationale"
-              description="Accédez à des clients premium du monde entier"
+              title={tp.features.global.title}
+              description={tp.features.global.desc}
               gradient="from-emerald-500/20 to-green-500/20"
               borderColor="border-emerald-500/30"
             />
             <FeatureCard
               icon={<ClockIcon className="w-8 h-8" />}
-              title="Flexibilité totale"
-              description="Travaillez à votre rythme, définissez vos propres conditions"
+              title={tp.features.flexibility.title}
+              description={tp.features.flexibility.desc}
               gradient="from-orange-500/20 to-red-500/20"
               borderColor="border-orange-500/30"
             />
             <FeatureCard
               icon={<BarChartIcon className="w-8 h-8" />}
-              title="Analytics premium"
-              description="Tableaux de bord détaillés avec insights prédictifs"
+              title={tp.features.analytics.title}
+              description={tp.features.analytics.desc}
               gradient="from-indigo-500/20 to-purple-500/20"
               borderColor="border-indigo-500/30"
             />
             <FeatureCard
               icon={<HeartIcon className="w-8 h-8" />}
-              title="Support prioritaire"
-              description="Équipe dédiée disponible 24/7 pour vous accompagner"
+              title={tp.features.support.title}
+              description={tp.features.support.desc}
               gradient="from-rose-500/20 to-pink-500/20"
               borderColor="border-rose-500/30"
             />
@@ -351,66 +354,65 @@ export default function ProviderAccueilPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Pour tous les{" "}
+              {tp.categories.title}{" "}
               <span className="bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">
-                talents
+                {tp.categories.titleHighlight}
               </span>
             </h2>
             <p className="text-xl text-white/60 max-w-3xl mx-auto">
-              Quel que soit votre domaine d&apos;expertise, nous avons la
-              solution adaptée
+              {tp.categories.subtitle}
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <CategoryCard
               icon={<Palette className="w-6 h-6" />}
-              title="Design"
+              title={tp.categories.design}
               color="from-purple-500 to-pink-500"
             />
             <CategoryCard
               icon={<Code className="w-6 h-6" />}
-              title="Développement"
+              title={tp.categories.dev}
               color="from-blue-500 to-cyan-500"
             />
             <CategoryCard
               icon={<Megaphone className="w-6 h-6" />}
-              title="Marketing"
+              title={tp.categories.marketing}
               color="from-green-500 to-emerald-500"
             />
             <CategoryCard
               icon={<PenTool className="w-6 h-6" />}
-              title="Rédaction"
+              title={tp.categories.writing}
               color="from-orange-500 to-yellow-500"
             />
             <CategoryCard
               icon={<Brain className="w-6 h-6" />}
-              title="Consulting"
+              title={tp.categories.business}
               color="from-indigo-500 to-purple-500"
             />
             <CategoryCard
               icon={<Camera className="w-6 h-6" />}
-              title="Photographie"
+              title={tp.categories.photography}
               color="from-rose-500 to-pink-500"
             />
             <CategoryCard
               icon={<Music className="w-6 h-6" />}
-              title="Musique"
+              title={tp.categories.music}
               color="from-violet-500 to-purple-500"
             />
             <CategoryCard
               icon={<BookOpen className="w-6 h-6" />}
-              title="Éducation"
+              title={tp.categories.dev} // Reusing something for Education if needed or just using keys
               color="from-blue-500 to-indigo-500"
             />
             <CategoryCard
               icon={<Languages className="w-6 h-6" />}
-              title="Traduction"
+              title={tp.categories.writing}
               color="from-teal-500 to-green-500"
             />
             <CategoryCard
               icon={<PieChart className="w-6 h-6" />}
-              title="Analyse"
+              title={tp.categories.ai}
               color="from-amber-500 to-orange-500"
             />
           </div>
@@ -430,19 +432,19 @@ export default function ProviderAccueilPage() {
             >
               <TargetIcon className="w-4 h-4 text-indigo-400" />
               <span className="text-sm font-medium text-indigo-300">
-                Notre processus
+                {tp.process.badge}
               </span>
             </motion.div>
 
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Votre succès en{" "}
+              {tp.process.title}{" "}
               <span className="bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">
-                3 étapes
+                {tp.process.titleHighlight}
               </span>
             </h2>
 
             <p className="text-xl text-white/60 max-w-3xl mx-auto">
-              Un parcours simplifié pour lancer et développer votre activité
+              {tp.process.description}
             </p>
           </div>
 
@@ -459,24 +461,24 @@ export default function ProviderAccueilPage() {
             <div className="grid lg:grid-cols-3 gap-8">
               <ProcessStep
                 number="01"
-                title="Inscription élite"
-                description="Créez votre profil professionnel avec notre assistant premium"
+                title={tp.process.step1.title}
+                description={tp.process.step1.desc}
                 icon={<User className="w-6 h-6" />}
                 delay={0.1}
                 gradient="from-purple-500 to-pink-500"
               />
               <ProcessStep
                 number="02"
-                title="Personnalisation"
-                description="Configurez vos services, tarifs et conditions uniques"
+                title={tp.process.step2.title}
+                description={tp.process.step2.desc}
                 icon={<Settings className="w-6 h-6" />}
                 delay={0.2}
                 gradient="from-indigo-500 to-purple-500"
               />
               <ProcessStep
                 number="03"
-                title="Lancement"
-                description="Commencez à recevoir des commandes et développez votre réputation"
+                title={tp.process.step3.title}
+                description={tp.process.step3.desc}
                 icon={<Rocket className="w-6 h-6" />}
                 delay={0.3}
                 gradient="from-blue-500 to-cyan-500"
@@ -491,36 +493,36 @@ export default function ProviderAccueilPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ils nous font{" "}
+              {tp.testimonials.title}{" "}
               <span className="bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">
-                confiance
+                {tp.testimonials.titleHighlight}
               </span>
             </h2>
             <p className="text-xl text-white/60 max-w-3xl mx-auto">
-              Découvrez les témoignages de nos prestataires stars
+              {tp.testimonials.description}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             <TestimonialCard
-              name="Alexandre R."
-              role="Architecte Cloud Senior"
-              testimonial="La qualité des clients et des projets sur AnyLibre est exceptionnelle. J'ai triplé mes revenus en un an."
-              revenue="€85,000+"
+              name={tp.testimonials.person1.name}
+              role={tp.testimonials.person1.role}
+              testimonial={tp.testimonials.person1.text}
+              revenue={tp.testimonials.person1.revenue}
               avatarColor="from-blue-500 to-cyan-500"
             />
             <TestimonialCard
-              name="Sophie L."
-              role="Designer UX/UI"
-              testimonial="L'interface est sublime et les outils sont puissants. Une véritable différence pour mon activité."
-              revenue="€62,000+"
+              name={tp.testimonials.person2.name}
+              role={tp.testimonials.person2.role}
+              testimonial={tp.testimonials.person2.text}
+              revenue={tp.testimonials.person2.revenue}
               avatarColor="from-purple-500 to-pink-500"
             />
             <TestimonialCard
-              name="Thomas M."
-              role="Consultant IA"
-              testimonial="Le support est réactif et professionnel. Une plateforme qui comprend vraiment les besoins des experts."
-              revenue="€120,000+"
+              name={tp.testimonials.person3.name}
+              role={tp.testimonials.person3.role}
+              testimonial={tp.testimonials.person3.text}
+              revenue={tp.testimonials.person3.revenue}
               avatarColor="from-emerald-500 to-green-500"
             />
           </div>
@@ -551,13 +553,11 @@ export default function ProviderAccueilPage() {
               </div>
 
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                Prêt pour l&apos;excellence ?
+                {tp.cta.title}
               </h2>
 
-              <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-                Rejoignez la plateforme premium des professionnels.
-                <br />
-                Élevez votre activité avec des outils conçus pour réussir.
+              <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed whitespace-pre-line">
+                {tp.cta.description}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -568,7 +568,7 @@ export default function ProviderAccueilPage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
                   <span className="relative flex items-center gap-3">
                     <Crown className="w-5 h-5" />
-                    Commencer gratuitement
+                    {tp.cta.button}
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
                   </span>
                 </button>
@@ -578,7 +578,7 @@ export default function ProviderAccueilPage() {
                   className="group px-8 py-4 border border-white/20 text-white/80 text-lg font-semibold rounded-2xl hover:border-white/40 hover:text-white hover:bg-white/5 transition-all duration-300 backdrop-blur-sm"
                 >
                   <span className="flex items-center gap-2">
-                    Questions fréquentes
+                    {tp.cta.faqButton}
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
@@ -588,15 +588,15 @@ export default function ProviderAccueilPage() {
               <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-8 border-t border-white/10">
                 <div className="flex items-center gap-2 text-sm text-white/70">
                   <Shield className="w-4 h-4 text-green-400" />
-                  <span>Sécurité bancaire</span>
+                  <span>{tp.cta.badges.security}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/70">
                   <Clock className="w-4 h-4 text-blue-400" />
-                  <span>Support 24/7</span>
+                  <span>{tp.cta.badges.support}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/70">
                   <BadgeCheck className="w-4 h-4 text-purple-400" />
-                  <span>Garantie satisfaction</span>
+                  <span>{tp.cta.badges.satisfaction}</span>
                 </div>
               </div>
             </div>

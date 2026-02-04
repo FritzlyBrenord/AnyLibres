@@ -6,11 +6,11 @@ export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const url = new URL(request.url);
-    
+
     // Vérifier si c'est un accès admin
-    const isAdmin = request.headers.get('x-is-admin') === 'true' || 
-                    url.searchParams.get('isAdmin') === 'true';
-    
+    const isAdmin = request.headers.get('x-is-admin') === 'true' ||
+      url.searchParams.get('isAdmin') === 'true';
+
     if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Accès non autorisé' },
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       .select('total_cents')
       .eq('payment_status', 'succeeded');
 
-    const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.total_cents / 100), 0) || 0;
+    const totalRevenue = revenueData?.reduce((sum: number, order: any) => sum + (order.total_cents / 100), 0) || 0;
 
     // Compter les retraits en attente
     const { data: pendingWithdrawals } = await supabase
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       .select('amount_cents')
       .eq('status', 'pending');
 
-    const totalPendingWithdrawals = pendingWithdrawals?.reduce((sum, withdrawal) => sum + (withdrawal.amount_cents / 100), 0) || 0;
+    const totalPendingWithdrawals = pendingWithdrawals?.reduce((sum: number, withdrawal: any) => sum + (withdrawal.amount_cents / 100), 0) || 0;
 
     // Compter les clients actifs (avec connexion récente)
     const weekAgo = new Date();
@@ -79,11 +79,17 @@ export async function GET(request: Request) {
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
 
+    // Compter les utilisateurs système
+    const { count: totalSystemUsers } = await supabase
+      .from('admin_user_roles')
+      .select('*', { count: 'exact', head: true });
+
     return NextResponse.json({
       success: true,
       data: {
         total_clients: totalClients || 0,
         total_providers: totalProviders || 0,
+        total_system_users: totalSystemUsers || 0,
         active_clients: activeClients || 0,
         active_providers: activeProviders || 0,
         new_clients_today: newClientsToday || 0,

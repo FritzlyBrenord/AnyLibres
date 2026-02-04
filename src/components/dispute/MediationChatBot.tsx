@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Loader2
 } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface MediationChatBotProps {
   disputeReason: string;
@@ -69,6 +70,7 @@ export default function MediationChatBot({
   onReject,
   isDark = false
 }: MediationChatBotProps) {
+  const { t } = useSafeLanguage();
   const [currentStep, setCurrentStep] = useState(0);
   const [messages, setMessages] = useState<BotMessage[]>([]);
   const [showRules, setShowRules] = useState(false);
@@ -77,16 +79,18 @@ export default function MediationChatBot({
   const [acceptedConditions, setAcceptedConditions] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const translatedRules = t('mediation.bot.rules') as any[];
+
   const botMessages: BotMessage[] = [
     {
       id: 1,
-      text: `Bonjour ${userName} 👋`,
+      text: t('mediation.bot.welcome', { name: userName }),
       type: "text",
       delay: 500
     },
     {
       id: 2,
-      text: `Je suis l'assistant de médiation Anylibre. Je vais vous guider avant d'accéder à la salle de médiation.`,
+      text: t('mediation.bot.intro'),
       type: "text",
       delay: 1500
     },
@@ -94,9 +98,9 @@ export default function MediationChatBot({
       id: 3,
       text: (
         <div className="space-y-3">
-          <p className="font-bold text-lg">📋 Rappel du litige</p>
+          <p className="font-bold text-lg">{t('mediation.bot.reminderTitle')}</p>
           <div className={`p-4 rounded-xl ${isDark ? "bg-gray-800" : "bg-red-50 border border-red-200"}`}>
-            <p className="font-semibold mb-2">Motif : {disputeReason}</p>
+            <p className="font-semibold mb-2">{t('mediation.bot.reasonLabel')} {disputeReason}</p>
             <p className="text-sm opacity-90 whitespace-pre-wrap">{disputeDetails}</p>
           </div>
         </div>
@@ -106,7 +110,7 @@ export default function MediationChatBot({
     },
     {
       id: 4,
-      text: "Avant de commencer, vous devez prendre connaissance des règles de médiation.",
+      text: t('mediation.bot.rulesIntro'),
       type: "text",
       delay: 3500
     },
@@ -138,7 +142,7 @@ export default function MediationChatBot({
     setShowConditions(true);
     setMessages(prev => [...prev, {
       id: 99,
-      text: "✅ Parfait ! Maintenant, veuillez accepter les conditions d'utilisation de la médiation.",
+      text: t('mediation.bot.rulesAccepted'),
       type: "text",
       delay: 0
     }]);
@@ -146,7 +150,7 @@ export default function MediationChatBot({
 
   const handleFinalAccept = async () => {
     if (!acceptedRules || !acceptedConditions) {
-      alert("Vous devez accepter les règles et les conditions pour continuer.");
+      alert(t('mediation.bot.acceptRequired'));
       return;
     }
 
@@ -171,8 +175,8 @@ export default function MediationChatBot({
               <Shield className="w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Assistant de Médiation</h1>
-              <p className="text-purple-100 text-sm">Préparation à la session</p>
+              <h1 className="text-2xl font-bold">{t('mediation.bot.assistantTitle')}</h1>
+              <p className="text-purple-100 text-sm">{t('mediation.bot.assistantSubtitle')}</p>
             </div>
           </div>
         </div>
@@ -207,11 +211,12 @@ export default function MediationChatBot({
               <div className={`p-6 rounded-2xl ${isDark ? "bg-gray-700" : "bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200"}`}>
                 <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-purple-900"}`}>
                   <Scale className="w-6 h-6" />
-                  Règles de Médiation
+                  {t('mediation.bot.rulesTitle')}
                 </h3>
                 <div className="space-y-3">
                   {MEDIATION_RULES.map((rule, index) => {
                     const Icon = rule.icon;
+                    const translatedRule = translatedRules[index] || rule;
                     return (
                       <motion.div
                         key={index}
@@ -224,8 +229,8 @@ export default function MediationChatBot({
                           <Icon className="w-5 h-5 text-purple-600" />
                         </div>
                         <div>
-                          <p className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>{rule.title}</p>
-                          <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>{rule.description}</p>
+                          <p className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>{translatedRule.title}</p>
+                          <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>{translatedRule.desc || translatedRule.description}</p>
                         </div>
                       </motion.div>
                     );
@@ -245,7 +250,7 @@ export default function MediationChatBot({
                       className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
                     />
                     <label htmlFor="accept-rules" className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                      J'ai lu et j'accepte de respecter ces règles de médiation
+                      {t('mediation.bot.acceptRulesCheckbox')}
                     </label>
                   </div>
                 )}
@@ -263,14 +268,14 @@ export default function MediationChatBot({
               <div className={`p-6 rounded-2xl ${isDark ? "bg-gray-700" : "bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200"}`}>
                 <h3 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-blue-900"}`}>
                   <FileText className="w-6 h-6" />
-                  Conditions d'Utilisation
+                  {t('mediation.bot.conditionsTitle')}
                 </h3>
                 <div className={`space-y-2 text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                  <p>• La médiation est enregistrée et une transcription sera générée</p>
-                  <p>• Tout comportement abusif entraînera l'exclusion immédiate</p>
-                  <p>• La décision du médiateur est finale et contraignante</p>
-                  <p>• Vous disposez d'un délai maximum de 60 minutes pour la session</p>
-                  <p>• Les deux parties doivent être présentes pour commencer</p>
+                  <p>• {t('mediation.bot.condition1')}</p>
+                  <p>• {t('mediation.bot.condition2')}</p>
+                  <p>• {t('mediation.bot.condition3')}</p>
+                  <p>• {t('mediation.bot.condition4')}</p>
+                  <p>• {t('mediation.bot.condition5')}</p>
                 </div>
 
                 <div className="mt-6 flex items-start gap-3">
@@ -282,7 +287,7 @@ export default function MediationChatBot({
                     className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <label htmlFor="accept-conditions" className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
-                    J'accepte les conditions d'utilisation de la médiation Anylibre
+                    {t('mediation.bot.acceptConditionsCheckbox')}
                   </label>
                 </div>
               </div>
@@ -299,7 +304,7 @@ export default function MediationChatBot({
                 disabled={isProcessing}
                 className={`px-6 py-3 rounded-xl font-semibold transition-all ${isDark ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
               >
-                Annuler
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleFinalAccept}
@@ -309,11 +314,11 @@ export default function MediationChatBot({
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Vérification...
+                    {t('mediation.bot.verifying')}
                   </>
                 ) : (
                   <>
-                    Accéder à la Médiation
+                    {t('mediation.bot.accessMediation')}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}

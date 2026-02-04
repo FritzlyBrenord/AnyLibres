@@ -3,7 +3,7 @@
 // Services similaires aux services favoris ou bien notés
 // ============================================================================
 
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -11,8 +11,10 @@ import { Heart, ArrowRight, Star } from 'lucide-react';
 import { Carousel } from '@/components/ui/Carousel';
 import { ServiceCard } from '@/components/service/ServiceCard';
 import type { Service } from '@/types';
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 export function BecauseYouLikedSection() {
+  const { t } = useSafeLanguage();
   const [services, setServices] = useState<Service[]>([]);
   const [likedService, setLikedService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,7 @@ export function BecauseYouLikedSection() {
             </div>
             <div>
               <h2 className="font-heading font-bold text-2xl text-slate-900">
-                Parce que vous avez consulté
+                {t.home.connected.becauseYouLiked.title}
               </h2>
               <p className="text-sm text-slate-600">
                 <span className="font-semibold text-pink-700">
@@ -100,7 +102,7 @@ export function BecauseYouLikedSection() {
             href={`/services/${likedService.id}`}
             className="hidden sm:flex items-center gap-2 text-pink-600 hover:text-pink-700 font-semibold transition-colors group"
           >
-            Revoir ce service
+            {t.home.connected.becauseYouLiked.revisit}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -116,7 +118,7 @@ export function BecauseYouLikedSection() {
               {/* Badge "Similaire" */}
               <div className="absolute top-2 left-2 bg-pink-500 text-white text-xs px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
                 <Star className="w-3 h-3" />
-                Similaire
+                {t.home.connected.becauseYouLiked.badge}
               </div>
             </div>
           ))}
@@ -127,7 +129,7 @@ export function BecauseYouLikedSection() {
           href={`/services/${likedService.id}`}
           className="sm:hidden flex items-center justify-center gap-2 text-pink-600 hover:text-pink-700 font-semibold mt-6 transition-colors"
         >
-          Revoir ce service
+          {t.home.connected.becauseYouLiked.revisit}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

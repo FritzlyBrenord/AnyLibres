@@ -1,0 +1,155 @@
+export const providerDashboard = {
+    loading: "Cargando su perfil...",
+    redirecting: "Redireccionando al inicio de sesión...",
+    notProvider: {
+        title: "Aún no eres proveedor",
+        description:
+            "Debes completar tu registro como proveedor para acceder a este panel.",
+        button: "Convertirse en proveedor ahora",
+    },
+    welcome: "Bienvenido, {name}",
+    subtitle: "Este es su panel profesional para gestionar su actividad",
+    sellerLevel: "Nuevo vendedor",
+    stats: {
+        availableBalance: "Saldo disponible",
+        withdraw: "Retirar",
+        totalEarned: "Total ganado",
+        pending: "En espera:",
+        activeOrders: "Pedidos activos",
+        viewAll: "Ver todo",
+        rating: "Calificación",
+        responseRate: "Tasa de respuesta:",
+    },
+    activeOrders: {
+        title: "Resumen de pedidos",
+        subtitle: "Gestione sus pedidos activos y cumpla con sus plazos",
+        viewAll: "Ver todo",
+        loading: "Cargando...",
+        stats: {
+            inProgress: "En curso",
+            late: "Atrasado",
+            urgent: "Urgentes",
+            delivered: "Entregados",
+            actionRequired: "⚠️ Acción requerida",
+            waitingValidation: "Esperando validación",
+            urgentTiming: "⏰ < 48h",
+        },
+        priority: {
+            title: "Pedidos prioritarios ({count})",
+            lateLabel: "ATRASADO",
+            timeRemaining: {
+                late: "Atrasado",
+                lessThan1h: "< 1h",
+                hours: "{count}h",
+                days: "{count}d",
+            },
+        },
+        empty: {
+            noOrders: {
+                title: "No hay pedidos todavía",
+                description:
+                    "Cree sus primeros servicios para empezar a recibir pedidos",
+                button: "Crear un servicio",
+            },
+            noActive: {
+                title: "No hay pedidos en curso",
+                description: "No tiene pedidos activos en este momento",
+                history: "Ver historial de pedidos",
+            },
+            allGood: {
+                title: "¡Todo bajo control! 🎉",
+                description: "No hay pedidos urgentes o atrasados",
+                viewAll: "Ver todos los pedidos",
+            },
+        },
+    },
+    recentMessages: {
+        title: "Mensajes recientes",
+        viewAll: "Ver todo",
+        noMessages: "No hay mensajes recientes",
+        viewAllButton: "Ver todos los mensajes",
+        relativeTime: {
+            justNow: "Ahora mismo",
+            minutes: "Hace {count} min",
+            hours: "Hace {count}h",
+            days: "Hace {count}d",
+        },
+        fallbackUser: "Usuario",
+        noMessageText: "Sin mensajes",
+    },
+    quickActions: {
+        title: "Acciones rápidas",
+        analytics: {
+            title: "Ver Analíticas",
+            subtitle: "Rendimiento y estadísticas",
+        },
+        services: {
+            title: "Gestionar Servicios",
+            subtitle: "Crear y modificar",
+        },
+        messages: {
+            title: "Mensajes",
+            subtitle: "Comunicar con clientes",
+        },
+        withdrawGains: {
+            title: "Retirar ganancias",
+            available: "{amount} disponible",
+        },
+    },
+    withdrawal: {
+        errors: {
+            invalidAmount: "Por favor, introduzca un monto válido",
+            minAmount: "El monto mínimo es {amount}",
+            maxAmount: "El monto máximo es {amount}",
+            insufficientFunds: "El monto máximo disponible es {amount}",
+            selectMethod: "Por favor, seleccione un método de pago",
+            wait24h: "Debe esperar 24 horas entre dos retiros",
+            general: "Error al solicitar el retiro",
+            server: "Error del servidor al solicitar el retiro",
+        },
+        success: "¡Retiro de {amount} realizado con éxito!",
+    },
+    withdrawalModal: {
+        title: "Retirar sus ganancias",
+        subtitle: "Transfiera sus ganancias a su cuenta",
+        frozenTitle: "Cuenta Congelada",
+        frozenMessage:
+            "Su cuenta ha sido congelada temporalmente. Todos los retiros están bloqueados.",
+        frozenSupport:
+            "Póngase en contacto con el soporte para obtener más información y desbloquear su cuenta.",
+        timerWarning: "Próximo retiro disponible en",
+        availableBalance: "Saldo disponible",
+        insufficientBalance: "Saldo insuficiente para realizar un retiro",
+        insufficientBalanceDetail:
+            "Mínimo requerido: {min} • Su saldo: {balance}",
+        limitsAndFees: "ⓘ Mínimo: {min} • Máximo: {max} • Comisiones: {fees}%",
+        paymentMethod: "Método de pago",
+        addMethod: "Añadir",
+        noMethodsTitle: "Sin métodos de pago",
+        noMethodsDesc: "Añada su primer método de pago para comenzar",
+        addFirstMethod: "Añadir un método de pago",
+        amountLabel: "Monto a retirar ({symbol})",
+        amountPlaceholder: "0.00",
+        minBtn: "Mín ({amount})",
+        maxBtn: "Máx ({amount})",
+        summaryTitle: "Resumen",
+        amountRequested: "Monto solicitado",
+        fees: "Comisiones ({percent}%)",
+        youWillReceive: "Recibirá",
+        cancel: "Cancelar",
+        confirm: "Confirmar retiro",
+        processing: "Procesando...",
+        info: "Los retiros se procesan en un plazo de 2 a 5 días hábiles. Solo se permite un retiro cada 24 horas.",
+        errors: {
+            accountFrozen:
+                "🔒 Cuenta congelada - Retiros bloqueados. Contacte al soporte.",
+            insufficientBalance:
+                "Saldo insuficiente. Mínimo requerido: {min} • Su saldo: {balance}",
+            minAmount: "El monto mínimo es {amount}",
+            maxAmount: "El monto máximo es {amount}",
+            selectMethod: "Por favor, seleccione un método de pago",
+            wait24h: "Debe esperar 24 horas entre dos retiros",
+            generalError: "Error al realizar el retiro",
+        },
+    },
+};

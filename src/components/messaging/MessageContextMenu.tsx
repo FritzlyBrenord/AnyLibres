@@ -10,6 +10,7 @@ import {
   Reply,
   Copy,
 } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface MessageContextMenuProps {
   messageId: string;
@@ -30,6 +31,7 @@ export function MessageContextMenu({
 }: MessageContextMenuProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { t } = useSafeLanguage();
 
   // Fermer le menu si on clique en dehors
   useEffect(() => {
@@ -97,7 +99,7 @@ export function MessageContextMenu({
               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 transition-colors text-left text-sm"
             >
               <Reply className="w-4 h-4 text-purple-600" />
-              <span>Répondre</span>
+              <span>{t('messages.reply')}</span>
             </button>
           )}
 
@@ -107,7 +109,7 @@ export function MessageContextMenu({
               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 transition-colors text-left text-sm"
             >
               <Copy className="w-4 h-4 text-slate-600" />
-              <span>Copier le texte</span>
+              <span>{t('messages.copyText')}</span>
             </button>
           )}
 
@@ -116,7 +118,7 @@ export function MessageContextMenu({
             className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-100 transition-colors text-left text-sm"
           >
             <Archive className="w-4 h-4 text-blue-600" />
-            <span>Archiver</span>
+            <span>{t('messages.archive')}</span>
           </button>
 
           <button
@@ -124,7 +126,7 @@ export function MessageContextMenu({
             className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 transition-colors text-left text-sm text-red-600"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Supprimer</span>
+            <span>{t('messages.delete')}</span>
           </button>
         </div>
       )}

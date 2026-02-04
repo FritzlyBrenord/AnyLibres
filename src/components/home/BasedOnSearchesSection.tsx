@@ -11,8 +11,10 @@ import { Search, ArrowRight, Sparkles } from 'lucide-react';
 import { Carousel } from '@/components/ui/Carousel';
 import { ServiceCard } from '@/components/service/ServiceCard';
 import type { Service } from '@/types';
+import { useSafeLanguage } from '@/hooks/useSafeLanguage';
 
 export function BasedOnSearchesSection() {
+  const { t } = useSafeLanguage();
   const [services, setServices] = useState<Service[]>([]);
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,10 +82,10 @@ export function BasedOnSearchesSection() {
             </div>
             <div>
               <h2 className="font-heading font-bold text-2xl text-slate-900">
-                Recommandations pour vous
+                {t.home.connected.basedOnSearches.title}
               </h2>
               <p className="text-sm text-slate-600">
-                Sélectionnés selon vos préférences et recherches
+                {t.home.connected.basedOnSearches.subtitle}
               </p>
             </div>
           </div>
@@ -92,7 +94,7 @@ export function BasedOnSearchesSection() {
             href="/search"
             className="hidden sm:flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold transition-colors group"
           >
-            Voir plus
+            {t.home.connected.viewMore}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
@@ -108,7 +110,7 @@ export function BasedOnSearchesSection() {
               {/* Badge "Recommandé" */}
               <div className="absolute top-2 left-2 bg-gradient-to-r from-indigo-500 to-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                Recommandé
+                {t.home.connected.basedOnSearches.badge}
               </div>
             </div>
           ))}
@@ -119,7 +121,7 @@ export function BasedOnSearchesSection() {
           href="/search"
           className="sm:hidden flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-700 font-semibold mt-6 transition-colors"
         >
-          Voir plus
+          {t.home.connected.viewMore}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SmartBackButton } from "@/components/common/SmartBackButton";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface AnalysisData {
   behavioralProfile: string;
@@ -42,6 +43,12 @@ interface AnalysisData {
     description: string;
     priority: string;
   }>;
+  stats?: {
+    totalSpentCents: number;
+    ordersCount: number;
+    reviewsCount: number;
+    providerSales: number;
+  };
 }
 
 const profileDescriptions = {
@@ -85,6 +92,7 @@ const profileDescriptions = {
 
 export default function InsightsPage() {
   const router = useRouter();
+  const { t } = useSafeLanguage();
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
 
@@ -112,17 +120,25 @@ export default function InsightsPage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-slate-600">Analyse en cours...</p>
+          <p className="text-slate-600">{t.insights.loading}</p>
         </div>
       </div>
     );
   }
 
   const profile = analysis
-    ? profileDescriptions[
-        analysis.behavioralProfile as keyof typeof profileDescriptions
-      ] || profileDescriptions.new_user
-    : profileDescriptions.new_user;
+    ? {
+        title: t.insights.profileTypes[analysis.behavioralProfile as keyof typeof t.insights.profileTypes]?.title || t.insights.profileTypes.new_user.title,
+        desc: t.insights.profileTypes[analysis.behavioralProfile as keyof typeof t.insights.profileTypes]?.desc || t.insights.profileTypes.new_user.desc,
+        color: profileDescriptions[analysis.behavioralProfile as keyof typeof profileDescriptions]?.color || profileDescriptions.new_user.color,
+        icon: profileDescriptions[analysis.behavioralProfile as keyof typeof profileDescriptions]?.icon || profileDescriptions.new_user.icon
+      }
+    : {
+        title: t.insights.profileTypes.new_user.title,
+        desc: t.insights.profileTypes.new_user.desc,
+        color: profileDescriptions.new_user.color,
+        icon: profileDescriptions.new_user.icon
+      };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -149,28 +165,26 @@ export default function InsightsPage() {
             <div className="text-center max-w-4xl mx-auto">
               <div className="flex justify-between items-center">
                 <SmartBackButton
-                  label="Retour"
+                  label={t.insights.hero.back}
                   variant="minimal"
                   className="text-white"
                 />
                 <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-400/20 to-pink-400/20 backdrop-blur-sm border border-purple-400/30 rounded-full text-purple-200 text-sm font-semibold mb-6">
                   <Brain className="w-5 h-5" />
-                  Analyse IA Personnalisée
+                  {t.insights.hero.badge}
                 </div>
                 <div></div>
               </div>
 
               <h1 className="font-heading font-bold text-4xl md:text-5xl lg:text-6xl text-white mb-4">
-                Vos{" "}
+                {t.insights.hero.title.replace('{highlight}', '')}{" "}
                 <span className="bg-gradient-to-r from-purple-300 via-pink-300 to-blue-300 bg-clip-text text-transparent">
-                  Insights
-                </span>{" "}
-                Comportementaux
+                  {t.insights.hero.highlight}
+                </span>
               </h1>
 
               <p className="text-xl text-slate-200 max-w-2xl mx-auto">
-                Découvrez comment vous utilisez AnyLibre et obtenez des
-                recommandations personnalisées
+                {t.insights.hero.subtitle}
               </p>
             </div>
           </div>
@@ -191,7 +205,7 @@ export default function InsightsPage() {
 
                     <div className="flex-1 text-center md:text-left">
                       <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                        Profil: {profile.title}
+                        {t.insights.profile.title.replace('{type}', profile.title)}
                       </h2>
                       <p className="text-lg text-slate-600 mb-4">
                         {profile.desc}
@@ -200,7 +214,7 @@ export default function InsightsPage() {
                       <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                         <div className="px-4 py-2 bg-purple-50 rounded-lg">
                           <div className="text-sm text-slate-600">
-                            Score d&apos;engagement
+                            {t.insights.profile.engagementScore}
                           </div>
                           <div className="text-2xl font-bold text-purple-600">
                             {Math.round(analysis.engagementScore * 100)}%
@@ -208,23 +222,48 @@ export default function InsightsPage() {
                         </div>
                         <div className="px-4 py-2 bg-blue-50 rounded-lg">
                           <div className="text-sm text-slate-600">
-                            Jours actifs
+                            {t.insights.profile.orders}
                           </div>
                           <div className="text-2xl font-bold text-blue-600">
-                            {analysis.uniqueDays}
+                            {analysis.stats?.ordersCount || 0}
                           </div>
                         </div>
                         <div className="px-4 py-2 bg-green-50 rounded-lg">
                           <div className="text-sm text-slate-600">
-                            Activités
+                            {t.insights.profile.spent}
                           </div>
                           <div className="text-2xl font-bold text-green-600">
-                            {analysis.totalActivities}
+                            {analysis.stats?.totalSpentCents
+                              ? (analysis.stats.totalSpentCents / 100).toLocaleString('fr-HT', { style: 'currency', currency: 'HTG' })
+                              : t.insights.profile.zeroBalance}
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Stats Grid */}
+                   {analysis.stats && (
+                    <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-8">
+                      <div className="text-center">
+                        <div className="text-slate-500 text-sm mb-1">{t.insights.profile.reviews}</div>
+                        <div className="font-bold text-xl text-slate-800">{analysis.stats.reviewsCount}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-slate-500 text-sm mb-1">{t.insights.profile.activeDays}</div>
+                        <div className="font-bold text-xl text-slate-800">{analysis.uniqueDays}</div>
+                      </div>
+                       <div className="text-center">
+                        <div className="text-slate-500 text-sm mb-1">{t.insights.profile.totalActivities}</div>
+                        <div className="font-bold text-xl text-slate-800">{analysis.totalActivities}</div>
+                      </div>
+                       <div className="text-center">
+                        <div className="text-slate-500 text-sm mb-1">{t.insights.profile.providerSales}</div>
+                        <div className="font-bold text-xl text-slate-800">{analysis.stats.providerSales}</div>
+                      </div>
+                    </div>
+                   )}
+
                 </div>
               </div>
             </div>
@@ -243,7 +282,7 @@ export default function InsightsPage() {
                         <BarChart3 className="w-6 h-6 text-white" />
                       </div>
                       <h2 className="text-2xl font-bold text-slate-900">
-                        Vos Catégories Préférées
+                        {t.insights.categories.title}
                       </h2>
                     </div>
 
@@ -258,7 +297,7 @@ export default function InsightsPage() {
                               {cat.name}
                             </h3>
                             <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                              {cat.count} vues
+                              {cat.count} {t.insights.categories.views}
                             </span>
                           </div>
                           <div className="w-full bg-slate-200 rounded-full h-3">
@@ -285,7 +324,7 @@ export default function InsightsPage() {
                         <Sparkles className="w-6 h-6 text-white" />
                       </div>
                       <h2 className="text-2xl font-bold text-slate-900">
-                        Insights Personnalisés
+                        {t.insights.personalized.title}
                       </h2>
                     </div>
 
@@ -325,7 +364,7 @@ export default function InsightsPage() {
                         <Clock className="w-6 h-6 text-white" />
                       </div>
                       <h2 className="text-2xl font-bold text-slate-900">
-                        Vos Habitudes d&apos;Utilisation
+                        {t.insights.habits.title}
                       </h2>
                     </div>
 
@@ -333,7 +372,7 @@ export default function InsightsPage() {
                       <div className="p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl text-center">
                         <div className="text-5xl mb-4">🕐</div>
                         <h3 className="font-semibold text-slate-900 mb-2">
-                          Heure de pointe
+                          {t.insights.habits.peakHour}
                         </h3>
                         <p className="text-2xl font-bold text-blue-600">
                           {analysis.timePatterns.most_active_time}
@@ -342,7 +381,7 @@ export default function InsightsPage() {
                       <div className="p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl text-center">
                         <div className="text-5xl mb-4">📅</div>
                         <h3 className="font-semibold text-slate-900 mb-2">
-                          Jour favori
+                          {t.insights.habits.favoriteDay}
                         </h3>
                         <p className="text-2xl font-bold text-purple-600">
                           {analysis.timePatterns.peak_day}

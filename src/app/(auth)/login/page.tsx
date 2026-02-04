@@ -71,6 +71,12 @@ export default function LoginPage() {
         return;
       }
 
+      if (data.isRoot) {
+        localStorage.setItem('anylibre_root_session', 'true');
+        window.location.href = "/Admin";
+        return;
+      }
+
       window.location.href = "/home";
     } catch (err) {
       console.error("Login error:", err);

@@ -14,6 +14,7 @@ import {
   XCircle,
   AlertCircle,
   Clock,
+  Lock,
 } from "lucide-react";
 import ServiceViewPage from "@/app/(protected)/Provider/TableauDeBord/Service/view/[id]/page";
 import AnalyticsPerformance from "@/app/(protected)/Provider/TableauDeBord/Analytique/Performance/page";
@@ -21,6 +22,7 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguageContext } from "@/contexts/LanguageContext";
 import { useCurrency } from "@/hooks/useCurrency";
 import { CurrencyConverter } from "@/components/common/CurrencyConverter";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface ServicesProps {
   isDark: boolean;
@@ -56,6 +58,11 @@ interface Service {
 const Services: React.FC<ServicesProps> = ({ isDark }) => {
   const { t } = useLanguageContext();
   const { convertFromUSD, formatAmount } = useCurrency();
+  const { hasPermission } = usePermissions();
+
+  const canViewPerformance = hasPermission('services.performance.view');
+  const canViewDetails = hasPermission('services.details.view'); // New permission if needed, or reuse generic view
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
   const [services, setServices] = useState<Service[]>([]);
@@ -385,10 +392,16 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
 
               {filters.providerId !== "all" && (
                 <button
-                  onClick={() => setViewMode("performance")}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors"
+                  onClick={() => canViewPerformance && setViewMode("performance")}
+                  disabled={!canViewPerformance}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    !canViewPerformance 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500' 
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                  title={!canViewPerformance ? "Permission manquante" : (tAny.admin?.services?.buttons?.performance || "Performance")}
                 >
-                  <TrendingUp className="w-4 h-4" />
+                  {canViewPerformance ? <TrendingUp className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                   {tAny.admin?.services?.buttons?.performance || "Performance"}
                 </button>
               )}
@@ -522,15 +535,18 @@ const Services: React.FC<ServicesProps> = ({ isDark }) => {
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setSelectedServiceId(service.id)}
+                          onClick={() => canViewDetails && setSelectedServiceId(service.id)}
+                          disabled={!canViewDetails}
                           className={`p-2 rounded-lg ${
-                            isDark
+                            !canViewDetails
+                              ? "text-gray-400 cursor-not-allowed"
+                              : isDark
                               ? "hover:bg-gray-800 text-blue-400"
                               : "hover:bg-gray-100 text-blue-600"
                           }`}
-                          title={tAny.admin?.services?.buttons?.viewDetails || "Voir les détails"}
+                          title={!canViewDetails ? "Permission manquante" : (tAny.admin?.services?.buttons?.viewDetails || "Voir les détails")}
                         >
-                          <Eye className="w-4 h-4" />
+                          {canViewDetails ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                         </button>
                       </div>
                     </td>

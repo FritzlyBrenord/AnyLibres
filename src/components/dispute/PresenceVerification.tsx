@@ -12,6 +12,7 @@ import {
   Users,
   Play,
 } from "lucide-react";
+import { useSafeLanguage } from "@/hooks/useSafeLanguage";
 
 interface PresenceVerificationProps {
   disputeId: string;
@@ -28,7 +29,7 @@ interface PresenceStatus {
   provider: boolean;
   admin: boolean;
 }
-
+ 
 export default function PresenceVerification({
   disputeId,
   currentUserId,
@@ -38,6 +39,7 @@ export default function PresenceVerification({
   onBothPresent,
   isDark = false,
 }: PresenceVerificationProps) {
+  const { t } = useSafeLanguage();
   const [presence, setPresence] = useState<PresenceStatus>({
     client: false,
     provider: false,
@@ -146,16 +148,16 @@ export default function PresenceVerification({
         checkPresence();
       } else {
         // Afficher l'erreur avec détails si disponibles
-        let errorMessage = data.error || "Erreur lors de la connexion";
+        let errorMessage = data.error || t('mediation.waitingRoom.errors.join');
         if (data.debugInfo) {
           console.error("Debug Info:", data.debugInfo);
-          errorMessage += `\n\nDétails:\n${JSON.stringify(data.debugInfo, null, 2)}`;
+          errorMessage += `\n\n${t('mediation.errors.details')}\n${JSON.stringify(data.debugInfo, null, 2)}`;
         }
         setError(errorMessage);
       }
     } catch (error) {
       console.error("Error joining session:", error);
-      setError(error instanceof Error ? error.message : "Erreur de connexion");
+      setError(error instanceof Error ? error.message : t('mediation.waitingRoom.errors.connection'));
     }
   };
 
@@ -205,12 +207,12 @@ export default function PresenceVerification({
         setError(null);
       } else {
         console.error("Presence check failed:", data.error);
-        setError(data.error || "Erreur de vérification de présence");
+        setError(data.error || t('mediation.waitingRoom.errors.presence'));
       }
     } catch (error) {
       console.error("Error checking presence:", error);
       setError(
-        error instanceof Error ? error.message : "Erreur de vérification",
+        error instanceof Error ? error.message : t('mediation.waitingRoom.errors.verification'),
       );
     }
   };
@@ -223,25 +225,25 @@ export default function PresenceVerification({
 
   const getWaitingMessage = () => {
     if (presence.client && presence.provider) {
-      return "🎉 Les deux parties sont présentes !";
+      return t('mediation.waitingRoom.bothPresent');
     }
-
+ 
     if (currentUserRole === "client") {
       return presence.provider
-        ? "✅ Le prestataire est présent. Démarrage imminent..."
-        : "⏳ En attente du prestataire...";
+        ? t('mediation.waitingRoom.providerPresent')
+        : t('mediation.waitingRoom.waitingForProvider');
     } else if (currentUserRole === "provider") {
       return presence.client
-        ? "✅ Le client est présent. Démarrage imminent..."
-        : "⏳ En attente du client...";
+        ? t('mediation.waitingRoom.clientPresent')
+        : t('mediation.waitingRoom.waitingForClient');
     } else {
       // Admin
       if (!presence.client && !presence.provider) {
-        return "⏳ En attente des deux parties...";
+        return t('mediation.waitingRoom.waitingForBoth');
       } else if (!presence.client) {
-        return "⏳ En attente du client...";
+        return t('mediation.waitingRoom.waitingForClient');
       } else if (!presence.provider) {
-        return "⏳ En attente du prestataire...";
+        return t('mediation.waitingRoom.waitingForProvider');
       }
     }
   };
@@ -256,7 +258,7 @@ export default function PresenceVerification({
           <p
             className={`text-lg ${isDark ? "text-gray-300" : "text-gray-700"}`}
           >
-            Connexion à la salle de médiation...
+            {t('mediation.waitingRoom.connecting')}
           </p>
           {error && <p className="text-red-600 mt-4 text-sm">{error}</p>}
         </div>
@@ -278,9 +280,9 @@ export default function PresenceVerification({
           <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-4">
             <Users className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Salle d'Attente</h1>
+          <h1 className="text-3xl font-bold mb-2">{t('mediation.waitingRoom.title')}</h1>
           <p className="text-purple-100">
-            Vérification de la présence des participants
+            {t('mediation.waitingRoom.subtitle')}
           </p>
         </div>
 
@@ -294,7 +296,7 @@ export default function PresenceVerification({
             >
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-semibold text-red-800 mb-1">Erreur</p>
+                <p className="font-semibold text-red-800 mb-1">{t('common.error')}</p>
                 <p className="text-red-700">{error}</p>
               </div>
             </motion.div>
@@ -339,7 +341,7 @@ export default function PresenceVerification({
                   <p
                     className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
                   >
-                    Client
+                    {t('mediation.roles.client')}
                   </p>
                 </div>
               </div>
@@ -347,12 +349,12 @@ export default function PresenceVerification({
                 {presence.client ? (
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-6 h-6" />
-                    <span className="font-semibold">Présent</span>
+                    <span className="font-semibold">{t('mediation.waitingRoom.present')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-gray-400">
                     <Clock className="w-6 h-6 animate-pulse" />
-                    <span className="font-semibold">En attente</span>
+                    <span className="font-semibold">{t('mediation.waitingRoom.waiting')}</span>
                   </div>
                 )}
               </div>
@@ -382,7 +384,7 @@ export default function PresenceVerification({
                   <p
                     className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
                   >
-                    Prestataire
+                    {t('mediation.roles.provider')}
                   </p>
                 </div>
               </div>
@@ -390,12 +392,12 @@ export default function PresenceVerification({
                 {presence.provider ? (
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-6 h-6" />
-                    <span className="font-semibold">Présent</span>
+                    <span className="font-semibold">{t('mediation.waitingRoom.present')}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-gray-400">
                     <Clock className="w-6 h-6 animate-pulse" />
-                    <span className="font-semibold">En attente</span>
+                    <span className="font-semibold">{t('mediation.waitingRoom.waiting')}</span>
                   </div>
                 )}
               </div>
@@ -417,18 +419,18 @@ export default function PresenceVerification({
                     <p
                       className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}
                     >
-                      Médiateur Anylibre
+                      {t('mediation.waitingRoom.mediator')}
                     </p>
                     <p
                       className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}
                     >
-                      Administrateur
+                      {t('mediation.roles.admin')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-amber-600">
                   <Shield className="w-6 h-6" />
-                  <span className="font-semibold">Superviseur</span>
+                  <span className="font-semibold">{t('mediation.waitingRoom.supervisor')}</span>
                 </div>
               </motion.div>
             )}
@@ -441,7 +443,7 @@ export default function PresenceVerification({
             <p
               className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"} mb-1`}
             >
-              Temps d'attente
+              {t('mediation.waitingRoom.waitingTime')}
             </p>
             <p
               className={`text-2xl font-mono font-bold ${isDark ? "text-white" : "text-gray-900"}`}
@@ -462,11 +464,10 @@ export default function PresenceVerification({
                 <p
                   className={`font-semibold ${isDark ? "text-yellow-400" : "text-yellow-800"} mb-1`}
                 >
-                  Attente prolongée
+                  {t('mediation.waitingRoom.prolongedWaitingTitle')}
                 </p>
                 <p className={isDark ? "text-yellow-300" : "text-yellow-700"}>
-                  Si l'autre partie ne rejoint pas dans les 15 minutes, la
-                  session sera automatiquement annulée.
+                  {t('mediation.waitingRoom.prolongedWaitingDesc')}
                 </p>
               </div>
             </motion.div>
@@ -487,7 +488,7 @@ export default function PresenceVerification({
                 <p
                   className={`text-xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}
                 >
-                  Démarrage de la médiation...
+                  {t('mediation.waitingRoom.starting')}
                 </p>
               </motion.div>
             )}

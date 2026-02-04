@@ -25,11 +25,13 @@ import {
   Ban,
   Check,
   Loader2,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { useLanguageContext } from "@/contexts/LanguageContext";
 import AdminOrderDetail from "./AdminOrderDetail";
 import { CurrencyConverter } from "@/components/common/CurrencyConverter";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 interface OrdersProps {
   isDark: boolean;
@@ -68,6 +70,16 @@ interface Order {
 
 const Orders: React.FC<OrdersProps> = ({ isDark }) => {
   const { t } = useLanguageContext();
+  const { hasPermission } = usePermissions();
+
+  // Granular permissions
+  const canStart = hasPermission('orders.actions.start');
+  const canDeliver = hasPermission('orders.actions.deliver');
+  const canAccept = hasPermission('orders.actions.accept');
+  const canCancel = hasPermission('orders.actions.cancel');
+  const canRequestRevision = hasPermission('orders.actions.revision');
+  const canViewDetails = hasPermission('orders.view_details');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
   const [orders, setOrders] = useState<Order[]>([]);
@@ -682,13 +694,24 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                           {/* Boutons d'actions selon le statut */}
                           {actions.map((action) => {
                             const Icon = action.icon;
-                            const isLoading =
-                              actionLoading === `${order.id}-${action.key}`;
+                            const isLoading = actionLoading === `${order.id}-${action.key}`;
+                            
+                            // Check permission for this specific action
+                            let hasActionPermission = false;
+                            switch(action.key) {
+                              case 'start': hasActionPermission = canStart; break;
+                              case 'deliver': hasActionPermission = canDeliver; break;
+                              case 'accept': hasActionPermission = canAccept; break;
+                              case 'cancel': hasActionPermission = canCancel; break;
+                              case 'revision': hasActionPermission = canRequestRevision; break;
+                              default: hasActionPermission = false;
+                            }
+
                             return (
                               <button
                                 key={action.key}
                                 onClick={(e) =>
-                                  handleAdminAction(
+                                  hasActionPermission && handleAdminAction(
                                     order.id,
                                     action.key as
                                       | "start"
@@ -699,14 +722,18 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                                     e,
                                   )
                                 }
-                                disabled={!!actionLoading}
-                                className={`p-1.5 rounded-lg transition-colors ${action.color} ${
-                                  isDark ? "hover:bg-gray-600" : action.bgColor
+                                disabled={!!actionLoading || !hasActionPermission}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  !hasActionPermission 
+                                    ? "text-gray-400 cursor-not-allowed bg-gray-100 dark:bg-gray-800" 
+                                    : `${action.color} ${isDark ? "hover:bg-gray-600" : action.bgColor}`
                                 } disabled:opacity-50`}
-                                title={action.label}
+                                title={!hasActionPermission ? "Permission manquante" : action.label}
                               >
                                 {isLoading ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : !hasActionPermission ? (
+                                  <Lock className="w-4 h-4" />
                                 ) : (
                                   <Icon className="w-4 h-4" />
                                 )}
@@ -717,16 +744,19 @@ const Orders: React.FC<OrdersProps> = ({ isDark }) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedOrder(order);
+                              if (canViewDetails) setSelectedOrder(order);
                             }}
+                            disabled={!canViewDetails}
                             className={`p-1.5 rounded-lg transition-colors ${
-                              isDark
+                              !canViewDetails
+                                ? "text-gray-400 cursor-not-allowed"
+                                : isDark
                                 ? "hover:bg-gray-600 text-gray-400"
                                 : "hover:bg-slate-100 text-slate-400"
                             }`}
-                            title="Voir détails"
+                            title={!canViewDetails ? "Permission manquante" : "Voir détails"}
                           >
-                            <Eye className="w-4 h-4" />
+                            {canViewDetails ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                           </button>
                         </div>
                       </td>

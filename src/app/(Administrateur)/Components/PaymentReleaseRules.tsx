@@ -21,9 +21,11 @@ import {
   Calendar,
   Award,
   Globe,
+  Lock,
 } from 'lucide-react';
 import { useLanguageContext } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 interface ReleaseRule {
   id: string;
@@ -49,6 +51,12 @@ interface PaymentReleaseRulesProps {
 export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps) {
   const { t } = useLanguageContext();
   const { defaultCurrency, convertFromUSD, formatAmount } = useCurrency();
+  const { hasPermission } = usePermissions();
+  const canAdd = hasPermission('payment_rules.add');
+  const canEdit = hasPermission('payment_rules.edit');
+  const canDelete = hasPermission('payment_rules.delete');
+  const canView = hasPermission('payment_rules.view');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tAny = t as Record<string, any>;
 
@@ -164,6 +172,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   }, []);
 
   const fetchRules = async () => {
+    if (!canView) return; // Prevent fetching if no view permission
     try {
       setLoading(true);
       const response = await fetch('/api/admin/payment-rules');
@@ -183,6 +192,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const saveRules = async () => {
+    if (!canEdit) {
+      alert(tAny.admin?.common?.noPermission || "Vous n'avez pas la permission d'effectuer cette action.");
+      return;
+    }
     try {
       setSaving(true);
       const response = await fetch('/api/admin/payment-rules', {
@@ -207,6 +220,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const toggleRule = async (ruleId: string) => {
+    if (!canEdit) return; // Silent fail or show tooltip
     const updatedRules = rules.map(r =>
       r.id === ruleId ? { ...r, is_active: !r.is_active } : r
     );
@@ -231,6 +245,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const deleteRule = async (ruleId: string) => {
+    if (!canDelete) {
+        alert(tAny.admin?.common?.noPermission || "Vous n'avez pas la permission de supprimer.");
+        return;
+    }
     if (!confirm(tAny.admin?.paymentReleaseRules?.alerts?.confirmDelete || 'Êtes-vous sûr de vouloir supprimer cette règle?')) {
       return;
     }
@@ -276,6 +294,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
   };
 
   const editExistingRule = (rule: ReleaseRule) => {
+    if (!canEdit) return;
     setEditingRule({ ...rule });
     setSelectedCountries(rule.condition?.countries || []);
     setCountrySearch('');
@@ -386,6 +405,18 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
     }
   };
 
+  if (loading && !canView) {
+      return (
+        <div className={`p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen flex items-center justify-center`}>
+            <div className="text-center">
+                <Lock className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Accès restreint</h2>
+                <p className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Vous n'avez pas la permission de voir cette page.</p>
+            </div>
+        </div>
+      )
+  }
+
   return (
     <div className={`p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
       {/* Header */}
@@ -401,6 +432,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
           </div>
 
           <div className="flex items-center gap-3">
+           {canAdd && (
             <button
               onClick={() => addNewRule()}
               className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
@@ -412,7 +444,9 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
               <Plus className="w-4 h-4" />
               {tAny.admin?.paymentReleaseRules?.buttons?.addRule || 'Ajouter Règle'}
             </button>
+           )}
 
+            {canEdit && (
             <button
               onClick={saveRules}
               disabled={saving}
@@ -425,6 +459,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
               <Save className="w-4 h-4" />
               {saving ? (tAny.admin?.paymentReleaseRules?.buttons?.saving || 'Sauvegarde...') : (tAny.admin?.paymentReleaseRules?.buttons?.saveAll || 'Sauvegarder Tout')}
             </button>
+            )}
           </div>
         </div>
 
@@ -525,7 +560,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleRule(rule.id)}
+                        disabled={!canEdit}
                         className={`p-2 rounded-lg transition-colors ${
+                          !canEdit ? 'opacity-50 cursor-not-allowed' : ''
+                        } ${
                           rule.is_active
                             ? isDark
                               ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
@@ -540,7 +578,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
 
                       <button
                         onClick={() => editExistingRule(rule)}
+                        disabled={!canEdit}
                         className={`p-2 rounded-lg transition-colors ${
+                          !canEdit ? 'opacity-50 cursor-not-allowed' : ''
+                        } ${
                           isDark
                             ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
                             : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -551,7 +592,10 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
 
                       <button
                         onClick={() => deleteRule(rule.id)}
+                        disabled={!canDelete}
                         className={`p-2 rounded-lg transition-colors ${
+                          !canDelete ? 'opacity-50 cursor-not-allowed' : ''
+                        } ${
                           isDark
                             ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50'
                             : 'bg-red-100 text-red-700 hover:bg-red-200'
@@ -568,6 +612,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
       </div>
 
       {/* Quick Presets */}
+      {canAdd && (
       <div className="mt-8">
         <h2 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {tAny.admin?.paymentReleaseRules?.presets?.title || 'Préréglages Rapides'}
@@ -599,6 +644,7 @@ export default function PaymentReleaseRules({ isDark }: PaymentReleaseRulesProps
           ))}
         </div>
       </div>
+      )}
 
       {/* Modal Ajouter/Éditer Règle */}
       {showAddModal && editingRule && (

@@ -292,6 +292,168 @@ class EmailService {
       html,
     });
   }
+
+  /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(to: string, resetUrl: string, firstName: string): Promise<{ success: boolean; error?: string }> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+              margin: 0;
+              padding: 40px 20px;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            .header {
+              background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              color: white;
+              font-size: 28px;
+              font-weight: 700;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .greeting {
+              color: #1e293b;
+              font-size: 18px;
+              font-weight: 600;
+              margin-bottom: 20px;
+            }
+            .info-text {
+              color: #64748b;
+              font-size: 15px;
+              line-height: 1.6;
+              margin: 20px 0;
+            }
+            .reset-button {
+              display: block;
+              background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+              color: white;
+              text-decoration: none;
+              padding: 16px 32px;
+              border-radius: 12px;
+              text-align: center;
+              font-weight: 600;
+              font-size: 16px;
+              margin: 30px auto;
+              max-width: 280px;
+            }
+            .warning {
+              background: #fef3c7;
+              border-left: 4px solid #f59e0b;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .warning p {
+              margin: 0;
+              color: #92400e;
+              font-size: 14px;
+            }
+            .url-box {
+              background: #f1f5f9;
+              border: 1px dashed #94a3b8;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              word-break: break-all;
+              color: #475569;
+              font-size: 13px;
+            }
+            .footer {
+              background: #f8fafc;
+              padding: 30px;
+              text-align: center;
+              border-top: 1px solid #e2e8f0;
+            }
+            .footer p {
+              margin: 5px 0;
+              color: #64748b;
+              font-size: 13px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔐 Réinitialisation de mot de passe</h1>
+            </div>
+
+            <div class="content">
+              <p class="greeting">Bonjour${firstName ? ` ${firstName}` : ''},</p>
+
+              <p class="info-text">
+                Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :
+              </p>
+
+              <a href="${resetUrl}" class="reset-button">
+                Réinitialiser mon mot de passe
+              </a>
+
+              <p class="info-text" style="text-align: center;">
+                ⏱️ Ce lien expire dans <strong>5 minutes</strong>
+              </p>
+
+              <p class="info-text">
+                Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :
+              </p>
+
+              <div class="url-box">
+                ${resetUrl}
+              </div>
+
+              <div class="warning">
+                <p>
+                  <strong>⚠️ Important :</strong> Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre compte reste sécurisé.
+                </p>
+              </div>
+
+              <p class="info-text">
+                Pour votre sécurité :
+              </p>
+              <ul class="info-text">
+                <li>Ce lien est à usage unique</li>
+                <li>Expire automatiquement après 5 minutes</li>
+                <li>Ne partagez jamais ce lien</li>
+              </ul>
+            </div>
+
+            <div class="footer">
+              <p><strong>AnyLibre</strong></p>
+              <p>Plateforme de services sécurisée</p>
+              <p style="margin-top: 15px; color: #94a3b8;">
+                Cet email a été envoyé automatiquement, merci de ne pas y répondre.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to,
+      subject: 'Réinitialisation de votre mot de passe',
+      html,
+    });
+  }
 }
 
 export const emailService = new EmailService();
