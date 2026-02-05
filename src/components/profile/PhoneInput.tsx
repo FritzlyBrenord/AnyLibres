@@ -53,15 +53,35 @@ export function PhoneInput({ value, onChange, location, disabled }: PhoneInputPr
 
   // Formater l'affichage avec espaces
   const formatDisplay = (number: string) => {
-    // Ajouter des espaces tous les 2-3 chiffres pour la lisibilité
     return number.replace(/(\d{2,3})(?=\d)/g, '$1 ');
+  };
+
+  const handlePhoneCodeChange = (newCode: string) => {
+    setPhoneCode(newCode);
+    onChange(newCode + localNumber);
   };
 
   return (
     <div className="flex gap-2">
-      {/* Indicatif pays (lecture seule, basé sur la localisation) */}
-      <div className="w-24 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white flex items-center justify-center font-medium">
-        {phoneCode}
+      {/* Indicatif pays (Sélecteur dynamique) */}
+      <div className="relative">
+        <select
+          value={phoneCode}
+          onChange={(e) => handlePhoneCodeChange(e.target.value)}
+          disabled={disabled}
+          className="appearance-none w-32 px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer disabled:opacity-50"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={`${c.code}-${c.phoneCode}`} value={c.phoneCode} className="bg-slate-900 text-white">
+              {c.flag} {c.name} ({c.phoneCode})
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
       </div>
 
       {/* Numéro local */}

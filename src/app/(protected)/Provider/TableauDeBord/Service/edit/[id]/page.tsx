@@ -16,10 +16,15 @@ import {
   FileText,
   Headphones,
   CheckCircle,
+  CheckCircle2,
+  Circle,
   AlertCircle,
   Loader2,
   Eye,
 } from "lucide-react";
+import { compressImage } from "@/utils/lib/imageCompression";
+import InfoTooltip from "@/components/common/InfoTooltip";
+import { getServiceGuidance } from "../../Add/serviceGuidance";
 
 // Types
 interface Category {
@@ -50,6 +55,8 @@ interface ServiceFormData {
   }>;
   cover_image: string;
   images: string[];
+  videos: string[];
+  documents: string[];
   categories: string[];
   tags: string[];
   faq: Array<{ question: string; answer: string }>;
@@ -99,12 +106,16 @@ export default function EditServicePage({
     extras: [],
     cover_image: "",
     images: [],
+    videos: [],
+    documents: [],
     categories: [],
     tags: [],
     faq: [],
     requirements: [],
     location_type: ["remote"],
   });
+
+  const SERVICE_GUIDANCE = getServiceGuidance(t);
 
   const [errors, setErrors] = useState<
     Partial<Record<keyof ServiceFormData, string>>
@@ -164,7 +175,15 @@ export default function EditServicePage({
                 extra.delivery_additional_days?.toString() || "",
             })) || [],
           cover_image: data.service.cover_image || "",
-          images: data.service.images || [],
+          images: (data.service.images || []).filter((url: string) => 
+            url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+          ),
+          videos: (data.service.images || []).filter((url: string) => 
+            url.match(/\.(mp4|webm|ogg|mov)$/i)
+          ),
+          documents: (data.service.images || []).filter((url: string) => 
+            url.match(/\.(pdf|doc|docx|txt)$/i)
+          ),
           categories: data.service.categories || [],
           tags: data.service.tags || [],
           faq:
@@ -263,17 +282,68 @@ export default function EditServicePage({
     file: File,
     type: "cover" | "image" | "video" | "audio" | "document"
   ) => {
+    // Check limits before uploading
+    if (type === "image" && formData.images.length >= 5) {
+      alert("Vous avez atteint la limite de 5 images. Supprimez une image existante pour en ajouter une nouvelle.");
+      return;
+    }
+    if (type === "video" && formData.videos.length >= 2) {
+      alert("Vous avez atteint la limite de 2 vidéos. Supprimez une vidéo existante pour en ajouter une nouvelle.");
+      return;
+    }
+    if (type === "document" && formData.documents.length >= 2) {
+      alert("Vous avez atteint la limite de 2 documents. Supprimez un document existant pour en ajouter un nouveau.");
+      return;
+    }
+
     setUploading(type);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      // Backend expects types like 'image', 'video', 'document', etc.
-      // Map 'cover' to 'image' to match the Add page behaviour.
-      formData.append("type", type === "cover" ? "image" : type);
+      let fileToUpload = file;
+
+      // Compress images only
+      if (type === "cover" || type === "image") {
+        console.log("🖼️ Compression de l'image...");
+        fileToUpload = await compressImage(file, {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          onProgress: (progress) => {
+            console.log(`Compression: ${progress}%`);
+          },
+        });
+        console.log(
+          `✅ Image compressée: ${file.size} → ${fileToUpload.size} bytes`,
+        );
+      }
+
+      // Validate video size
+      if (type === "video") {
+        const videoSizeMB = file.size / (1024 * 1024);
+        if (videoSizeMB > 50) {
+          alert(`La vidéo est trop volumineuse (${videoSizeMB.toFixed(2)}MB). Maximum: 50MB`);
+          setUploading(null);
+          return;
+        }
+      }
+
+      // Validate document size
+      if (type === "document") {
+        const docSizeMB = file.size / (1024 * 1024);
+        if (docSizeMB > 10) {
+          alert(`Le document est trop volumineux (${docSizeMB.toFixed(2)}MB). Maximum: 10MB`);
+          setUploading(null);
+          return;
+        }
+      }
+
+      const uploadData = new FormData();
+      uploadData.append("file", fileToUpload);
+      uploadData.append("type", type === "cover" ? "image" : type);
+      uploadData.append("context", "service");
 
       const response = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        body: uploadData,
       });
 
       const data = await response.json();
@@ -281,10 +351,20 @@ export default function EditServicePage({
       if (response.ok) {
         if (type === "cover") {
           setFormData((prev) => ({ ...prev, cover_image: data.url }));
-        } else {
+        } else if (type === "image") {
           setFormData((prev) => ({
             ...prev,
             images: [...prev.images, data.url],
+          }));
+        } else if (type === "video") {
+          setFormData((prev) => ({
+            ...prev,
+            videos: [...prev.videos, data.url],
+          }));
+        } else if (type === "document") {
+          setFormData((prev) => ({
+            ...prev,
+            documents: [...prev.documents, data.url],
           }));
         }
       } else {
@@ -339,7 +419,7 @@ export default function EditServicePage({
           ),
         })),
         cover_image: formData.cover_image,
-        images: formData.images,
+        images: [...formData.images, ...formData.videos, ...formData.documents], // Combine all media
         categories: formData.categories,
         tags: formData.tags,
         faq: formData.faq.map((faq) => ({
@@ -523,41 +603,51 @@ export default function EditServicePage({
       {/* Header Sticky - Caché si dans un modal (le modal a son propre header) */}
       {!isModal && (
         <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <button
                   onClick={() => router.push("/Provider/TableauDeBord/Service")}
-                  className="flex items-center text-gray-600 hover:text-gray-900"
+                  className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <ArrowLeft className="h-5 w-5 mr-2" />
                   {t.serviceAdd?.buttons?.back || "Retour"}
                 </button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
                     {t.serviceAdd?.editTitle || "Modifier le service"}
                   </h1>
-                  <p className="text-gray-600">
+                  <p className="text-sm sm:text-base text-gray-600">
                     {t.serviceAdd?.editSubtitle || "Modifiez les informations de votre service"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-end space-x-2 sm:space-x-3">
                 <button
                   onClick={() => handleSubmit("draft")}
                   disabled={saving}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center"
+                  className="px-3 py-1.5 sm:px-6 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center text-sm"
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? (t.serviceAdd?.buttons?.savingDraft || "Sauvegarde...") : (t.serviceAdd?.buttons?.saveDraft || "Sauvegarder brouillon")}
+                  <Save className="h-4 w-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden xs:inline">
+                    {saving ? (t.serviceAdd?.buttons?.savingDraft || "Sauvegarde...") : (t.serviceAdd?.buttons?.saveDraft || "Sauvegarder brouillon")}
+                  </span>
+                  <span className="xs:hidden">
+                    {saving ? "..." : "Brouillon"}
+                  </span>
                 </button>
                 <button
                   onClick={() => handleSubmit("published")}
                   disabled={saving}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                  className="px-3 py-1.5 sm:px-6 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center text-sm"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {saving ? (t.serviceAdd?.buttons?.publishing || "Publication...") : (t.serviceAdd?.buttons?.update || "Mettre à jour")}
+                  <Upload className="h-4 w-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden xs:inline">
+                    {saving ? (t.serviceAdd?.buttons?.publishing || "Publication...") : (t.serviceAdd?.buttons?.update || "Mettre à jour")}
+                  </span>
+                  <span className="xs:hidden">
+                    {saving ? "..." : (t.serviceAdd?.buttons?.updateSmall || "Update")}
+                  </span>
                 </button>
                 <button
                   onClick={() =>
@@ -565,10 +655,12 @@ export default function EditServicePage({
                       `/Provider/TableauDeBord/Service/view/${serviceId}`
                     )
                   }
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center text-sm"
                 >
-                  <Eye className="h-4 w-4 mr-2" />
-                  {t.serviceAdd?.buttons?.view || "Voir"}
+                  <Eye className="h-4 w-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden sm:inline">
+                    {t.serviceAdd?.buttons?.view || "Voir"}
+                  </span>
                 </button>
               </div>
             </div>
@@ -615,12 +707,12 @@ export default function EditServicePage({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-8">
             {/* Section 1: Informations générales */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-blue-600">📋</span>
@@ -630,8 +722,13 @@ export default function EditServicePage({
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.serviceTitle || "Titre du service *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.title.label}
+                      content={SERVICE_GUIDANCE.title.content}
+                      examples={SERVICE_GUIDANCE.title.examples}
+                    />
                   </label>
                   <input
                     type="text"
@@ -660,8 +757,13 @@ export default function EditServicePage({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.shortDescription || "Description courte *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.shortDescription.label}
+                      content={SERVICE_GUIDANCE.shortDescription.content}
+                      examples={SERVICE_GUIDANCE.shortDescription.examples}
+                    />
                   </label>
                   <textarea
                     value={formData.short_description}
@@ -692,8 +794,13 @@ export default function EditServicePage({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.description || "Description complète *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.description.label}
+                      content={SERVICE_GUIDANCE.description.content}
+                      examples={SERVICE_GUIDANCE.description.examples}
+                    />
                   </label>
                   <textarea
                     value={formData.description}
@@ -720,7 +827,7 @@ export default function EditServicePage({
             </div>
 
             {/* Section Location */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-orange-600">📍</span>
@@ -814,7 +921,7 @@ export default function EditServicePage({
             </div>
 
             {/* Section 2: Tarification */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-green-600">💰</span>
@@ -824,8 +931,13 @@ export default function EditServicePage({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.basePrice || "Prix de base *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.basePrice.label}
+                      content={SERVICE_GUIDANCE.basePrice.content}
+                      examples={SERVICE_GUIDANCE.basePrice.examples}
+                    />
                   </label>
                   <input
                     type="number"
@@ -923,8 +1035,13 @@ export default function EditServicePage({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.deliveryTime || "Délai de livraison (jours) *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.deliveryTime.label}
+                      content={SERVICE_GUIDANCE.deliveryTime.content}
+                      examples={SERVICE_GUIDANCE.deliveryTime.examples}
+                    />
                   </label>
                   <select
                     value={formData.delivery_time_days}
@@ -949,8 +1066,13 @@ export default function EditServicePage({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.revisions || "Révisions incluses"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.revisions.label}
+                      content={SERVICE_GUIDANCE.revisions.content}
+                      examples={SERVICE_GUIDANCE.revisions.examples}
+                    />
                   </label>
                   <select
                     value={formData.revisions_included}
@@ -999,12 +1121,17 @@ export default function EditServicePage({
             </div>
 
             {/* Section 3: Extras */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-purple-600">⚡</span>
                 </div>
                 {t.serviceAdd?.sections?.extras || "Extras"}
+                <InfoTooltip
+                  title={SERVICE_GUIDANCE.extras.label}
+                  content={SERVICE_GUIDANCE.extras.content}
+                  examples={SERVICE_GUIDANCE.extras.examples}
+                />
               </h2>
 
               <div className="space-y-4">
@@ -1084,7 +1211,7 @@ export default function EditServicePage({
             </div>
 
             {/* Section 4: Médias */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-yellow-600">🖼️</span>
@@ -1095,9 +1222,16 @@ export default function EditServicePage({
               <div className="space-y-6">
                 {/* Cover Image */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t.serviceAdd?.labels?.coverImage || "Image de couverture *"}
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    {t.serviceAdd?.labels?.coverImage ||
+                      "Image de couverture *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.images.label}
+                      content={SERVICE_GUIDANCE.images.content}
+                      examples={SERVICE_GUIDANCE.images.examples}
+                    />
                   </label>
+
                   <div
                     className={`border-2 border-dashed rounded-lg p-6 text-center ${
                       errors.cover_image
@@ -1128,7 +1262,8 @@ export default function EditServicePage({
                       <label className="cursor-pointer">
                         <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                         <p className="text-sm text-gray-600 mb-2">
-                          {t.serviceAdd?.messages?.clickToUpload || "Cliquez pour uploader une image de couverture"}
+                          {t.serviceAdd?.messages?.clickToUpload ||
+                            "Cliquez pour uploader"}
                         </p>
                         <p className="text-xs text-gray-500">
                           PNG, JPG, JPEG (max 5MB)
@@ -1156,7 +1291,8 @@ export default function EditServicePage({
                 {/* Image Gallery */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t.serviceAdd?.labels?.imageGallery || "Galerie d'images"} ({formData.images.length}/10)
+                    {t.serviceAdd?.labels?.imageGallery || "Galerie d'images"} (
+                    {formData.images.length}/5)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {formData.images.map((image, index) => (
@@ -1170,7 +1306,7 @@ export default function EditServicePage({
                           onClick={() =>
                             setFormData((prev) => ({
                               ...prev,
-                              images: prev.images.filter((_, i) => i !== index),
+                              images: prev.images.filter((img) => img !== image),
                             }))
                           }
                           className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1179,12 +1315,23 @@ export default function EditServicePage({
                         </button>
                       </div>
                     ))}
-                    {formData.images.length < 10 && (
-                      <label className="border-2 border-dashed border-gray-300 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer hover:border-green-500">
-                        <Plus className="h-6 w-6 text-gray-400" />
-                        <span className="text-xs text-gray-600 mt-1">
-                          {t.serviceAdd?.buttons?.add || "Ajouter"}
-                        </span>
+                    {formData.images.length < 5 && (
+                      <label className="border-2 border-dashed border-gray-300 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 transition-colors">
+                        {uploading === "image" ? (
+                          <>
+                            <Loader2 className="h-6 w-6 text-green-600 animate-spin" />
+                            <span className="text-xs text-gray-600 mt-1">
+                              Upload...
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-6 w-6 text-gray-400" />
+                            <span className="text-xs text-gray-600 mt-1">
+                              {t.serviceAdd?.buttons?.add || "Ajouter"}
+                            </span>
+                          </>
+                        )}
                         <input
                           type="file"
                           accept="image/*"
@@ -1199,11 +1346,184 @@ export default function EditServicePage({
                     )}
                   </div>
                 </div>
+
+                {/* Video Gallery */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t.serviceAdd?.labels?.videoGallery ||
+                      "Vidéos de présentation"}{" "}
+                    ({formData.videos.length}/2)
+                  </label>
+                  
+                  {formData.videos.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {formData.videos.map((video, index) => (
+                        <div
+                          key={index}
+                          className="relative group border-2 border-gray-200 rounded-lg overflow-hidden"
+                        >
+                          <video
+                            src={video}
+                            controls
+                            className="w-full h-48 object-cover bg-black"
+                            preload="metadata"
+                          >
+                            Votre navigateur ne supporte pas la lecture de vidéos.
+                          </video>
+                          <div className="absolute top-2 right-2 flex gap-2">
+                            <button
+                              onClick={() =>
+                                setFormData((p) => ({
+                                  ...p,
+                                  videos: p.videos.filter((v) => v !== video),
+                                }))
+                               }
+                              className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 shadow-lg"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                            <p className="text-white text-sm font-medium flex items-center">
+                              <Video className="h-4 w-4 mr-2" />
+                              {index + 1}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {formData.videos.length < 2 && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                      <Video className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        {t.serviceAdd?.messages?.videoUploadLimit ||
+                          "MP4, WebM (max 50MB)"}
+                      </p>
+                      <label className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer inline-block transition-colors">
+                        {uploading === "video" ? (
+                          <>
+                            <Loader2 className="h-4 w-4 inline-block mr-2 animate-spin" />
+                            Upload en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 inline-block mr-2" />
+                            {t.serviceAdd?.buttons?.chooseVideo ||
+                              "Choisir une vidéo"}
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, "video");
+                          }}
+                          className="hidden"
+                          disabled={uploading === "video"}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* Document Gallery */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t.serviceAdd?.labels?.documentGallery || "Document (PDF)"}{" "}
+                    ({formData.documents.length}/2)
+                  </label>
+                  
+                  {formData.documents.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {formData.documents.map((doc, index) => (
+                        <div
+                          key={index}
+                          className="relative group border-2 border-gray-200 rounded-lg p-4 hover:border-blue-400 transition-colors bg-gradient-to-br from-blue-50 to-white"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="p-3 bg-blue-100 rounded-lg">
+                              <FileText className="h-8 w-8 text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {t.serviceAdd?.labels?.documentGallery ||
+                                  "Document"}{" "}
+                                {index + 1}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">PDF</p>
+                              <a
+                                href={doc}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-flex items-center"
+                              >
+                                <span>Ouvrir le document</span>
+                                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            </div>
+                            <button
+                              onClick={() =>
+                                setFormData((p) => ({
+                                  ...p,
+                                  documents: p.documents.filter((d) => d !== doc),
+                                }))
+                               }
+                              className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {formData.documents.length < 2 && (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        {t.serviceAdd?.messages?.documentUploadLimit ||
+                          "PDF (max 10MB)"}
+                      </p>
+                      <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer inline-block transition-colors">
+                        {uploading === "document" ? (
+                          <>
+                            <Loader2 className="h-4 w-4 inline-block mr-2 animate-spin" />
+                            Upload en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 inline-block mr-2" />
+                            {t.serviceAdd?.buttons?.chooseDocument ||
+                              "Choisir un document"}
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, "document");
+                          }}
+                          className="hidden"
+                          disabled={uploading === "document"}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Section 5: Catégories & Tags */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-indigo-600">🏷️</span>
@@ -1213,8 +1533,13 @@ export default function EditServicePage({
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.categories || "Catégories *"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.categories.label}
+                      content={SERVICE_GUIDANCE.categories.content}
+                      examples={SERVICE_GUIDANCE.categories.examples}
+                    />
                   </label>
                   <div
                     className={`border rounded-lg p-3 min-h-[120px] ${
@@ -1262,8 +1587,13 @@ export default function EditServicePage({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                     {t.serviceAdd?.labels?.tags || "Tags"}
+                    <InfoTooltip
+                      title={SERVICE_GUIDANCE.tags.label}
+                      content={SERVICE_GUIDANCE.tags.content}
+                      examples={SERVICE_GUIDANCE.tags.examples}
+                    />
                   </label>
                   <div className="border border-gray-300 rounded-lg p-3">
                     <div className="flex flex-wrap gap-2 mb-3">
@@ -1312,7 +1642,7 @@ export default function EditServicePage({
             </div>
 
             {/* Section 6: FAQ */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-orange-600">❓</span>
@@ -1371,7 +1701,7 @@ export default function EditServicePage({
             </div>
 
             {/* Section 7: Requirements */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
                   <span className="text-red-600">📋</span>
@@ -1436,7 +1766,7 @@ export default function EditServicePage({
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
               {/* Status Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">
                   {t.serviceAdd?.sidebar?.statusTitle || "Statut du service"}
                 </h3>
@@ -1475,7 +1805,7 @@ export default function EditServicePage({
               </div>
 
               {/* Validation Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">
                   {t.serviceAdd?.sidebar?.validationTitle || "Validation publication"}
                 </h3>
@@ -1518,7 +1848,7 @@ export default function EditServicePage({
               </div>
 
               {/* Tips Card */}
-              <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
+              <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 sm:p-6">
                 <h3 className="font-semibold text-blue-900 mb-3">
                   {t.serviceAdd?.sidebar?.editTipsTitle || "Conseils de modification"}
                 </h3>

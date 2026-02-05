@@ -79,24 +79,24 @@ const STEPS = {
 // ============================================================================
 
 const isValidUrl = (url: string): boolean => {
-  if (!url || typeof url !== 'string') return false;
+  if (!url || typeof url !== "string") return false;
   try {
     const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    return urlObj.protocol === "http:" || urlObj.protocol === "https:";
   } catch {
     return false;
   }
 };
 
 const isValidEmail = (email: string): boolean => {
-  if (!email || typeof email !== 'string') return false;
+  if (!email || typeof email !== "string") return false;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email.trim());
 };
 
 const isValidCardNumber = (cardNumber: string): boolean => {
   if (!cardNumber) return false;
-  const cleaned = cardNumber.replace(/\s/g, '');
+  const cleaned = cardNumber.replace(/\s/g, "");
   return /^\d{13,19}$/.test(cleaned);
 };
 
@@ -105,7 +105,7 @@ const isValidExpiryDate = (expiryDate: string): boolean => {
   const regex = /^(0[1-9]|1[0-2])\/\d{2}$/;
   if (!regex.test(expiryDate)) return false;
 
-  const [month, year] = expiryDate.split('/');
+  const [month, year] = expiryDate.split("/");
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear() % 100;
   const currentMonth = currentDate.getMonth() + 1;
@@ -125,7 +125,7 @@ const isValidCVV = (cvv: string): boolean => {
 };
 
 const isValidCardHolder = (name: string): boolean => {
-  if (!name || typeof name !== 'string') return false;
+  if (!name || typeof name !== "string") return false;
   const trimmed = name.trim();
   return trimmed.length >= 3 && /^[a-zA-ZÀ-ÿ\s'-]+$/.test(trimmed);
 };
@@ -153,27 +153,45 @@ const RequirementInput = ({
     // Vérifier la taille du fichier (max 100MB)
     const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
-      alert(`Le fichier est trop volumineux.\nTaille maximale: 100MB\nTaille du fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-      e.target.value = ''; // Reset input
+      alert(
+        `Le fichier est trop volumineux.\nTaille maximale: 100MB\nTaille du fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+      );
+      e.target.value = ""; // Reset input
       return;
     }
 
     // Valider le type de fichier
     const allowedTypes = [
       // Images
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
       // Vidéos
-      'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "video/quicktime",
       // Audio
-      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm',
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/ogg",
+      "audio/webm",
       // Documents
-      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      alert(`Type de fichier non autorisé: ${file.type}\n\nTypes autorisés:\n• Images (JPEG, PNG, GIF, WebP, SVG)\n• Vidéos (MP4, WebM, OGG, QuickTime)\n• Audio (MP3, WAV, OGG)\n• Documents (PDF, Word, TXT)`);
-      e.target.value = ''; // Reset input
+      alert(
+        `Type de fichier non autorisé: ${file.type}\n\nTypes autorisés:\n• Images (JPEG, PNG, GIF, WebP, SVG)\n• Vidéos (MP4, WebM, OGG, QuickTime)\n• Audio (MP3, WAV, OGG)\n• Documents (PDF, Word, TXT)`,
+      );
+      e.target.value = ""; // Reset input
       return;
     }
 
@@ -246,7 +264,7 @@ const RequirementInput = ({
     } catch (err) {
       console.error("Erreur lors du traitement du fichier:", err);
       alert(
-        "Erreur: " + (err instanceof Error ? err.message : "Erreur inconnue")
+        "Erreur: " + (err instanceof Error ? err.message : "Erreur inconnue"),
       );
     } finally {
       setUploading(false);
@@ -273,7 +291,7 @@ const RequirementInput = ({
               "Updating text requirement:",
               req.id,
               "with value:",
-              textValue
+              textValue,
             );
             // Stocker uniquement du texte pour le type text
             onChange(textValue);
@@ -295,7 +313,7 @@ const RequirementInput = ({
                 "Updating URL requirement:",
                 req.id,
                 "with value:",
-                urlValue
+                urlValue,
               );
               // Stocker uniquement une URL valide pour le type url
               onChange(urlValue);
@@ -433,7 +451,7 @@ export default function CheckoutPage() {
   const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
   const [convertedBasePrice, setConvertedBasePrice] = useState<number>(0);
   const [convertedExtras, setConvertedExtras] = useState<Map<number, number>>(
-    new Map()
+    new Map(),
   );
   const [convertedPricing, setConvertedPricing] = useState({
     subtotal: 0,
@@ -454,12 +472,12 @@ export default function CheckoutPage() {
 
     window.addEventListener(
       "currencyChanged",
-      handleCurrencyChange as EventListener
+      handleCurrencyChange as EventListener,
     );
     return () => {
       window.removeEventListener(
         "currencyChanged",
-        handleCurrencyChange as EventListener
+        handleCurrencyChange as EventListener,
       );
     };
   }, []);
@@ -487,7 +505,7 @@ export default function CheckoutPage() {
 
           extraIds.forEach((id) => {
             const index = service.extras.findIndex(
-              (e: any, idx: number) => e.id === id && !usedIndices.has(idx)
+              (e: any, idx: number) => e.id === id && !usedIndices.has(idx),
             );
 
             if (index !== -1) {
@@ -587,7 +605,7 @@ export default function CheckoutPage() {
           subtotal: data.data.subtotal_cents,
           fees: data.data.fee_cents,
           total: data.data.client_pays_cents, // LE CLIENT PAIE CE MONTANT
-          feeLabel: `Frais de service (${data.data.fee_config.fee_percentage}%)`,
+          feeLabel: ` (${data.data.fee_config.fee_percentage}%)`,
           providerReceives: data.data.provider_receives_cents,
           paidBy: data.data.fee_config.paid_by || "client",
         });
@@ -633,7 +651,7 @@ export default function CheckoutPage() {
       // Convertir base_price
       const convertedBase = await convertFromUSD(
         service.base_price_cents / 100,
-        selectedCurrency
+        selectedCurrency,
       );
       if (convertedBase !== null) {
         setConvertedBasePrice(convertedBase);
@@ -646,7 +664,7 @@ export default function CheckoutPage() {
           const extra = service.extras[i];
           const converted = await convertFromUSD(
             extra.price_cents / 100,
-            selectedCurrency
+            selectedCurrency,
           );
           if (converted !== null) {
             extrasMap.set(i, converted);
@@ -711,7 +729,7 @@ export default function CheckoutPage() {
 
     console.log("🔍 [VALIDATION STEP 2] Début validation", {
       totalRequirements: service.requirements.length,
-      answers: requirementsAnswers
+      answers: requirementsAnswers,
     });
 
     for (let index = 0; index < service.requirements.length; index++) {
@@ -723,7 +741,7 @@ export default function CheckoutPage() {
         type: req.type,
         required: req.required,
         description: req.description?.fr || req.description?.en,
-        value: value
+        value: value,
       });
 
       // Vérifier si le champ requis est rempli
@@ -734,35 +752,63 @@ export default function CheckoutPage() {
       if (isRequired) {
         if (!value) {
           console.log(`❌ Champ ${reqKey} obligatoire mais vide`);
-          if (showAlerts) alert(`Le champ "${req.description?.fr || req.description?.en}" est obligatoire`);
+          if (showAlerts)
+            alert(
+              `Le champ "${req.description?.fr || req.description?.en}" est obligatoire`,
+            );
           return false;
         }
 
         // Validation spécifique selon le type
         if (req.type === "text") {
-          if (typeof value !== 'string' || value.trim().length < 10) {
-            if (showAlerts) alert(`Le champ "${req.description?.fr || req.description?.en}" doit contenir au moins 10 caractères`);
+          if (typeof value !== "string" || value.trim().length < 10) {
+            if (showAlerts)
+              alert(
+                `Le champ "${req.description?.fr || req.description?.en}" doit contenir au moins 10 caractères`,
+              );
             return false;
           }
         } else if (req.type === "url") {
-          if (typeof value !== 'string' || !isValidUrl(value)) {
-            if (showAlerts) alert(`Le champ "${req.description?.fr || req.description?.en}" doit être une URL valide (http:// ou https://)`);
+          if (typeof value !== "string" || !isValidUrl(value)) {
+            if (showAlerts)
+              alert(
+                `Le champ "${req.description?.fr || req.description?.en}" doit être une URL valide (http:// ou https://)`,
+              );
             return false;
           }
         } else if (req.type === "file") {
           if (!value || !value.url) {
-            if (showAlerts) alert(`Veuillez télécharger un fichier pour "${req.description?.fr || req.description?.en}"`);
+            if (showAlerts)
+              alert(
+                `Veuillez télécharger un fichier pour "${req.description?.fr || req.description?.en}"`,
+              );
             return false;
           }
         }
       } else {
         // Même si le champ n'est pas requis, valider le format s'il est rempli
         if (value) {
-          if (req.type === "text" && typeof value === 'string' && value.trim().length > 0 && value.trim().length < 10) {
-            if (showAlerts) alert(`Le champ "${req.description?.fr || req.description?.en}" doit contenir au moins 10 caractères`);
+          if (
+            req.type === "text" &&
+            typeof value === "string" &&
+            value.trim().length > 0 &&
+            value.trim().length < 10
+          ) {
+            if (showAlerts)
+              alert(
+                `Le champ "${req.description?.fr || req.description?.en}" doit contenir au moins 10 caractères`,
+              );
             return false;
-          } else if (req.type === "url" && typeof value === 'string' && value.trim().length > 0 && !isValidUrl(value)) {
-            if (showAlerts) alert(`Le champ "${req.description?.fr || req.description?.en}" doit être une URL valide (http:// ou https://)`);
+          } else if (
+            req.type === "url" &&
+            typeof value === "string" &&
+            value.trim().length > 0 &&
+            !isValidUrl(value)
+          ) {
+            if (showAlerts)
+              alert(
+                `Le champ "${req.description?.fr || req.description?.en}" doit être une URL valide (http:// ou https://)`,
+              );
             return false;
           }
         }
@@ -802,13 +848,17 @@ export default function CheckoutPage() {
       if (!paymentDetails.cardNumber) {
         paymentErrors.push("• Le numéro de carte est obligatoire");
       } else if (!isValidCardNumber(paymentDetails.cardNumber)) {
-        paymentErrors.push("• Le numéro de carte est invalide (13-19 chiffres requis)");
+        paymentErrors.push(
+          "• Le numéro de carte est invalide (13-19 chiffres requis)",
+        );
       }
 
       if (!paymentDetails.expiryDate) {
         paymentErrors.push("• La date d'expiration est obligatoire");
       } else if (!isValidExpiryDate(paymentDetails.expiryDate)) {
-        paymentErrors.push("• La date d'expiration est invalide ou expirée (format: MM/YY)");
+        paymentErrors.push(
+          "• La date d'expiration est invalide ou expirée (format: MM/YY)",
+        );
       }
 
       if (!paymentDetails.cvv) {
@@ -820,7 +870,9 @@ export default function CheckoutPage() {
       if (!paymentDetails.cardHolder) {
         paymentErrors.push("• Le nom du titulaire de la carte est obligatoire");
       } else if (!isValidCardHolder(paymentDetails.cardHolder)) {
-        paymentErrors.push("• Le nom du titulaire doit contenir au moins 3 lettres (sans chiffres)");
+        paymentErrors.push(
+          "• Le nom du titulaire doit contenir au moins 3 lettres (sans chiffres)",
+        );
       }
     } else if (paymentMethod === "paypal") {
       if (!paymentDetails.paypalEmail) {
@@ -832,12 +884,16 @@ export default function CheckoutPage() {
       if (!paymentDetails.bankAccount) {
         paymentErrors.push("• Le numéro de compte bancaire est obligatoire");
       } else if (paymentDetails.bankAccount.trim().length < 10) {
-        paymentErrors.push("• Le numéro de compte bancaire doit contenir au moins 10 caractères");
+        paymentErrors.push(
+          "• Le numéro de compte bancaire doit contenir au moins 10 caractères",
+        );
       }
     }
 
     if (paymentErrors.length > 0) {
-      alert("Erreurs de validation du paiement :\n\n" + paymentErrors.join("\n"));
+      alert(
+        "Erreurs de validation du paiement :\n\n" + paymentErrors.join("\n"),
+      );
       return;
     }
 
@@ -1144,7 +1200,7 @@ export default function CheckoutPage() {
                       setSelectedExtras([...selectedExtras, index]);
                     else
                       setSelectedExtras(
-                        selectedExtras.filter((i) => i !== index)
+                        selectedExtras.filter((i) => i !== index),
                       );
                   }}
                   className="w-5 h-5 text-purple-600 rounded"
@@ -1420,7 +1476,9 @@ export default function CheckoutPage() {
         <button
           onClick={() =>
             setCurrentStep(
-              service?.requirements?.length ? STEPS.REQUIREMENTS : STEPS.DETAILS
+              service?.requirements?.length
+                ? STEPS.REQUIREMENTS
+                : STEPS.DETAILS,
             )
           }
           className="px-6 py-3 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50"
@@ -1534,7 +1592,7 @@ export default function CheckoutPage() {
               {/* Afficher les frais selon qui les paie */}
               {pricing.paidBy === "client" && pricing.fees > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Frais de service</span>
+                  <span className="text-slate-600"></span>
                   <span className="font-medium">
                     {formatAmount(convertedPricing.fees)}
                   </span>
@@ -1542,7 +1600,7 @@ export default function CheckoutPage() {
               )}
               {pricing.paidBy === "split" && pricing.fees > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Frais de service (50%)</span>
+                  <span className="text-slate-600"> </span>
                   <span className="font-medium">
                     {formatAmount(convertedPricing.fees / 2)}
                   </span>
