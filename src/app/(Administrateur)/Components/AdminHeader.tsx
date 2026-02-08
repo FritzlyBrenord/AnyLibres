@@ -182,7 +182,9 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                   ? "bg-slate-900 border border-slate-800 hover:border-amber-500/50 text-slate-400 hover:text-amber-400"
                   : "bg-slate-100 border border-slate-200 hover:border-amber-400/50 text-slate-600 hover:text-amber-600"
               }`}
-              aria-label={!isSidebarCollapsed ? "Cacher le menu" : "Afficher le menu"}
+              aria-label={
+                !isSidebarCollapsed ? "Cacher le menu" : "Afficher le menu"
+              }
             >
               {/* Icône qui change selon l'état */}
               <div className="relative w-5 h-5">
@@ -496,7 +498,10 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                       isDark ? "text-slate-500" : "text-slate-400"
                     }`}
                   >
-                    {(user?.role && (t.admin?.header?.roles as any)?.[user.role]) || user?.role || "Admin"}
+                    {(user?.role &&
+                      (t.admin?.header?.roles as any)?.[user.role]) ||
+                      user?.role ||
+                      "Admin"}
                   </p>
                 </div>
 
@@ -672,8 +677,8 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                   >
                     <button
                       onClick={() => {
-                        signOut();
                         window.location.href = "/login";
+                        signOut();
                       }}
                       className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all duration-200 group`}
                     >
